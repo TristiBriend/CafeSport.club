@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sofa Critics - UISamples</title>
+    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <header class="site-header" data-site-header data-show-search="true"></header>
+
+    <main class="ui-page">
+      <section class="ui-hero section-shell">
+        <div class="section-head">
+          <div>
+            <h1>UISamples</h1>
+            <p class="muted">Bibliotheque visuelle des composants Sofa Critics.</p>
+          </div>
+          <a class="ghost" href="index.html#events">Retour à l'accueil</a>
+        </div>
+      </section>
+
+      <section class="ui-section section-shell ui-nav-shell">
+        <nav class="ui-category-nav" aria-label="Navigation des catégories UISamples">
+          <a class="filter-btn is-active" href="#ui-base">UI de base</a>
+          <a class="filter-btn" href="#ui-text">Texte</a>
+          <a class="filter-btn" href="#ui-reuse">Composants reutilisables</a>
+          <a class="filter-btn" href="#ui-cards">Cards</a>
+          <a class="filter-btn" href="#ui-event-cards-section">Event Cards</a>
+          <a class="filter-btn" href="#ui-lists">Classements</a>
+          <a class="filter-btn" href="#ui-comments">Reviews & commentaires</a>
+          <a class="filter-btn" href="#ui-fonts">Polices</a>
+          <a class="filter-btn" href="#ui-colors">Palette</a>
+          <a class="filter-btn" href="#ui-rating-distribution-section">Distribution</a>
+        </nav>
+      </section>
+
+      <section id="ui-base" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>UI de base</h2>
+            <p class="muted">Boutons, tags et filtrès.</p>
+          </div>
+        </div>
+        <div class="ui-samples-grid">
+          <div class="ui-sample-card">
+            <h3>Cadre global (utilise partout)</h3>
+            <div id="ui-frame-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Boutons</h3>
+            <div class="ui-row">
+              <button class="cta">Call to action</button>
+              <button class="ghost">Secondaire</button>
+              <button class="ghost small">Petit</button>
+            </div>
+            <pre class="ui-component-code"><code>.cta · .ghost · .ghost.small</code></pre>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Tags</h3>
+            <div class="ui-row">
+              <span class="tag">Ligue</span>
+              <span class="tag ghost">Info</span>
+              <span class="tag ghost subtle">Subtle</span>
+              <span class="rank-tag">Top 1</span>
+            </div>
+            <pre class="ui-component-code"><code>.tag · .tag.ghost · .tag.ghost.subtle · .rank-tag</code></pre>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Text box (style tag)</h3>
+            <div id="ui-tag-textbox-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Object tags widget</h3>
+            <div id="ui-object-tags-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Filtre sport</h3>
+            <div id="ui-sport-filter-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>PP + nom utilisateur</h3>
+            <div id="ui-user-identity-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Bouton follow (user identity)</h3>
+            <div id="ui-follow-button-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Miniature joueur</h3>
+            <div id="ui-player-miniature-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Like commentaire</h3>
+            <div id="ui-comment-like-metric-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Answers number</h3>
+            <div id="ui-answers-number-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>headercommentaire</h3>
+            <div id="ui-comment-header-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Date relative</h3>
+            <div id="ui-relative-date-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Switch Watchlist</h3>
+            <div id="ui-watchlist-switch-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Selecteurs Watchlist (mois/année)</h3>
+            <div id="ui-watchlist-period-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Filtre période (De / a)</h3>
+            <div id="ui-watchlist-period-range-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Elements Event Card (top)</h3>
+            <div id="ui-event-top-elements" class="ui-user-identity-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="ui-text" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Texte</h2>
+            <p class="muted">Hierarchie typographique et formats textuels reutilisables.</p>
+          </div>
+        </div>
+        <div class="ui-samples-grid">
+          <div class="ui-sample-card">
+            <h3>Formats de texte</h3>
+            <div id="ui-text-format-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Event Description</h3>
+            <div id="ui-event-description-samples" class="ui-user-identity-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="ui-reuse" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Composants reutilisables</h2>
+            <p class="muted">Mini calendrier, jauge SofaScore et composants visuels utilitaires.</p>
+          </div>
+        </div>
+        <div class="ui-samples-grid">
+          <div class="ui-sample-card">
+            <h3>Miniatures event calendrier</h3>
+            <div id="ui-calendar-miniatures" class="calendar-mini-grid"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Aperçu overlay EventCard</h3>
+            <p class="muted">Cliquez sur les aperçus pour ouvrir l'overlay de la EventCard liée.</p>
+            <div id="ui-event-overlay-samples" class="ui-user-identity-list"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>SofaScore jauge</h3>
+            <div id="ui-sofa-gauges" class="sofa-gauge-stack"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Aperçu _sorare</h3>
+            <div id="ui-sorare-samples" class="bestcomment-sample"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="ui-cards" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Cards</h2>
+            <p class="muted">Event card reutilisee et comment card au meme style.</p>
+          </div>
+        </div>
+        <div id="ui-cards-samples" class="card-grid ui-cards-grid"></div>
+      </section>
+
+      <section id="ui-event-cards-section" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Event Cards</h2>
+            <p class="muted">Variantes standard et compactes, miniature event et filtre image.</p>
+          </div>
+        </div>
+        <div id="ui-event-cards" class="card-grid"></div>
+        <div class="ui-samples-grid">
+          <div class="ui-sample-card">
+            <h3>Miniatures d'événements</h3>
+            <div id="ui-event-miniatures" class="event-mini-grid"></div>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Filtre image EventCard</h3>
+            <div id="ui-event-image-filter-samples" class="bestcomment-sample"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="ui-lists" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Classements</h2>
+            <p class="muted">Cartes de classements et preview de classement.</p>
+          </div>
+        </div>
+        <div id="ui-list-cards" class="list-grid"></div>
+      </section>
+
+      <section id="ui-comments" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Reviews & commentaires</h2>
+            <p class="muted">Avis, commentaires, et réponses.</p>
+          </div>
+        </div>
+        <div id="ui-review-cards" class="review-list"></div>
+      </section>
+
+      <section id="ui-fonts" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Polices du document</h2>
+            <p class="muted">Aperçu des familles de polices utilisees dans le site.</p>
+          </div>
+        </div>
+        <div class="ui-samples-grid">
+          <div class="ui-sample-card">
+            <h3>Display</h3>
+            <p class="ui-font-preview" style="font-family:var(--font-display);">Sofa Critics, notez chaque événement en style editorial.</p>
+            <pre class="ui-component-code"><code>font-family: var(--font-display)</code></pre>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Body</h3>
+            <p class="ui-font-preview" style="font-family:var(--font-body);">Suivez, commentez et ajoutez les matchs a votre watchlist.</p>
+            <pre class="ui-component-code"><code>font-family: var(--font-body)</code></pre>
+          </div>
+          <div class="ui-sample-card">
+            <h3>Code / Data</h3>
+            <p class="ui-font-preview" style="font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, &quot;Liberation Mono&quot;, &quot;Courier New&quot;, monospace;">event_id: evt_2XWA16... score: 87% status: past</p>
+            <pre class="ui-component-code"><code>font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="ui-colors" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Palette du site</h2>
+            <p class="muted">Couleurs utilisees sur Sofa Critics, avec variable CSS et valeur.</p>
+          </div>
+        </div>
+        <div id="ui-color-palette" class="ui-color-grid"></div>
+      </section>
+
+      <section id="ui-rating-distribution-section" class="ui-section section-shell">
+        <div class="section-head">
+          <div>
+            <h2>Distribution des notes</h2>
+            <p class="muted">Histogramme de notes en intervalles de 10.</p>
+          </div>
+        </div>
+        <div id="ui-rating-distribution" class="rating-distribution-sample"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer" data-site-footer></footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

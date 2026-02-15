@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sofa Critics - Le plus grand réseau social sportif, note tous les matchs et toutes les courses !</title>
+    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+
+    <header class="site-header" data-site-header data-show-search="true"></header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Suivre - Noter - Découvrir</p>
+          <h1>Le plus grand réseau social sportif, note tous les matchs et toutes les courses !</h1>
+          <p class="lede">
+            Sofa Critics rassemble les fans autour de chaque match et chaque course.
+            Notez, commentez, suivez vos équipes et sportifs préférés, et créez vos classements
+            pour ne rien rater de ce qui compte.
+          </p>
+          <div class="hero-actions">
+            <a class="cta" href="#events">Commencer à noter</a>
+            <a class="ghost" href="join/index.html">Créer un classement de suivi</a>
+          </div>
+          <div class="stats">
+            <div>
+              <span class="stat-number" id="stat-events">0</span>
+              <span class="stat-label">Événements classés</span>
+            </div>
+            <div>
+              <span class="stat-number">12.4k</span>
+              <span class="stat-label">Avis de la communauté</span>
+            </div>
+            <div>
+              <span class="stat-number" id="stat-sports">0</span>
+              <span class="stat-label">Sports couverts</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="hero-card-header">
+            <span class="pill">À la une</span>
+            <div class="hero-controls">
+              <button class="hero-nav" id="hero-prev" aria-label="Événement précédent">←</button>
+              <button class="hero-nav" id="hero-next" aria-label="Événement suivant">→</button>
+            </div>
+          </div>
+          <div id="hero-featured"></div>
+          <div class="hero-dots" id="hero-dots"></div>
+        </div>
+      </section>
+
+      <section class="home-section highlights-section">
+        <div class="section-head">
+          <div>
+            <h2>Radar Sofa Critics</h2>
+            <p class="muted">Meilleures critiques et classements du moment.</p>
+          </div>
+        </div>
+        <div class="highlights-grid">
+          <div class="highlight-column">
+            <div class="highlight-header">
+              <h3>Meilleures critiques</h3>
+              <a class="ghost small" href="index.html#events">Voir plus</a>
+            </div>
+            <div id="home-reviews" class="highlight-list"></div>
+          </div>
+          <div class="highlight-column">
+            <div class="highlight-header">
+              <h3>Meilleurs classements</h3>
+              <a class="ghost small" href="index.html#home">Voir plus</a>
+            </div>
+            <div id="home-lists" class="highlight-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="home-section bestof-section">
+        <div class="section-head">
+          <div>
+            <h2>Best of des derniers jours</h2>
+            <p class="muted">Top 10 des événements les mieux notés sur la période.</p>
+          </div>
+          <div class="section-actions">
+            <label class="select-wrap">
+              <span class="muted">Période</span>
+              <select id="bestof-range">
+                <option value="7" selected>7 jours</option>
+                <option value="14">14 jours</option>
+                <option value="30">1 mois</option>
+              </select>
+            </label>
+            <label class="select-wrap">
+              <span class="muted">Sport</span>
+              <select id="bestof-sport">
+                <option value="Tous" selected>Tous</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div id="bestof-list" class="scroll-row"></div>
+      </section>
+
+      <section id="watchlist" class="home-section watchlist-section">
+        <div class="section-head">
+          <div>
+            <h2>Watchlist</h2>
+            <p class="muted">Tous les matchs futurs que vous souhaitez suivre.</p>
+          </div>
+          <div class="section-actions">
+            <a class="ghost small" href="calendar.html">Voir toute la watchlist</a>
+            <a class="ghost small" href="join/index.html">Personnaliser</a>
+          </div>
+        </div>
+        <div id="watchlist-list" class="card-grid"></div>
+      </section>
+
+      <section id="home" class="home-sections">
+        <div class="home-section">
+          <div class="section-head">
+            <div>
+              <h2>Événements les plus attendus</h2>
+              <p class="muted">Bases sur votre profil Sofa Critics.</p>
+            </div>
+            <a class="ghost small" href="join/index.html">Mettre a jour mon profil</a>
+          </div>
+          <div id="anticipated-list" class="card-grid"></div>
+        </div>
+
+        <div class="home-section">
+          <div class="section-head">
+            <div>
+              <h2>Meilleurs événements du mois</h2>
+              <p class="muted">Classement selon la note de la communauté.</p>
+            </div>
+          </div>
+          <div id="best-month-list" class="card-grid"></div>
+        </div>
+
+        <div class="home-section">
+          <div class="section-head">
+            <div>
+              <h2>Classements d'événements sélectionnés</h2>
+              <p class="muted">Collections personnelles partagées avec la communauté.</p>
+            </div>
+            <a class="ghost small" href="join/index.html">Créer un classement</a>
+          </div>
+          <div id="curated-list" class="list-grid"></div>
+        </div>
+      </section>
+
+      <section id="events" class="events">
+        <div class="events-header">
+          <div>
+            <h2>Parcourir les événements</h2>
+            <p class="muted">Tous les événements, classés par sport, avec les notes de la communauté.</p>
+          </div>
+          <div class="search">
+            <input id="search-input" type="search" placeholder="Rechercher équipes, ligues, ou lieux" />
+            <span class="search-icon">Recherche</span>
+          </div>
+        </div>
+
+        <div class="filters" id="sport-filters" role="tablist" aria-label="Filtrer par sport"></div>
+        <div class="events-summary" id="events-summary">0 événements affichés</div>
+
+        <div id="events-list" class="events-list"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <span class="brand-name">Sofa Critics</span>
+        <p class="muted">A vos marques, prêts, critiquez !</p>
+        <p class="muted">Copyright @Intuitions Studio 2026</p>
+      </div>
+      <div class="footer-links">
+        <a href="#events">Événements</a>
+        <a href="#home">Découvrir</a>
+        <a href="calendar.html">Watchlist</a>
+        <a href="datamodel.html">DataModel</a>
+        <a href="join/index.html">Rejoindre</a>
+        <a href="mailto:tristan@pytha.app">Contact</a>
+      </div>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
