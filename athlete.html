@@ -1,63 +1,23 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sofa Critics - Sportif</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirect</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        var id = (params.get("id") || "").trim();
+        var target = id ? "/athlete/" + encodeURIComponent(id) : "/athletes";
+        if (!id) {
+          var hash = window.location.hash || "";
+          if (hash) target += hash;
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="site-main">
-      <section class="athlete-hero section-shell" id="athlete-detail"></section>
-
-      <section class="feed-hero section-shell object-feed-section">
-        <div class="section-head">
-          <div>
-            <div class="feed-hero-title-line">
-              <h2 id="object-feed-title">Feed sportif</h2>
-              <div id="object-feed-add-action"></div>
-              <div id="object-feed-help-toggle"></div>
-            </div>
-            <p id="object-feed-subtitle" class="muted">Flux lié à ce sportif.</p>
-          </div>
-          <div class="feed-hero-actions">
-            <div id="object-feed-mode-switch"></div>
-            <a id="object-feed-see-all" class="ghost small" href="feed.html">Voir tout</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="feed-stream-shell section-shell object-feed-stream-shell">
-        <div id="object-feed-stream" class="feed-stream"></div>
-      </section>
-
-      <section class="athlete-events section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Événements et notes</h2>
-            <p class="muted">Les participations du sportif et les notes associées.</p>
-          </div>
-        </div>
-        <div class="card-grid" id="athlete-events-list"></div>
-      </section>
-
-      <section class="event-reviews section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Avis sur ce sportif</h2>
-            <p class="muted">Commentaires et critiques dédiés à ce profil.</p>
-          </div>
-          <div id="athlete-comment-composer"></div>
-        </div>
-        <div id="athlete-review-list" class="review-list"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/athletes">Open the React app</a>.</p>
   </body>
 </html>

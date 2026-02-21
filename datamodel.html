@@ -1,72 +1,21 @@
 <!doctype html>
 <html lang="fr">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sofa Critics - DataModel</title>
-  <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="style.css" />
-</head>
-
-<body>
-  <div class="bg-gradient"></div>
-  <div class="bg-grid"></div>
-
-  <header class="site-header" data-site-header data-show-search="true"></header>
-
-  <main class="data-page">
-    <section class="data-hero section-shell">
-      <div class="section-head">
-        <div>
-          <h1>DataModel</h1>
-          <p class="muted">Vue live des collections et relations detectees dans <code>app.js</code>.</p>
-        </div>
-        <a class="ghost" href="index.html#events">Retour à l'accueil</a>
-      </div>
-      <div class="data-note">
-        <span class="tag">events</span>
-        <span class="tag">leagues</span>
-        <span class="tag">leagueSeasons</span>
-        <span class="tag">leagueEvents</span>
-        <span class="tag">users</span>
-        <span class="tag">athletes</span>
-        <span class="tag">teams</span>
-        <span class="tag">genericCommentSamples</span>
-        <span class="tag">curatedLists</span>
-        <span class="tag">tagCatalog</span>
-        <span class="tag">objectTags</span>
-        <span class="tag">objectTagVotes</span>
-        <span class="tag">relations</span>
-      </div>
-    </section>
-
-    <section class="data-summary-grid" id="data-summary"></section>
-
-    <section class="data-relations section-shell">
-      <div class="section-head">
-        <h2>Relations principales</h2>
-      </div>
-      <ul id="data-relations-list" class="data-relations-list"></ul>
-    </section>
-
-    <section class="data-relations section-shell">
-      <div class="section-head">
-        <h2>Modèle cible compétition/saison</h2>
-      </div>
-      <p class="muted">
-        Pour les compétitions avec éditions annuelles et changements de nom: séparation entre compétition stable,
-        saisons (éditions) et historique des noms.
-      </p>
-    </section>
-
-    <section id="data-showcase" class="data-grid"></section>
-  </main>
-
-  <footer class="site-footer" data-site-footer></footer>
-
-  <script src="datamodel.js"></script>
-  <script src="app.js"></script>
-</body>
-
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redirect</title>
+    <meta http-equiv="refresh" content="0;url=/datamodel" />
+    <script>
+      (function () {
+        var target = '/datamodel';
+        if (target.indexOf("?") === -1) {
+          target += (window.location.search || "") + (window.location.hash || "");
+        }
+        window.location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Page moved. <a href="/datamodel">Open the React app</a>.</p>
+  </body>
 </html>

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "lst_1SHKFBQECVCF1SHKDBQECVBM1S",
+    "title": "Les meilleures etapes du Tour de France",
+    "description": "Cols mythiques, attaques folles, et finishes historiques.",
+    "count": 3,
+    "sport": "Cyclisme",
+    "ownerId": "usr_KHHE5RBM3W4HKHHE7RBM3W5CKH",
+    "likes": 680,
+    "entries": [
+      {
+        "eventId": "evt_FV8J5N0W4TKYFV8J7N0W4TMTFV",
+        "note": "Pyrenees, et une bataille pour les grimpeurs."
+      },
+      {
+        "eventId": "evt_99F2HMZY9WNE99F2KMZY9WP999",
+        "note": "Une etape de montagne pour les favoris."
+      },
+      {
+        "eventId": "evt_V8G6SJSJ109BV8G6QJSJ108GV8",
+        "note": "Le chrono final pour faire la difference."
+      }
+    ]
+  },
+  {
+    "id": "lst_6CYCLE2026",
+    "title": "Les coureurs les plus attendus en 2026",
+    "description": "Ceux que l'on attend dans les classiques, les contre-la-montre et les etapes decisive.",
+    "count": 8,
+    "sport": "Cyclisme",
+    "ownerId": "usr_KHHE5RBM3W4HKHHE7RBM3W5CKH",
+    "likes": 540,
+    "itemLabel": "coureurs",
+    "entries": [
+      {
+        "athleteId": "ath_D7G4H9K3PZ0YD7G4H9K3PZ0Y1",
+        "note": "Isaac Del Toro, rouleur americain pret a briller sur les contre-la-montre et les côtés de rupture.",
+        "score": 93
+      },
+      {
+        "athleteId": "ath_W0L9P7X2MZ3AW0L9P7X2MZ3A",
+        "note": "Arnaud De Lie, sprinteur polyvalent qui cherche sa revanche sur les classiques vallonnees.",
+        "score": 91
+      },
+      {
+        "athleteId": "ath_Z6F8B3R1QY5GZ6F8B3R1QY5G",
+        "note": "Christian Scaroni garde la roue des meilleurs et veut se montrer sur les courses italiennes cassees.",
+        "score": 89
+      },
+      {
+        "athleteId": "ath_P5N8M2A6L1OP5N8M2A6L1O",
+        "note": "Jonathan Milan a confirmé sa fraicheur en chrono et vise les arrivées en petit groupe.",
+        "score": 90
+      },
+      {
+        "athleteId": "ath_U3T9A4N5D2RSU3T9A4N5D2R",
+        "note": "Tobias Lund Andresen, tete chercheuse de relais pour peser sur les puncheurs.",
+        "score": 88
+      },
+      {
+        "athleteId": "ath_S6T4O7R9E1M0S6T4O7R9E1M",
+        "note": "Michael Storer recherche des etapes d'aventure pour poser sa carte.",
+        "score": 87
+      },
+      {
+        "athleteId": "ath_J1O8R2G5N4S6M3J1O8R2G5N4S",
+        "note": "Matteo Jorgenson, americain agile pour les courses a transitions rapides.",
+        "score": 86
+      },
+      {
+        "athleteId": "ath_G7A3L2F9X1ZFG7A3L2F9X1Z",
+        "note": "Felix Gall revient sur les classiques vallonnees pour remplacer la refuge des puncheurs.",
+        "score": 85
+      }
+    ]
+  },
+  {
+    "id": "lst_5T7XEK952GVJ5T7XGK952GWD5T",
+    "title": "Derbies europeens a ne pas manquer",
+    "description": "Les rivalites qui font vibrer la saison.",
+    "count": 12,
+    "sport": "Football",
+    "ownerId": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
+    "likes": 520,
+    "entries": [
+      {
+        "eventId": "evt_8QNPM1627RQF8QNPJ1627RPM8Q",
+        "note": "Pressing, tension, et ambiance folles."
+      },
+      {
+        "eventId": "evt_2XWA16C4CB712XWA36C4CB7W2X",
+        "note": "Une finale avec l'intensite d'un derby."
+      }
+    ]
+  },
+  {
+    "id": "lst_FFNBNW65RMQYFFNBKW65RMQ3FF",
+    "title": "Finales de legende",
+    "description": "Les matchs qui ont change l'histoire du sport.",
+    "count": 10,
+    "sport": "Multi-sport",
+    "ownerId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
+    "likes": 740,
+    "entries": [
+      {
+        "eventId": "evt_2XWA16C4CB712XWA36C4CB7W2X",
+        "note": "Un final inoubliable."
+      },
+      {
+        "eventId": "evt_VH688P4QC0JKVH686P4QC0HQVH",
+        "note": "Un match de playoffs mythique."
+      },
+      {
+        "eventId": "evt_4XSQZKBS4RDR4XSR1KBS4REM4X",
+        "note": "Un duel sur terre battue legendaire."
+      },
+      {
+        "eventId": "evt_99F2HMZY9WNE99F2KMZY9WP999",
+        "note": "Une arrivee en altitude qui marque."
+      }
+    ]
+  }
+]

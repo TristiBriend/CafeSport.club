@@ -3,39 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - Mon Feed</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <meta http-equiv="refresh" content="0;url=/feed" />
+    <script>
+      (function () {
+        var target = '/feed';
+        if (target.indexOf("?") === -1) {
+          target += (window.location.search || "") + (window.location.hash || "");
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="feed-page is-editorial">
-      <section class="feed-hero section-shell">
-        <div class="section-head">
-          <div>
-            <div class="feed-hero-title-line">
-              <h1 id="feed-title">Mon Feed</h1>
-              <div id="feed-help-toggle"></div>
-            </div>
-            <p id="feed-subtitle" class="muted">Mode Pour toi · flux personnalisé social + affinité.</p>
-          </div>
-          <div class="feed-hero-actions">
-            <div id="feed-mode-switch"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="feed-stream-shell section-shell">
-        <div id="feed-stream" class="feed-stream"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/feed">Open the React app</a>.</p>
   </body>
 </html>

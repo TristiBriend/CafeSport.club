@@ -1,0 +1,87 @@
+[
+  {
+    "id": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
+    "name": "Diego M.",
+    "handle": "@diegom",
+    "followers": 2400,
+    "location": "Madrid",
+    "bio": "Supporter de football et chasseur de derbies.",
+    "favoriteSports": [
+      "Football"
+    ],
+    "badge": "Top noteur"
+  },
+  {
+    "id": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
+    "name": "Nina P.",
+    "handle": "@ninap",
+    "followers": 1800,
+    "location": "Paris",
+    "bio": "Fan de finales et d'ambiances folles.",
+    "favoriteSports": [
+      "Football",
+      "Tennis"
+    ],
+    "badge": "Curatrice"
+  },
+  {
+    "id": "usr_WCPDCEC9K78HWCPDEEC9K79CWC",
+    "name": "Marcus L.",
+    "handle": "@marcusl",
+    "followers": 3200,
+    "location": "Los Angeles",
+    "bio": "Basket et playoffs, toujours.",
+    "favoriteSports": [
+      "Basketball"
+    ],
+    "badge": "Playoffs addict"
+  },
+  {
+    "id": "usr_1Y8A7RTBXKQ71Y8A5RTBXKPC1Y",
+    "name": "Elle R.",
+    "handle": "@eller",
+    "followers": 900,
+    "location": "Monaco",
+    "bio": "Passionnee de sport auto et de strategie.",
+    "favoriteSports": [
+      "Sport auto"
+    ],
+    "badge": "Pit wall"
+  },
+  {
+    "id": "usr_B2E0M1X3B939B2E0P1X3B944B2",
+    "name": "Jamal T.",
+    "handle": "@jamalt",
+    "followers": 2700,
+    "location": "Grenoble",
+    "bio": "Passionne de cyclisme et d'etapes de montagne.",
+    "favoriteSports": [
+      "Cyclisme"
+    ],
+    "badge": "Grimpeur"
+  },
+  {
+    "id": "usr_E3GXNGXY98Y8E3GXQGXY98Z3E3",
+    "name": "Riley K.",
+    "handle": "@rileyk",
+    "followers": 1500,
+    "location": "Las Vegas",
+    "bio": "MMA, finishes et soirées de combat.",
+    "favoriteSports": [
+      "MMA"
+    ],
+    "badge": "Fight night"
+  },
+  {
+    "id": "usr_KHHE5RBM3W4HKHHE7RBM3W5CKH",
+    "name": "Louise B.",
+    "handle": "@louiseb",
+    "followers": 1100,
+    "location": "Lyon",
+    "bio": "Cyclisme et grandes etapes mythiques.",
+    "favoriteSports": [
+      "Cyclisme"
+    ],
+    "badge": "Historienne"
+  }
+]

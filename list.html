@@ -3,51 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - Liste</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        var id = (params.get("id") || "").trim();
+        var target = id ? "/list/" + encodeURIComponent(id) : "/lists";
+        if (!id) {
+          var hash = window.location.hash || "";
+          if (hash) target += hash;
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="list-page">
-      <section class="list-hero section-shell">
-        <a class="back-link" href="index.html#home">Retour aux classements</a>
-        <div id="list-detail" class="list-detail"></div>
-      </section>
-
-      <section class="list-body">
-        <div class="list-entries-wrap">
-          <div class="section-head">
-            <div>
-              <h2>Classement des événements</h2>
-              <p class="muted">Ordre complet défini par le créateur.</p>
-            </div>
-          </div>
-          <div id="list-events" class="list-entries"></div>
-        </div>
-        <aside class="list-sidebar">
-          <div id="list-sidebar" class="list-sidebar-inner"></div>
-        </aside>
-      </section>
-
-      <section class="event-reviews section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Avis sur ce classement</h2>
-            <p class="muted">Commentaires et critiques dédiés à ce ranking.</p>
-          </div>
-          <div id="list-comment-composer"></div>
-        </div>
-        <div id="list-review-list" class="review-list"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/lists">Open the React app</a>.</p>
   </body>
 </html>

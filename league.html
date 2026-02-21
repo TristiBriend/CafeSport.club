@@ -3,67 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - Compétition</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        var id = (params.get("id") || "").trim();
+        var target = id ? "/league/" + encodeURIComponent(id) : "/leagues";
+        if (!id) {
+          var hash = window.location.hash || "";
+          if (hash) target += hash;
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="event-page">
-      <section class="event-hero section-shell">
-        <a class="back-link" href="index.html#events">Retour aux compétitions</a>
-        <div id="league-page-detail" class="event-detail"></div>
-      </section>
-
-      <section class="feed-hero section-shell object-feed-section">
-        <div class="section-head">
-          <div>
-            <div class="feed-hero-title-line">
-              <h2 id="object-feed-title">Feed compétition</h2>
-              <div id="object-feed-add-action"></div>
-              <div id="object-feed-help-toggle"></div>
-            </div>
-            <p id="object-feed-subtitle" class="muted">Flux lié à cette compétition.</p>
-          </div>
-          <div class="feed-hero-actions">
-            <div id="object-feed-mode-switch"></div>
-            <a id="object-feed-see-all" class="ghost small" href="feed.html">Voir tout</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="feed-stream-shell section-shell object-feed-stream-shell">
-        <div id="object-feed-stream" class="feed-stream"></div>
-      </section>
-
-      <section class="event-reviews section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Saisons</h2>
-            <p class="muted">Toutes les saisons disponibles pour cette compétition.</p>
-          </div>
-        </div>
-        <div id="league-season-list" class="card-grid"></div>
-      </section>
-
-      <section class="event-reviews section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Avis de la communauté</h2>
-            <p class="muted">Commentaires agrégés de toutes les saisons.</p>
-          </div>
-          <div id="league-page-comment-composer"></div>
-        </div>
-        <div id="league-page-review-list" class="review-list"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/leagues">Open the React app</a>.</p>
   </body>
 </html>

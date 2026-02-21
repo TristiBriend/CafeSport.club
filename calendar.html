@@ -3,54 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - Watchlist</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <meta http-equiv="refresh" content="0;url=/calendar" />
+    <script>
+      (function () {
+        var target = '/calendar';
+        if (target.indexOf("?") === -1) {
+          target += (window.location.search || "") + (window.location.hash || "");
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="calendar-page">
-      <section class="calendar-hero section-shell">
-        <div class="section-head">
-          <div>
-            <h1>Watchlist</h1>
-          </div>
-          <a class="ghost" href="index.html#events">Voir tous les événements</a>
-        </div>
-        <div class="calendar-mode-switch" role="group" aria-label="Mode d'affichage watchlist">
-          <button id="calendar-mode-watchlist" class="calendar-mode-btn" type="button">Calendrier</button>
-          <button id="calendar-mode-list" class="calendar-mode-btn is-active" type="button">Liste</button>
-        </div>
-        <div class="calendar-focus-selector" role="group" aria-label="Filtre de priorisation des événements">
-          <button id="calendar-focus-spotlight" class="calendar-focus-btn" type="button">Événements les plus attendus et les mieux notés</button>
-        </div>
-        <div id="calendar-period-controls" class="calendar-period-controls" aria-label="Sélection du mois et de l'année">
-          <div class="calendar-tag-selector" role="group" aria-label="Sélection du mois">
-            <button type="button" class="calendar-tag-arrow" data-calendar-month-action="-1" aria-label="Mois précédent">&lsaquo;</button>
-            <span id="calendar-month-label" class="calendar-tag-value">--</span>
-            <button type="button" class="calendar-tag-arrow" data-calendar-month-action="1" aria-label="Mois suivant">&rsaquo;</button>
-          </div>
-          <div class="calendar-tag-selector" role="group" aria-label="Sélection de l'année">
-            <button type="button" class="calendar-tag-arrow" data-calendar-year-action="-1" aria-label="Année précédente">&lsaquo;</button>
-            <span id="calendar-year-label" class="calendar-tag-value">----</span>
-            <button type="button" class="calendar-tag-arrow" data-calendar-year-action="1" aria-label="Année suivante">&rsaquo;</button>
-          </div>
-          <p id="calendar-summary" class="calendar-period-summary" aria-live="polite"></p>
-        </div>
-        <input id="calendar-date" type="date" hidden />
-      </section>
-
-      <section class="calendar-section section-shell">
-        <div id="calendar-list" class="calendar-list"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/calendar">Open the React app</a>.</p>
   </body>
 </html>

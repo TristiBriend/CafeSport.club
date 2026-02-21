@@ -3,45 +3,19 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - MaTierlist</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <meta http-equiv="refresh" content="0;url=/tierlist" />
+    <script>
+      (function () {
+        var target = '/tierlist';
+        if (target.indexOf("?") === -1) {
+          target += (window.location.search || "") + (window.location.hash || "");
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="tierlist-page">
-      <section class="tierlist-hero section-shell">
-        <div class="section-head">
-          <div>
-            <h1>MaTierlist</h1>
-            <p id="tierlist-summary" class="muted">0 événement noté</p>
-          </div>
-          <a class="ghost" href="index.html#events">Retour aux événements</a>
-        </div>
-      </section>
-
-      <section class="tierlist-controls section-shell">
-        <div class="tierlist-controls-block">
-          <h2>Filtrer par sport</h2>
-          <div id="tierlist-sport-filters" class="filters" role="group" aria-label="Filtre sport tierlist"></div>
-        </div>
-        <div class="tierlist-controls-block">
-          <h2>Filtrer par période</h2>
-          <div id="tierlist-period-filters"></div>
-        </div>
-      </section>
-
-      <section class="tierlist-board-wrap section-shell">
-        <div id="tierlist-board" class="tierlist-board"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/tierlist">Open the React app</a>.</p>
   </body>
 </html>

@@ -1,0 +1,39 @@
+.score-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.score-inline .score-inline-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.score-inline .event-corner-chip {
+  min-height: 26px;
+  padding: 0 9px;
+}
+
+.event-media-overlay .score-badge {
+  width: 30px;
+  height: 30px;
+  font-size: 0.6rem;
+  border-width: 1.5px;
+}
+
+.event-media-overlay .score-badge .score-badge-logo {
+  inset: 5px;
+}
+
+.hero-review-score .score-badge {
+  width: 56px;
+  height: 56px;
+  font-size: 0.95rem;
+  border-width: 2.5px;
+}
+
+.hero-review-score .score-badge .score-badge-logo {
+  inset: 10px;
+}

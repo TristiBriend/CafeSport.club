@@ -3,126 +3,21 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sofa Critics - Profil</title>
-    <link rel="icon" href="images/sofalogo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="style.css" />
+    <title>Redirect</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search || "");
+        var id = (params.get("id") || "").trim();
+        var target = id ? "/user/" + encodeURIComponent(id) : "/users";
+        if (!id) {
+          var hash = window.location.hash || "";
+          if (hash) target += hash;
+        }
+        window.location.replace(target);
+      })();
+    </script>
   </head>
   <body>
-    <div class="bg-gradient"></div>
-    <div class="bg-grid"></div>
-
-    <header class="site-header" data-site-header data-show-search="true"></header>
-
-    <main class="profile-page">
-      <section class="profile-hero section-shell">
-        <a class="back-link" href="index.html#home">Retour aux profils</a>
-        <div id="user-detail" class="user-detail"></div>
-      </section>
-
-      <section class="feed-hero section-shell object-feed-section">
-        <div class="section-head">
-          <div>
-            <div class="feed-hero-title-line">
-              <h2 id="object-feed-title">Feed profil</h2>
-              <div id="object-feed-add-action"></div>
-              <div id="object-feed-help-toggle"></div>
-            </div>
-            <p id="object-feed-subtitle" class="muted">Flux lié à ce profil.</p>
-          </div>
-          <div class="feed-hero-actions">
-            <div id="object-feed-mode-switch"></div>
-            <a id="object-feed-see-all" class="ghost small" href="feed.html">Voir tout</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="feed-stream-shell section-shell object-feed-stream-shell">
-        <div id="object-feed-stream" class="feed-stream"></div>
-      </section>
-
-      <section class="profile-collection section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Collection de critiques par sport</h2>
-            <p class="muted">Répartition des avis publiés par sport.</p>
-          </div>
-        </div>
-        <div id="user-sport-collection" class="sport-collection"></div>
-      </section>
-
-      <section class="profile-best section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Meilleures critiques</h2>
-            <p class="muted">Les avis les plus appréciés de cet utilisateur.</p>
-          </div>
-        </div>
-        <div id="user-best-reviews" class="review-list"></div>
-      </section>
-
-      <section class="profile-ratings section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Ratings</h2>
-            <p class="muted">Répartition des notes sur 10.</p>
-          </div>
-        </div>
-        <div id="user-rating-chart" class="rating-chart"></div>
-      </section>
-
-      <section class="profile-about section-shell">
-        <div class="section-head">
-          <div>
-            <h2>À propos</h2>
-            <p class="muted">Ce que cet utilisateur aime suivre.</p>
-          </div>
-        </div>
-        <div id="user-about" class="profile-about-card"></div>
-      </section>
-
-      <section class="profile-activity section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Activite recente</h2>
-            <p class="muted">Derniers avis, classements et interactions.</p>
-          </div>
-        </div>
-        <div id="user-activity" class="activity-list"></div>
-      </section>
-
-      <section class="profile-lists section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Classements publiés</h2>
-            <p class="muted">Les sélections préférées de cet utilisateur.</p>
-          </div>
-        </div>
-        <div id="user-lists" class="list-grid"></div>
-      </section>
-
-      <section class="profile-liked-comments section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Commentaires que j'ai likes</h2>
-            <p class="muted">Les commentaires et réponses que vous avez likes.</p>
-          </div>
-        </div>
-        <div id="user-liked-comments" class="review-list"></div>
-      </section>
-
-      <section class="profile-reviews section-shell">
-        <div class="section-head">
-          <div>
-            <h2>Avis recents</h2>
-            <p class="muted">Avis et notes publiés par cet utilisateur.</p>
-          </div>
-        </div>
-        <div id="user-reviews" class="review-list"></div>
-      </section>
-    </main>
-
-    <footer class="site-footer" data-site-footer></footer>
-
-    <script src="app.js"></script>
+    <p>Page moved. <a href="/users">Open the React app</a>.</p>
   </body>
 </html>
