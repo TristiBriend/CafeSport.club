@@ -41,7 +41,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const [comments, setComments] = useState([]);
   const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
   const [composerMode, setComposerMode] = useState(COMMENT_MODE.COMMENT);
-  const [composerRating, setComposerRating] = useState(8);
+  const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [userRating, setUserRating] = useState(0);
 
@@ -52,7 +52,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       ? COMMENT_MODE.REVIEW
       : COMMENT_MODE.COMMENT;
     setComposerMode(defaultMode);
-    setComposerRating(Math.max(0, Math.min(10, Math.round(Number(event.communityScore || 8)))));
+    setComposerRating(Math.max(0, Math.min(100, Math.round(Number(event.communityScore || 80)))));
     setComposerText("");
     setActiveMode(COMMENT_MODE.ALL);
     setUserRating(getEventRating(event.id));
@@ -185,7 +185,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <div>
             <span className="detail-label">Note communaute</span>
             <strong>
-              <ScoreBadge variant="community-chip" value={event.communityScore} scale="ten" />
+              <ScoreBadge variant="community-chip" value={event.communityScore} scale="percent" />
             </strong>
           </div>
           <div>
@@ -301,13 +301,13 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
             {composerMode === COMMENT_MODE.REVIEW ? (
               <label className="select-wrap" htmlFor="comment-rating">
-                <span>Note</span>
+                <span>Note (0-100)</span>
                 <input
                   id="comment-rating"
                   className="rating-input"
                   type="number"
                   min="0"
-                  max="10"
+                  max="100"
                   step="1"
                   value={composerRating}
                   onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}

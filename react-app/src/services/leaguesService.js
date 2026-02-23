@@ -1,4 +1,8 @@
-import events from "../data/events.json";
+import {
+  competitionCatalog,
+  events,
+  seasonCatalog,
+} from "../data/modelStore";
 
 function normalizeText(value) {
   return String(value || "").toLowerCase().trim();
@@ -29,120 +33,106 @@ function isUpcomingEvent(event) {
   return String(event?.status || "").toLowerCase() !== "passe";
 }
 
-function slugify(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
-
-function getEventYear(event) {
-  if (/^\d{4}/.test(String(event?.dateISO || ""))) {
-    return Number(String(event.dateISO).slice(0, 4));
-  }
-  const match = String(event?.date || "").match(/(19|20)\d{2}/);
-  return match ? Number(match[0]) : null;
-}
-
 function computeLeagues() {
-  const map = new Map();
+  const competitionById = new Map(competitionCatalog.map((competition) => [competition.id, competition]));
+  const seasonById = new Map(seasonCatalog.map((season) => [season.id, season]));
+  const groupedByCompetition = new Map();
+
   events.forEach((event) => {
-    const key = String(event.league || "").trim();
-    if (!key) return;
-    if (!map.has(key)) {
-      map.set(key, {
-        id: slugify(key),
-        title: key,
+    const competitionId = String(event.competitionId || "").trim();
+    if (!competitionId) return;
+    if (!groupedByCompetition.has(competitionId)) {
+      const competition = competitionById.get(competitionId);
+      groupedByCompetition.set(competitionId, {
+        id: competitionId,
+        title: competition?.currentName || event.league || "Competition",
+        sport: competition?.sport || event.sport || "Autre",
         events: [],
-        sportCount: {},
       });
     }
-    const league = map.get(key);
-    league.events.push(event);
-    const sport = String(event.sport || "Autre");
-    league.sportCount[sport] = (league.sportCount[sport] || 0) + 1;
+    groupedByCompetition.get(competitionId).events.push(event);
   });
 
-  const leagues = Array.from(map.values()).map((league) => {
-    const sortedEvents = [...league.events].sort((a, b) => toTimeValue(b.dateISO) - toTimeValue(a.dateISO));
-    const sport = Object.entries(league.sportCount)
-      .sort((a, b) => b[1] - a[1])[0]?.[0] || "Autre";
-    const years = {};
-    sortedEvents.forEach((event) => {
-      const year = getEventYear(event);
-      const key = year || "na";
-      if (!years[key]) {
-        years[key] = {
-          id: `${league.id}-${key}`,
-          leagueId: league.id,
-          leagueTitle: league.title,
-          sport,
-          year,
-          title: year ? `${league.title} ${year}` : `${league.title} (saison)`,
-          events: [],
-          count: 0,
-          averageScore: 0,
-          _scoreSum: 0,
-        };
-      }
-      years[key].events.push(event);
-      years[key].count += 1;
-      years[key]._scoreSum += Number(event.communityScore || 0);
-    });
-    const seasons = Object.values(years)
-      .map((season) => {
-        const seasonEvents = [...season.events].sort((a, b) => toTimeValue(b.dateISO) - toTimeValue(a.dateISO));
-        const timestamps = seasonEvents
-          .map((event) => toTimeValue(event.dateISO))
-          .filter((value) => value > 0);
-        const startTimestamp = timestamps.length ? Math.min(...timestamps) : 0;
-        const endTimestamp = timestamps.length ? Math.max(...timestamps) : 0;
-        const startDateISO = startTimestamp ? new Date(startTimestamp).toISOString().slice(0, 10) : "";
-        const endDateISO = endTimestamp ? new Date(endTimestamp).toISOString().slice(0, 10) : "";
-        const dateRangeLabel = startDateISO && endDateISO
-          ? `${toDateLabel(startDateISO)} - ${toDateLabel(endDateISO)}`
-          : (toDateLabel(startDateISO) || toDateLabel(endDateISO) || "Periode non renseignee");
-        const upcomingCount = seasonEvents.filter((event) => isUpcomingEvent(event)).length;
-        const pastCount = Math.max(0, seasonEvents.length - upcomingCount);
+  return Array.from(groupedByCompetition.values())
+    .map((competition) => {
+      const sortedEvents = [...competition.events].sort((a, b) => toTimeValue(b.dateISO) - toTimeValue(a.dateISO));
+      const seasonAccumulator = new Map();
 
-        return {
-          id: season.id,
-          leagueId: season.leagueId,
-          leagueTitle: season.leagueTitle,
-          sport: season.sport,
-          year: season.year,
-          title: season.title,
-          events: seasonEvents,
-          eventIds: seasonEvents.map((event) => event.id),
-          count: season.count,
-          averageScore: season.count ? season._scoreSum / season.count : 0,
-          startDateISO,
-          endDateISO,
-          dateRangeLabel,
-          upcomingCount,
-          pastCount,
-        };
-      })
-      .sort((a, b) => {
-        const ay = Number.isFinite(Number(a.year)) ? Number(a.year) : 0;
-        const by = Number.isFinite(Number(b.year)) ? Number(b.year) : 0;
-        return by - ay;
+      sortedEvents.forEach((event) => {
+        const seasonId = String(event.seasonId || "").trim();
+        if (!seasonId) return;
+        if (!seasonAccumulator.has(seasonId)) {
+          const seasonMeta = seasonById.get(seasonId);
+          seasonAccumulator.set(seasonId, {
+            id: seasonId,
+            leagueId: competition.id,
+            leagueTitle: competition.title,
+            sport: competition.sport,
+            seasonKey: seasonMeta?.seasonKey || event.seasonKey || "na",
+            year: seasonMeta?.seasonKey || event.seasonKey || null,
+            title: seasonMeta?.label || `${competition.title} ${event.seasonKey || ""}`.trim(),
+            events: [],
+            count: 0,
+            _scoreSum: 0,
+          });
+        }
+
+        const season = seasonAccumulator.get(seasonId);
+        season.events.push(event);
+        season.count += 1;
+        season._scoreSum += Number(event.communityScore || 0);
       });
-    return {
-      id: league.id,
-      title: league.title,
-      sport,
-      events: sortedEvents,
-      count: sortedEvents.length,
-      averageScore: sortedEvents.length
-        ? sortedEvents.reduce((sum, event) => sum + Number(event.communityScore || 0), 0) / sortedEvents.length
-        : 0,
-      seasons,
-    };
-  });
-  return leagues.sort((a, b) => a.title.localeCompare(b.title));
+
+      const seasons = Array.from(seasonAccumulator.values())
+        .map((season) => {
+          const seasonEvents = [...season.events].sort((a, b) => toTimeValue(b.dateISO) - toTimeValue(a.dateISO));
+          const timestamps = seasonEvents
+            .map((event) => toTimeValue(event.dateISO))
+            .filter((value) => value > 0);
+          const startTimestamp = timestamps.length ? Math.min(...timestamps) : 0;
+          const endTimestamp = timestamps.length ? Math.max(...timestamps) : 0;
+          const startDateISO = startTimestamp ? new Date(startTimestamp).toISOString().slice(0, 10) : "";
+          const endDateISO = endTimestamp ? new Date(endTimestamp).toISOString().slice(0, 10) : "";
+          const dateRangeLabel = startDateISO && endDateISO
+            ? `${toDateLabel(startDateISO)} - ${toDateLabel(endDateISO)}`
+            : (toDateLabel(startDateISO) || toDateLabel(endDateISO) || "Periode non renseignee");
+          const upcomingCount = seasonEvents.filter((event) => isUpcomingEvent(event)).length;
+          const pastCount = Math.max(0, seasonEvents.length - upcomingCount);
+
+          return {
+            id: season.id,
+            leagueId: season.leagueId,
+            leagueTitle: season.leagueTitle,
+            sport: season.sport,
+            seasonKey: season.seasonKey,
+            year: season.year,
+            title: season.title,
+            events: seasonEvents,
+            eventIds: seasonEvents.map((event) => event.id),
+            count: season.count,
+            averageScore: season.count ? season._scoreSum / season.count : 0,
+            startDateISO,
+            endDateISO,
+            dateRangeLabel,
+            upcomingCount,
+            pastCount,
+          };
+        })
+        .sort((a, b) => toTimeValue(b.endDateISO) - toTimeValue(a.endDateISO));
+
+      return {
+        id: competition.id,
+        title: competition.title,
+        sport: competition.sport,
+        events: sortedEvents,
+        count: sortedEvents.length,
+        averageScore: sortedEvents.length
+          ? sortedEvents.reduce((sum, event) => sum + Number(event.communityScore || 0), 0) / sortedEvents.length
+          : 0,
+        seasons,
+      };
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
 }
 
 const leaguesCache = computeLeagues();

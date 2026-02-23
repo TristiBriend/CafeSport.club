@@ -34,7 +34,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         <p className="event-detail-subtitle">
           <span className="score-inline">
             <span className="score-inline-label">Score moyen</span>
-            <ScoreBadge variant="community-chip" value={league.averageScore} scale="ten" />
+            <ScoreBadge variant="community-chip" value={league.averageScore} scale="percent" />
           </span>
         </p>
 
@@ -45,7 +45,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
               <strong>
                 <span className="score-inline">
                   <Link to={`/league-season/${season.id}`}>{season.count} events</Link>
-                  <ScoreBadge variant="community-chip" value={season.averageScore} scale="ten" />
+                  <ScoreBadge variant="community-chip" value={season.averageScore} scale="percent" />
                 </span>
               </strong>
             </div>

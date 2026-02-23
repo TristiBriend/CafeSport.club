@@ -47,7 +47,7 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
           <div>
             <span className="detail-label">Moyenne</span>
             <strong>
-              <ScoreBadge variant="community-chip" value={season.averageScore} scale="ten" />
+              <ScoreBadge variant="community-chip" value={season.averageScore} scale="percent" />
             </strong>
           </div>
           <div>

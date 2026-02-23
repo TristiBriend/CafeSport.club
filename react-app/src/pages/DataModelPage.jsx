@@ -1,11 +1,15 @@
-import events from "../data/events.json";
-import users from "../data/users.json";
-import athletes from "../data/athletes.json";
-import teams from "../data/teams.json";
-import curatedLists from "../data/curatedLists.json";
-import eventTeams from "../data/eventTeams.json";
-import athleteParticipation from "../data/athleteParticipation.json";
-import activitySamples from "../data/activitySamples.json";
+import {
+  activitySamples,
+  athleteParticipation,
+  athletes,
+  competitionCatalog,
+  curatedLists,
+  eventTeams,
+  events,
+  seasonCatalog,
+  teams,
+  users,
+} from "../data/modelStore";
 import { getLeagues } from "../services/leaguesService";
 import { getAllComments } from "../services/commentsService";
 
@@ -174,8 +178,20 @@ function DataModelPage() {
     {
       key: "events",
       title: "events",
-      description: "Evenements sportifs avec score communautaire, statut, ligue et media.",
+      description: "Evenements avec score communautaire /100 + liaison competitionId/seasonId.",
       records: events,
+    },
+    {
+      key: "competitionCatalog",
+      title: "competitionCatalog",
+      description: "Competitions stables (ID canonique independant du nom affiche).",
+      records: competitionCatalog,
+    },
+    {
+      key: "seasonCatalog",
+      title: "seasonCatalog",
+      description: "Saisons/editions rattachees aux competitions canoniques.",
+      records: seasonCatalog,
     },
     {
       key: "leagues",
@@ -263,8 +279,8 @@ function DataModelPage() {
   }));
 
   const relations = [
-    "league 1..n leagueSeasons",
-    "leagueSeason 1..n events",
+    "competitionCatalog 1..n seasonCatalog",
+    "seasonCatalog 1..n events",
     "team n..n events (via eventTeams)",
     "athlete n..n events (via athleteParticipation)",
     "user 1..n curatedLists",

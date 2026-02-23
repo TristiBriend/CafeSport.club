@@ -43,21 +43,6 @@ function toStableRecentTimestamp(rawTimestamp, rank = 0) {
   return Date.now() - (rank * 60 * 60 * 1000);
 }
 
-function parseRelativeDateToTimestamp(label = "", rank = 0) {
-  const source = String(label || "").toLowerCase();
-  const now = Date.now();
-  if (source.includes("aujourd")) return now - (rank * 15 * 60 * 1000);
-  const dayMatch = source.match(/(\d+)\s+jour/);
-  if (dayMatch) {
-    return now - (Number(dayMatch[1] || 0) * 24 * 60 * 60 * 1000);
-  }
-  const weekMatch = source.match(/(\d+)\s+semaine/);
-  if (weekMatch) {
-    return now - (Number(weekMatch[1] || 0) * 7 * 24 * 60 * 60 * 1000);
-  }
-  return now - (rank * 12 * 60 * 60 * 1000);
-}
-
 function resolveModeScore(mode, { popularity = 0, timestamp = 0, rank = 0 } = {}) {
   const safePopularity = toNumber(popularity);
   const safeTimestamp = toNumber(timestamp);
@@ -194,7 +179,10 @@ function buildForYouEntries(mode, datasets) {
 
   allActivities.slice(0, activityLimit).forEach((activity, index) => {
     const user = getUserById(activity?.userId);
-    const timestamp = parseRelativeDateToTimestamp(activity?.date, index);
+    const timestamp = toStableRecentTimestamp(
+      toTimestamp(activity?.dateISO || activity?.createdAt),
+      index,
+    );
     entries.push({
       id: `for-you-activity-${activity.id}`,
       type: "card",
@@ -211,7 +199,7 @@ function buildForYouEntries(mode, datasets) {
           title: user?.name || "Utilisateur",
           subtitle: String(activity?.label || ""),
           path: user?.id ? `/user/${user.id}` : "/feed",
-          lines: [String(activity?.date || "")],
+          lines: [String(activity?.dateLabel || activity?.dateISO || activity?.date || "")],
         }),
       },
     });

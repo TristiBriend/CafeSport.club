@@ -29,7 +29,8 @@ function getUpcomingLabel(event) {
 function toPercentScore(value) {
   const raw = Number(value || 0);
   if (!Number.isFinite(raw)) return 0;
-  return Math.max(0, Math.min(100, Math.round(raw * 10)));
+  const scaled = raw <= 10 ? raw * 10 : raw;
+  return Math.max(0, Math.min(100, Math.round(scaled)));
 }
 
 function EventCard({

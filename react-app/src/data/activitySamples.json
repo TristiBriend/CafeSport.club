@@ -4,55 +4,71 @@
     "userId": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
     "type": "list",
     "label": "a publie le classement Derbies europeens",
-    "date": "Il y a 2 jours"
+    "date": "Il y a 2 jours",
+    "dateLabel": "Il y a 2 jours",
+    "dateISO": "2026-02-21"
   },
   {
     "id": "act-2",
     "userId": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
     "type": "critique",
     "label": "a note Manchester City vs. Real Madrid",
-    "date": "Il y a 5 jours"
+    "date": "Il y a 5 jours",
+    "dateLabel": "Il y a 5 jours",
+    "dateISO": "2026-02-18"
   },
   {
     "id": "act-3",
     "userId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
     "type": "list",
     "label": "a publie le classement Finales de legende",
-    "date": "Il y a 1 semaine"
+    "date": "Il y a 1 semaine",
+    "dateLabel": "Il y a 1 semaine",
+    "dateISO": "2026-02-16"
   },
   {
     "id": "act-4",
     "userId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
     "type": "critique",
     "label": "a commente la finale Roland-Garros",
-    "date": "Il y a 6 jours"
+    "date": "Il y a 6 jours",
+    "dateLabel": "Il y a 6 jours",
+    "dateISO": "2026-02-17"
   },
   {
     "id": "act-5",
     "userId": "usr_WCPDCEC9K78HWCPDEEC9K79CWC",
     "type": "critique",
     "label": "a note Lakers vs. Celtics",
-    "date": "Il y a 3 jours"
+    "date": "Il y a 3 jours",
+    "dateLabel": "Il y a 3 jours",
+    "dateISO": "2026-02-20"
   },
   {
     "id": "act-6",
     "userId": "usr_1Y8A7RTBXKQ71Y8A5RTBXKPC1Y",
     "type": "critique",
     "label": "a commente le Grand Prix de Monaco",
-    "date": "Il y a 4 jours"
+    "date": "Il y a 4 jours",
+    "dateLabel": "Il y a 4 jours",
+    "dateISO": "2026-02-19"
   },
   {
     "id": "act-7",
     "userId": "usr_B2E0M1X3B939B2E0P1X3B944B2",
     "type": "critique",
     "label": "a commente l'etape alpine du Tour",
-    "date": "Il y a 2 semaines"
+    "date": "Il y a 2 semaines",
+    "dateLabel": "Il y a 2 semaines",
+    "dateISO": "2026-02-09"
   },
   {
     "id": "act-8",
     "userId": "usr_KHHE5RBM3W4HKHHE7RBM3W5CKH",
     "type": "list",
     "label": "a publie le classement Tour de France",
-    "date": "Il y a 5 jours"
+    "date": "Il y a 5 jours",
+    "dateLabel": "Il y a 5 jours",
+    "dateISO": "2026-02-18"
   }
 ]

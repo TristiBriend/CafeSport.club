@@ -1,4 +1,4 @@
-import events from "../data/events.json";
+import { events, toScore100 } from "../data/modelStore";
 import baseReviewSamples from "../data/baseReviewSamples.json";
 import baseCommentSamples from "../data/baseCommentSamples.json";
 import {
@@ -59,7 +59,7 @@ const autoReplyLines = [
 function clampRating(value) {
   const raw = Number(value);
   if (!Number.isFinite(raw)) return 0;
-  return Math.max(0, Math.min(10, Math.round(raw)));
+  return toScore100(raw);
 }
 
 function hashCode(value) {
@@ -101,7 +101,7 @@ function getEventDateTime(event, shiftHours = 0) {
 function createSeedReview(event, index = 0) {
   const seed = hashCode(event.id);
   const author = ["Nina P.", "Marcus L.", "Louise B.", "Diego M."][seed % 4];
-  const rating = clampRating(Math.round(Number(event.communityScore || 7)));
+  const rating = clampRating(Number(event.communityScore || 80));
   return {
     id: `seed-rev-${event.id}`,
     targetType: COMMENT_TARGET.EVENT,
@@ -436,8 +436,8 @@ export function getEventComments(eventId) {
   if (!safeEventId) return [];
   const list = getPreparedComments().filter((comment) => {
     const directTarget = comment.targetType === COMMENT_TARGET.EVENT && comment.targetId === safeEventId;
-    const legacyEvent = comment.eventId === safeEventId;
-    return directTarget || legacyEvent;
+    const linkedEvent = comment.eventId === safeEventId;
+    return directTarget || linkedEvent;
   });
   return sortComments(dedupeComments(list));
 }

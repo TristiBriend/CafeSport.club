@@ -1,4 +1,4 @@
-import eventsData from "../data/events.json";
+import { events as eventsData } from "../data/modelStore";
 
 const RATINGS_KEY = "cafesport.club_ratings";
 let hasSeededSession = false;

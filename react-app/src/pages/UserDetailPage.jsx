@@ -24,8 +24,8 @@ import {
 function normalizeRating(value) {
   const raw = Number(value);
   if (!Number.isFinite(raw) || raw <= 0) return 0;
-  if (raw <= 5) return Math.min(10, raw * 2);
-  return Math.min(10, raw);
+  const scaled = raw <= 10 ? raw * 10 : raw;
+  return Math.max(0, Math.min(100, Math.round(scaled)));
 }
 
 function UserDetailPage() {
@@ -78,11 +78,11 @@ function UserDetailPage() {
     .sort((a, b) => b[1] - a[1]);
 
   const ratingBuckets = [
-    { id: "r0-2", label: "0-2", min: 0, max: 2 },
-    { id: "r3-4", label: "3-4", min: 3, max: 4 },
-    { id: "r5-6", label: "5-6", min: 5, max: 6 },
-    { id: "r7-8", label: "7-8", min: 7, max: 8 },
-    { id: "r9-10", label: "9-10", min: 9, max: 10 },
+    { id: "r0-19", label: "0-19", min: 0, max: 19 },
+    { id: "r20-39", label: "20-39", min: 20, max: 39 },
+    { id: "r40-59", label: "40-59", min: 40, max: 59 },
+    { id: "r60-79", label: "60-79", min: 60, max: 79 },
+    { id: "r80-100", label: "80-100", min: 80, max: 100 },
   ].map((bucket) => {
     const count = userReviews.filter((review) => {
       const rating = normalizeRating(review.rating);
@@ -186,7 +186,7 @@ function UserDetailPage() {
               <article key={activity.id} className="entity-card">
                 <h3>{activity.type}</h3>
                 <p className="event-meta">{activity.label}</p>
-                <p className="event-meta">{activity.date}</p>
+                <p className="event-meta">{activity.dateLabel || activity.dateISO || ""}</p>
               </article>
             ))}
           </div>
@@ -238,7 +238,7 @@ function UserDetailPage() {
                   <p className="event-meta">
                     <span className="score-inline">
                       <span className="score-inline-label">Note</span>
-                      <ScoreBadge variant="badge" value={normalizeRating(review.rating)} scale="ten" />
+                      <ScoreBadge variant="badge" value={normalizeRating(review.rating)} scale="percent" />
                     </span>
                   </p>
                   <p className="event-meta">{review.totalLikes || 0} likes</p>
@@ -263,7 +263,7 @@ function UserDetailPage() {
           <p className="event-meta">
             <span className="score-inline">
               <span className="score-inline-label">Moyenne</span>
-              <ScoreBadge variant="community-chip" value={averageRating} scale="ten" />
+              <ScoreBadge variant="community-chip" value={averageRating} scale="percent" />
               <span>{userReviews.length} critiques</span>
             </span>
           </p>

@@ -568,7 +568,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       label: event.title,
       path: `/event/${event.id}`,
       timestamp: toTimestamp(event.dateISO),
-      popularity: Number(event.communityScore || 0) * 10,
+      popularity: Number(event.communityScore || 0),
     })),
     ...followedTargets.map((target) => ({
       id: `activity-follow-${target.id}`,

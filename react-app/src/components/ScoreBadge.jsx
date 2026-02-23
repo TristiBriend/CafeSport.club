@@ -1,6 +1,6 @@
 import "./ScoreBadge.css";
 
-function toScorePercent(value, scale = "ten") {
+function toScorePercent(value, scale = "percent") {
   const raw = Number(value || 0);
   if (!Number.isFinite(raw)) return 0;
   const safeScale = scale === "percent" ? "percent" : "ten";
@@ -10,28 +10,18 @@ function toScorePercent(value, scale = "ten") {
   return Math.max(0, Math.min(100, Math.round(percent)));
 }
 
-function getScoreColor(percent) {
-  if (percent >= 80) return "#3ca63a";
-  if (percent >= 60) return "#6da737";
-  if (percent >= 40) return "#d08d28";
-  if (percent >= 20) return "#cb6834";
-  return "#c84a4a";
-}
-
 function ScoreBadge({
   value = 0,
-  scale = "ten",
+  scale = "percent",
   variant = "badge",
-  className = "",
 }) {
   const percent = toScorePercent(value, scale);
   const displayedValue = variant === "user-chip" && percent <= 0 ? "Noter" : `${percent}`;
   const safeTitle = variant === "community-chip" ? "Score communaute" : "Mon score";
-  const extraClass = String(className || "").trim();
 
   if (variant === "user-chip") {
     return (
-      <span className={`event-corner-chip event-corner-chip-user ${extraClass}`.trim()} title={safeTitle} aria-label={safeTitle}>
+      <span className="event-corner-chip event-corner-chip-user" title={safeTitle} aria-label={safeTitle}>
         {displayedValue}
       </span>
     );
@@ -39,7 +29,7 @@ function ScoreBadge({
 
   if (variant === "community-chip") {
     return (
-      <span className={`event-corner-chip event-corner-chip-community ${extraClass}`.trim()} title={safeTitle} aria-label={safeTitle}>
+      <span className="event-corner-chip event-corner-chip-community" title={safeTitle} aria-label={safeTitle}>
         {displayedValue}
       </span>
     );
@@ -47,8 +37,7 @@ function ScoreBadge({
 
   return (
     <span
-      className={`score-badge small ${extraClass}`.trim()}
-      style={{ "--score-color": getScoreColor(percent) }}
+      className="score-badge small"
       aria-label={safeTitle}
       title={safeTitle}
     >

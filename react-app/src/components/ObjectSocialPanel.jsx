@@ -37,7 +37,7 @@ function ObjectSocialPanel({
   const [comments, setComments] = useState([]);
   const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
   const [composerMode, setComposerMode] = useState(allowReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
-  const [composerRating, setComposerRating] = useState(8);
+  const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [isFollowed, setIsFollowed] = useState(false);
   const [followers, setFollowers] = useState(0);
@@ -50,7 +50,7 @@ function ObjectSocialPanel({
     setActiveMode(COMMENT_MODE.ALL);
     setComposerMode(allowReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
     setComposerText("");
-    setComposerRating(8);
+    setComposerRating(80);
     if (showFollow && resolvedFollowType) {
       setIsFollowed(isTargetFollowed(resolvedFollowType, targetId));
       setFollowers(getTargetFollowerCount(resolvedFollowType, targetId, followBaseCount));
@@ -224,13 +224,13 @@ function ObjectSocialPanel({
 
             {allowReview && composerMode === COMMENT_MODE.REVIEW ? (
               <label className="select-wrap" htmlFor={`comment-rating-${targetType}-${targetId}`}>
-                <span>Note</span>
+                <span>Note (0-100)</span>
                 <input
                   id={`comment-rating-${targetType}-${targetId}`}
                   className="rating-input"
                   type="number"
                   min="0"
-                  max="10"
+                  max="100"
                   step="1"
                   value={composerRating}
                   onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}

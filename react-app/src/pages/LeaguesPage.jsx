@@ -57,7 +57,7 @@ function LeaguesPage() {
             <p className="event-meta">
               <span className="score-inline">
                 <span className="score-inline-label">Moyenne</span>
-                <ScoreBadge variant="community-chip" value={league.averageScore} scale="ten" />
+                <ScoreBadge variant="community-chip" value={league.averageScore} scale="percent" />
               </span>
             </p>
           </article>

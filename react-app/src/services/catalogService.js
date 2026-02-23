@@ -1,11 +1,14 @@
-import events from "../data/events.json";
-import users from "../data/users.json";
-import athletes from "../data/athletes.json";
-import teams from "../data/teams.json";
-import eventTeams from "../data/eventTeams.json";
-import athleteParticipation from "../data/athleteParticipation.json";
-import curatedLists from "../data/curatedLists.json";
-import activitySamples from "../data/activitySamples.json";
+import {
+  activitySamples,
+  athleteParticipation,
+  athletes,
+  curatedLists,
+  eventTeams,
+  events,
+  getTeamIdsForAthlete,
+  teams,
+  users,
+} from "../data/modelStore";
 
 function normalizeText(value) {
   return String(value || "").toLowerCase().trim();
@@ -40,7 +43,7 @@ export function getAthletes({ sportFilter = "Tous", query = "" } = {}) {
     if (!sportMatch) return false;
     if (!q) return true;
     const haystack = normalizeText(
-      `${athlete.name} ${athlete.sport} ${athlete.country} ${athlete.role} ${athlete.team || ""}`,
+      `${athlete.name} ${athlete.sport} ${athlete.country} ${athlete.role}`,
     );
     return haystack.includes(q);
   });
@@ -75,20 +78,21 @@ export function getTeamSports() {
 
 export function getTeamForAthlete(athlete) {
   if (!athlete) return null;
-  if (athlete.teamId) {
-    return getTeamById(athlete.teamId);
+  const explicitId = String(athlete.teamId || "").trim();
+  if (explicitId) {
+    const explicitTeam = getTeamById(explicitId);
+    if (explicitTeam) return explicitTeam;
   }
-  return null;
+  const teamIds = getTeamIdsForAthlete(athlete.id);
+  if (!teamIds.length) return null;
+  return getTeamById(teamIds[0]);
 }
 
 export function getAthletesForTeam(teamId) {
   const team = getTeamById(teamId);
   if (!team) return [];
   const explicitIds = new Set(Array.isArray(team.athleteIds) ? team.athleteIds : []);
-  return athletes.filter((athlete) => {
-    if (athlete.teamId === teamId) return true;
-    return explicitIds.has(athlete.id);
-  });
+  return athletes.filter((athlete) => explicitIds.has(athlete.id));
 }
 
 export function getEventsForTeam(teamId) {
@@ -101,15 +105,17 @@ export function getEventsForTeam(teamId) {
 }
 
 export function getEventsForAthlete(athleteId) {
-  const athlete = getAthleteById(athleteId);
+  const teamIds = getTeamIdsForAthlete(athleteId);
   const ids = new Set(
     athleteParticipation
       .filter((item) => Array.isArray(item.athleteIds) && item.athleteIds.includes(athleteId))
       .map((item) => item.eventId),
   );
-  if (athlete?.teamId) {
-    getEventsForTeam(athlete.teamId).forEach((event) => ids.add(event.id));
-  }
+
+  teamIds.forEach((teamId) => {
+    getEventsForTeam(teamId).forEach((event) => ids.add(event.id));
+  });
+
   return events.filter((event) => ids.has(event.id)).sort(sortByDateDesc);
 }
 

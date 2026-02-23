@@ -123,7 +123,7 @@ const COMPONENT_LEGENDS = [
     name: "ScoreBadge",
     props: [
       "value: number (required)",
-      "scale: ten|percent",
+      "scale: percent",
       "variant: badge|user-chip|community-chip",
       "Usage: <ScoreBadge value={82} scale='percent' variant='user-chip' />",
     ],
@@ -135,14 +135,6 @@ const COMPONENT_LEGENDS = [
       "activeSport: string (required)",
       "onChange: (sport) => void (required)",
       "Usage: <SportFilters sports={sports} activeSport={sport} onChange={setSport} />",
-    ],
-  },
-  {
-    name: "LegacyRouteRedirect",
-    props: [
-      "kind: event|athlete|team|league|league-season|list|user|feed (required)",
-      "forceMode?: favorites",
-      "Usage: <LegacyRouteRedirect kind='event' />",
     ],
   },
   {
@@ -189,7 +181,7 @@ const DISPLAYED_SAMPLE_LEGENDS = [
   {
     name: "UI de base · ScoreBadge",
     details: [
-      "Composant: <ScoreBadge value={number} scale='ten|percent' variant='badge|user-chip|community-chip' />",
+      "Composant: <ScoreBadge value={number} scale='percent' variant='badge|user-chip|community-chip' />",
       "Bindings: user-chip(82%), user-chip(0%), community-chip(87%)",
     ],
   },
@@ -373,7 +365,7 @@ function buildRatingBins(events) {
   events.forEach((event) => {
     const raw = Number(event?.communityScore);
     if (!Number.isFinite(raw)) return;
-    const score = Math.max(0, Math.min(100, Math.round(raw * 10)));
+    const score = Math.max(0, Math.min(100, Math.round(raw <= 10 ? raw * 10 : raw)));
     const index = Math.min(totalBins - 1, Math.floor(score / intervalSize));
     bins[index] += 1;
   });
@@ -397,7 +389,7 @@ function UISamplesPage() {
   const [commentFocusEventId, setCommentFocusEventId] = useState(focusEvent?.id || "");
   const [commentSamples, setCommentSamples] = useState([]);
   const [composerMode, setComposerMode] = useState(COMMENT_MODE.COMMENT);
-  const [composerRating, setComposerRating] = useState(8);
+  const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
 
   const [activeSocialTargetId, setActiveSocialTargetId] = useState("");
@@ -544,7 +536,7 @@ function UISamplesPage() {
         <div className="section-head">
           <div>
             <h1>UISamples</h1>
-            <p className="muted">Bibliotheque visuelle React alignee sur les formats legacy.</p>
+            <p className="muted">Bibliotheque visuelle React de reference.</p>
           </div>
           <Link className="ghost" to="/">Retour a l'accueil</Link>
         </div>
@@ -572,7 +564,7 @@ function UISamplesPage() {
           <article className="ui-sample-card">
             <h3>Cadre global</h3>
             <div className="ui-frame-preview cardbase cardhover">
-              <p>Shadows / border / radius legacy</p>
+              <p>Shadows / border / radius systeme cartes</p>
               <div className="ui-frame-preview-swatches">
                 <span className="ui-frame-swatch is-bg">Fond</span>
                 <span className="ui-frame-swatch is-border">Bordure</span>
@@ -624,7 +616,7 @@ function UISamplesPage() {
               <ScoreBadge variant="user-chip" value={0} scale="percent" />
               <ScoreBadge variant="community-chip" value={87} scale="percent" />
             </div>
-            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="ten|percent" variant="badge|user-chip|community-chip" />'}</code></pre>
+            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="percent" variant="badge|user-chip|community-chip" />'}</code></pre>
           </article>
 
           <article className="ui-sample-card">
@@ -736,7 +728,7 @@ function UISamplesPage() {
                   </div>
                   <div className="event-mini-meta">
                     <span className="mini-pill is-spotlight">{event.status}</span>
-                    <ScoreBadge variant="badge" value={event.communityScore} scale="ten" />
+                    <ScoreBadge variant="badge" value={event.communityScore} scale="percent" />
                   </div>
                 </Link>
               ))}
@@ -766,7 +758,7 @@ function UISamplesPage() {
                 <div className="sorare-card-overlay">
                   <div className="sorare-card-top">
                     <span className="sorare-chip">A LA UNE</span>
-                    <ScoreBadge variant="community-chip" value={focusEvent.communityScore} scale="ten" />
+                    <ScoreBadge variant="community-chip" value={focusEvent.communityScore} scale="percent" />
                   </div>
                   <div className="sorare-card-main">
                     <span className="sorare-league">{focusEvent.league}</span>
@@ -875,13 +867,13 @@ function UISamplesPage() {
           <div className="comment-composer-top">
             {composerMode === COMMENT_MODE.REVIEW ? (
               <label className="select-wrap" htmlFor="ui-comment-rating-input">
-                <span>Note</span>
+                <span>Note (0-100)</span>
                 <input
                   id="ui-comment-rating-input"
                   className="rating-input"
                   type="number"
                   min="0"
-                  max="10"
+                  max="100"
                   step="1"
                   value={composerRating}
                   onChange={(event) => setComposerRating(Number(event.target.value))}
@@ -999,7 +991,7 @@ function UISamplesPage() {
         <div className="section-head">
           <div>
             <h2>Palette et distribution</h2>
-            <p className="muted">Variables CSS legacy + histogramme des notes.</p>
+            <p className="muted">Variables CSS + histogramme des notes.</p>
           </div>
         </div>
 

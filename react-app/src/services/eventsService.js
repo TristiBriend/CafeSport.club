@@ -1,4 +1,4 @@
-import eventsData from "../data/events.json";
+import { events as eventsData } from "../data/modelStore";
 
 export const EVENT_SORT = {
   DATE_DESC: "date-desc",

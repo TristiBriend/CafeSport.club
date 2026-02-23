@@ -1,11 +1,9 @@
 # CafeSport.club
 CaféSport.club is the social network of sport fans / Website
 
-## React migration (progressive)
+## React app
 
-Legacy static assets (`app.js`, `style.css`) have been removed.
-Root `.html` files now act as redirect stubs to React routes.
-React app lives in `react-app/`.
+The project runs from `react-app/` (Vite + React).
 
 ### Commands
 
@@ -27,7 +25,6 @@ Then open the local Vite URL displayed in the terminal.
   - `/lists`, `/list/:listId`
   - `/users`, `/user/:userId`
   - `/calendar`, `/feed`, `/join`, `/datamodel`, `/uisamples`
-- Legacy `.html` route aliases added (redirect to React routes)
 - Watchlist connected to localStorage (`cafesport.club_watchlist`)
 - Header/Footer dynamiques migrés en React (`SiteHeader`, `SiteFooter`)
 - Recherche globale React (events, leagues, athletes, teams, users, lists)
@@ -36,8 +33,10 @@ Then open the local Vite URL displayed in the terminal.
   - reply create/like
   - edit/delete for own comments and own replies
 - Business logic extracted in `react-app/src/services/`
-- Legacy deep-link redirects with `?id=` mapped to React detail routes
-- Legacy `matierlist.html` mapped to `/tierlist`
+- Canonical data normalization via `react-app/src/data/modelStore.js`:
+  - scores normalized to `/100`
+  - events linked by `competitionId` + `seasonId`
+  - activity feed dates normalized with `dateISO`
 - User profile React enriched:
   - about, sport collection, best reviews, rating distribution
   - activities, published lists, liked comments, recent reviews

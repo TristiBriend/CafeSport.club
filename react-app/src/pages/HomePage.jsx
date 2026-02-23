@@ -232,7 +232,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
                   <div className="hero-review-top">
                     <span className="pill">Critique a la une</span>
                     <span className="hero-review-score">
-                      <ScoreBadge variant="badge" value={heroEvent.communityScore} scale="ten" />
+                      <ScoreBadge variant="badge" value={heroEvent.communityScore} scale="percent" />
                     </span>
                   </div>
                   <p className="hero-review-quote">

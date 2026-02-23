@@ -447,8 +447,8 @@ function renderRelations() {
   if (!relationEl) return;
 
   const relations = [
-    "events.leagueId -> leagues.id",
-    "events.leagueSeasonId -> leagueSeasons.id",
+    "events.competitionId -> leagues.id (derive)",
+    "events.seasonId -> leagueSeasons.id (derive)",
     "leagueSeasons.leagueId -> leagues.id",
     "target.events.competitionId -> target.competitions.id",
     "target.events.seasonId -> target.seasons.id",

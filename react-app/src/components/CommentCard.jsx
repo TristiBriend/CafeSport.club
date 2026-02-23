@@ -74,9 +74,8 @@ function CommentCard({
             {isReview ? (
               <ScoreBadge
                 value={comment.rating}
-                scale="ten"
+                scale="percent"
                 variant="user-chip"
-                className="headercommentaire-score"
               />
             ) : null}
             <div>
@@ -103,13 +102,13 @@ function CommentCard({
           </label>
           {isReview ? (
             <label className="select-wrap" htmlFor={`edit-rating-${comment.id}`}>
-              <span>Note</span>
+              <span>Note (0-100)</span>
               <input
                 id={`edit-rating-${comment.id}`}
                 className="rating-input"
                 type="number"
                 min="0"
-                max="10"
+                max="100"
                 step="1"
                 value={editCommentRating}
                 onChange={(event) => setEditCommentRating(Number(event.target.value))}
