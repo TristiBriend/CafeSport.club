@@ -2,6 +2,15 @@ import { events, toScore100 } from "../data/modelStore";
 import baseReviewSamples from "../data/baseReviewSamples.json";
 import baseCommentSamples from "../data/baseCommentSamples.json";
 import {
+  deleteCommentCloud,
+  deleteReplyCloud,
+  registerCommentImpressionCloud,
+  setCommentLikeStateCloud,
+  setReplyLikeStateCloud,
+  upsertCommentCloud,
+  upsertReplyCloud,
+} from "./commentsFirestoreService";
+import {
   getAthleteById,
   getEventsForAthlete,
   getEventsForTeam,
@@ -11,6 +20,12 @@ import {
   resolveListEntries,
 } from "./catalogService";
 import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
 
 const MANUAL_COMMENTS_KEY = "cafesport.club_manual_comments_v1";
 const MANUAL_REPLIES_KEY = "cafesport.club_manual_replies_v1";
@@ -267,6 +282,69 @@ function writeSessionObject(key, obj) {
   window.sessionStorage.setItem(key, JSON.stringify(obj));
 }
 
+function getCloudIdentity() {
+  const identity = getSocialSyncCloudIdentity();
+  if (!identity.isCloudMode || !identity.firebaseUid) return null;
+  if (!isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.COMMENTS)) return null;
+  return identity;
+}
+
+function mirrorCommentUpsert(rawComment) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  const safe = normalizeComment(rawComment);
+  if (!safe) return;
+  upsertCommentCloud({
+    ...safe,
+    firebaseUid: identity.firebaseUid,
+  }).catch(() => {});
+}
+
+function mirrorCommentDelete(commentId) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  deleteCommentCloud(commentId).catch(() => {});
+}
+
+function mirrorReplyUpsert(parentCommentId, rawReply) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  const safeParent = String(parentCommentId || "").trim();
+  const safeReply = normalizeReply(rawReply);
+  if (!safeParent || !safeReply) return;
+  upsertReplyCloud(safeParent, {
+    ...safeReply,
+    firebaseUid: identity.firebaseUid,
+  }).catch(() => {});
+}
+
+function mirrorReplyDelete(parentCommentId, replyId) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  deleteReplyCloud(parentCommentId, replyId).catch(() => {});
+}
+
+function mirrorCommentLike(comment, nextLiked) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  setCommentLikeStateCloud(identity.firebaseUid, comment, nextLiked).catch(() => {});
+}
+
+function mirrorReplyLike(reply, nextLiked) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  const safeParentId = String(reply?.parentCommentId || "").trim();
+  const safeReplyId = String(reply?.id || "").trim();
+  if (!safeParentId || !safeReplyId) return;
+  setReplyLikeStateCloud(identity.firebaseUid, safeParentId, safeReplyId, nextLiked).catch(() => {});
+}
+
+function mirrorCommentImpression(commentId) {
+  const identity = getCloudIdentity();
+  if (!identity) return;
+  registerCommentImpressionCloud(identity.firebaseUid, commentId).catch(() => {});
+}
+
 function readManualReplyMap() {
   const raw = readStorageObject(MANUAL_REPLIES_KEY);
   return Object.entries(raw).reduce((acc, [commentId, replies]) => {
@@ -320,7 +398,7 @@ function withMergedReplies(comment) {
     ...comment,
     replies: [...seededReplies, ...manualReplies]
       .sort((a, b) => Date.parse(a.createdAt || "") - Date.parse(b.createdAt || ""))
-      .map(withReplyComputedLikes),
+      .map((reply) => withReplyComputedLikes({ ...reply, parentCommentId: comment.id })),
   };
 }
 
@@ -618,6 +696,10 @@ export function createTargetComment(targetType, targetId, {
   const resolvedEventId = safeType === COMMENT_TARGET.EVENT
     ? safeTargetId
     : normalizeTargetId(eventId);
+  const cloudIdentity = getCloudIdentity();
+  const resolvedUserId = normalizeTargetId(userId)
+    || normalizeTargetId(cloudIdentity?.appUserId)
+    || "usr-manual";
 
   const now = new Date().toISOString();
   const payload = {
@@ -625,7 +707,7 @@ export function createTargetComment(targetType, targetId, {
     targetType: safeType,
     targetId: safeTargetId,
     eventId: resolvedEventId,
-    userId,
+    userId: resolvedUserId,
     author,
     note: cleanNote,
     likes: 0,
@@ -639,6 +721,8 @@ export function createTargetComment(targetType, targetId, {
   const current = readStorageArray(MANUAL_COMMENTS_KEY);
   current.push(payload);
   writeManualComments(current);
+  mirrorCommentUpsert(payload);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return normalizeComment(payload, { targetType: safeType, targetId: safeTargetId });
 }
 
@@ -653,8 +737,11 @@ export function toggleCommentLike(comment) {
   if (!comment?.id) return;
   const key = comment.commentType === COMMENT_MODE.REVIEW ? REVIEW_LIKES_KEY : COMMENT_LIKES_KEY;
   const likes = readStorageObject(key);
-  likes[comment.id] = !likes[comment.id];
+  const nextLiked = !likes[comment.id];
+  likes[comment.id] = nextLiked;
   writeStorageObject(key, likes);
+  mirrorCommentLike(comment, nextLiked);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
 }
 
 export function getCommentImpressions(commentId) {
@@ -684,6 +771,8 @@ export function registerCommentImpression(commentId, { oncePerSession = true } =
     writeSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, seen);
   }
 
+  mirrorCommentImpression(safeId);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return next;
 }
 
@@ -697,8 +786,11 @@ function clearLikeEntry(key, id) {
 export function toggleReplyLike(reply) {
   if (!reply?.id) return;
   const likes = readStorageObject(REPLY_LIKES_KEY);
-  likes[reply.id] = !likes[reply.id];
+  const nextLiked = !likes[reply.id];
+  likes[reply.id] = nextLiked;
   writeStorageObject(REPLY_LIKES_KEY, likes);
+  mirrorReplyLike(reply, nextLiked);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
 }
 
 export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
@@ -706,9 +798,11 @@ export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
   const cleanNote = String(note || "").trim();
   if (!safeParentId || !cleanNote) return null;
 
+  const cloudIdentity = getCloudIdentity();
+  const resolvedUserId = normalizeTargetId(cloudIdentity?.appUserId) || "usr-manual";
   const newReply = normalizeReply({
     id: `reply-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-    userId: "usr-manual",
+    userId: resolvedUserId,
     author,
     note: cleanNote,
     likes: 0,
@@ -720,6 +814,8 @@ export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
   const currentReplies = Array.isArray(replyMap[safeParentId]) ? replyMap[safeParentId] : [];
   replyMap[safeParentId] = [...currentReplies, newReply];
   writeManualReplyMap(replyMap);
+  mirrorReplyUpsert(safeParentId, newReply);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return newReply;
 }
 
@@ -739,6 +835,8 @@ export function updateComment(commentId, { note, rating } = {}) {
   }
   comments[index] = current;
   writeManualComments(comments);
+  mirrorCommentUpsert(current);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return true;
 }
 
@@ -776,6 +874,8 @@ export function deleteComment(commentId) {
     writeSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, seen);
   }
 
+  mirrorCommentDelete(safeId);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return true;
 }
 
@@ -799,6 +899,8 @@ export function updateCommentReply(parentCommentId, replyId, { note } = {}) {
   };
   replyMap[safeParentId] = list;
   writeManualReplyMap(replyMap);
+  mirrorReplyUpsert(safeParentId, list[index]);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return true;
 }
 
@@ -814,6 +916,8 @@ export function deleteCommentReply(parentCommentId, replyId) {
   replyMap[safeParentId] = filtered;
   writeManualReplyMap(replyMap);
   clearLikeEntry(REPLY_LIKES_KEY, safeReplyId);
+  mirrorReplyDelete(safeParentId, safeReplyId);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
   return true;
 }
 

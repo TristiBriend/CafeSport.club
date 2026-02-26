@@ -23,24 +23,77 @@ import FeedPage from "./pages/FeedPage";
 import JoinPage from "./pages/JoinPage";
 import DataModelPage from "./pages/DataModelPage";
 import UISamplesPage from "./pages/UISamplesPage";
+import LoginPage from "./pages/LoginPage";
+import SignupPage from "./pages/SignupPage";
+import PageBreadcrumbs from "./components/PageBreadcrumbs";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
+import RequireAuth from "./components/RequireAuth";
+import { useAuth } from "./contexts/AuthContext";
+import { useSocialSync } from "./contexts/SocialSyncContext";
 import { readWatchlist, writeWatchlist } from "./services/watchlistStorage";
+import {
+  readUserWatchlistIds,
+  seedWatchlistFromLocalIfCloudEmpty,
+  setUserWatchlistState,
+  subscribeUserWatchlist,
+} from "./services/watchlistFirestoreService";
 
 function App() {
+  const { authReady, currentUser, isAuthenticated, isFirebaseConfigured } = useAuth();
+  const { revisionByDomain } = useSocialSync();
   const [watchlistIds, setWatchlistIds] = useState(() => readWatchlist());
+  const firebaseUid = String(currentUser?.firebaseUid || "").trim();
+  const socialRevisionStamp = Object.values(revisionByDomain || {})
+    .map((value) => Number(value || 0))
+    .join("-");
 
   useEffect(() => {
+    if (isAuthenticated && isFirebaseConfigured && firebaseUid) return;
     writeWatchlist(watchlistIds);
-  }, [watchlistIds]);
+  }, [firebaseUid, isAuthenticated, isFirebaseConfigured, watchlistIds]);
+
+  useEffect(() => {
+    if (!authReady) return undefined;
+
+    if (!isAuthenticated || !isFirebaseConfigured || !firebaseUid) {
+      setWatchlistIds(readWatchlist());
+      return undefined;
+    }
+
+    const localIds = readWatchlist();
+    seedWatchlistFromLocalIfCloudEmpty(firebaseUid, localIds).catch(() => {});
+
+    const unsubscribe = subscribeUserWatchlist(firebaseUid, (ids) => {
+      setWatchlistIds(ids);
+      writeWatchlist(ids);
+    }, () => {});
+
+    return unsubscribe;
+  }, [authReady, firebaseUid, isAuthenticated, isFirebaseConfigured]);
 
   function handleToggleWatchlist(eventId) {
+    const safeEventId = String(eventId || "").trim();
+    if (!safeEventId) return;
+
+    let shouldSave = false;
     setWatchlistIds((prev) => {
-      if (prev.includes(eventId)) {
-        return prev.filter((id) => id !== eventId);
+      if (prev.includes(safeEventId)) {
+        shouldSave = false;
+        return prev.filter((id) => id !== safeEventId);
       }
-      return [...prev, eventId];
+      shouldSave = true;
+      return [...prev, safeEventId];
     });
+
+    if (isAuthenticated && isFirebaseConfigured && firebaseUid) {
+      setUserWatchlistState(firebaseUid, safeEventId, shouldSave)
+        .catch(() => {
+          readUserWatchlistIds(firebaseUid)
+            .then((ids) => setWatchlistIds(ids))
+            .catch(() => {});
+        });
+    }
   }
 
   return (
@@ -49,7 +102,8 @@ function App() {
       <div className="bg-grid" />
       <SiteHeader watchlistCount={watchlistIds.length} />
 
-      <main className="page-wrap app-main-wrap">
+      <main className="page-wrap app-main-wrap" data-sync-stamp={socialRevisionStamp}>
+        <PageBreadcrumbs />
         <Routes>
           <Route
             path="/"
@@ -151,10 +205,12 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProfilePage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RequireAuth>
+                <ProfilePage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RequireAuth>
             }
           />
           <Route
@@ -185,6 +241,14 @@ function App() {
             }
           />
           <Route path="/join" element={<JoinPage />} />
+          <Route
+            path="/login"
+            element={authReady && isAuthenticated ? <Navigate replace to="/profile" /> : <LoginPage />}
+          />
+          <Route
+            path="/signup"
+            element={authReady && isAuthenticated ? <Navigate replace to="/profile" /> : <SignupPage />}
+          />
           <Route path="/datamodel" element={<DataModelPage />} />
           <Route path="/uisamples" element={<UISamplesPage />} />
           <Route path="*" element={<Navigate replace to="/" />} />

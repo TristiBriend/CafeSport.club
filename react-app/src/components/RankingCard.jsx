@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { getUserById, resolveListEntries } from "../services/catalogService";
 import { buildAddWatchlistFabButton } from "./WatchlistFabButton";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 import {
   FOLLOW_TARGET,
   getTargetFollowerCount,
@@ -117,6 +118,8 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
   const [isFavorite, setIsFavorite] = useState(false);
   const [resolvedFavoriteCount, setResolvedFavoriteCount] = useState(baseFavoriteCount);
   const moreMenuRef = useRef(null);
+  const { revisionByDomain } = useSocialSync();
+  const followsRevision = Number(revisionByDomain?.follows || 0);
   const canToggleFavorite = Boolean(String(list?.id || "").trim());
   const followActionLabel = isFavorite
     ? `Ne plus suivre ${listTitle}`
@@ -133,7 +136,7 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
     setResolvedFavoriteCount(
       getTargetFollowerCount(FOLLOW_TARGET.LIST, safeListId, baseFavoriteCount),
     );
-  }, [baseFavoriteCount, list?.id]);
+  }, [baseFavoriteCount, followsRevision, list?.id]);
 
   useEffect(() => {
     if (!isMoreMenuOpen) return undefined;

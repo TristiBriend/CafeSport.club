@@ -12,6 +12,7 @@ import {
   isUserFollowed,
   toggleUserFollow,
 } from "../services/userFollowService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 import ScoreBadge from "./ScoreBadge";
 import RelativeDateLabel from "./RelativeDateLabel";
 
@@ -157,6 +158,8 @@ function CommentCard({
   const [replyText, setReplyText] = useState("");
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isReported, setIsReported] = useState(false);
+  const { revisionByDomain } = useSocialSync();
+  const followsRevision = Number(revisionByDomain?.follows || 0);
   const moreMenuRef = useRef(null);
   const resolvedEvent = useMemo(
     () => resolveCommentEvent(comment),
@@ -193,7 +196,7 @@ function CommentCard({
       return;
     }
     setIsFollowed(isUserFollowed(resolvedUser.id));
-  }, [resolvedUser?.id]);
+  }, [followsRevision, resolvedUser?.id]);
 
   useEffect(() => {
     setImpressionCount(Math.max(0, Number(comment?.totalImpressions || 0)));

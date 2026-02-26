@@ -659,16 +659,6 @@ function UISamplesPage() {
 
   return (
     <section className="ui-page">
-      <section className="ui-hero section-shell">
-        <div className="section-head">
-          <div>
-            <h1>UISamples</h1>
-            <p className="muted">Bibliotheque visuelle React de reference.</p>
-          </div>
-          <Link className="ghost" to="/">Retour a l'accueil</Link>
-        </div>
-      </section>
-
       <section className="ui-section section-shell ui-nav-shell">
         <nav className="ui-category-nav" aria-label="Navigation UISamples">
           {UI_NAV_ITEMS.map((item, index) => (

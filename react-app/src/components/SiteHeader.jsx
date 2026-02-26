@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { searchGlobal } from "../services/globalSearchService";
 import { getSports } from "../services/eventsService";
+import { useAuth } from "../contexts/AuthContext";
+import { getProfileAvatarOverride } from "../services/profileService";
 
 const EXPLORE_NAV = [
   { to: "/athletes", label: "Athletes" },
@@ -33,8 +35,23 @@ function getSearchPlaceholder(pathname) {
   return "Rechercher competition, joueur, classement, user...";
 }
 
+function getImagePath(value) {
+  const image = String(value || "").trim();
+  if (!image) return "";
+  return image.startsWith("/") ? image : `/${image}`;
+}
+
+function getInitials(name) {
+  const source = String(name || "").trim();
+  if (!source) return "?";
+  const [first = "", second = ""] = source.split(/\s+/);
+  return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase() || "?";
+}
+
 function SiteHeader({ watchlistCount = 0 }) {
+  const navigate = useNavigate();
   const location = useLocation();
+  const { currentUser, isAuthenticated, logout } = useAuth();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const headerSearchRef = useRef(null);
@@ -43,6 +60,12 @@ function SiteHeader({ watchlistCount = 0 }) {
   const userMenuRef = useRef(null);
   const inputRef = useRef(null);
   const sports = useMemo(() => getSports(), []);
+  const profileAvatar = useMemo(
+    () => getProfileAvatarOverride(currentUser?.id),
+    [currentUser?.id],
+  );
+  const userAvatarSrc = getImagePath(profileAvatar || currentUser?.image);
+  const userInitials = getInitials(currentUser?.name || "User");
   const isSportsActive = location.pathname.startsWith("/sports/");
 
   const results = useMemo(
@@ -61,6 +84,12 @@ function SiteHeader({ watchlistCount = 0 }) {
     if (!(event.target instanceof Element)) return;
     if (!event.target.closest("a")) return;
     closeHeaderMenus();
+  }
+
+  function handleLogout() {
+    closeHeaderMenus();
+    logout();
+    navigate("/login");
   }
 
   useEffect(() => {
@@ -228,33 +257,43 @@ function SiteHeader({ watchlistCount = 0 }) {
             </div>
           </details>
 
-          <details
-            ref={userMenuRef}
-            className="header-user-menu"
-            onToggle={(event) => {
-              if (!event.currentTarget.open) return;
-              closeHeaderMenus({ except: event.currentTarget });
-            }}
-          >
-            <summary className="ghost-header user-menu-toggle" aria-label="Ouvrir le menu utilisateur">
-              <span className="user-menu-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="8" r="4.25" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <path d="M4 21c1-4.2 4.2-6.4 8-6.4s7 2.2 8 6.4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </span>
-            </summary>
-            <div className="user-menu-dropdown" role="menu" aria-label="Menu utilisateur" onClick={handleMenuDropdownClick}>
-              <NavLink role="menuitem" to="/profile">Mon profil</NavLink>
-              <NavLink role="menuitem" to="/tierlist">Tierlist</NavLink>
-              {EXPLORE_NAV.map((item) => (
-                <NavLink key={item.to} role="menuitem" to={item.to}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          </details>
-          <NavLink className="cta cta-header join-beta-header" to="/join">Rejoindre la beta</NavLink>
+          {isAuthenticated ? (
+            <details
+              ref={userMenuRef}
+              className="header-user-menu"
+              onToggle={(event) => {
+                if (!event.currentTarget.open) return;
+                closeHeaderMenus({ except: event.currentTarget });
+              }}
+            >
+              <summary className="ghost-header user-menu-toggle header-user-avatar-toggle" aria-label="Ouvrir le menu utilisateur">
+                <span className="header-user-avatar" aria-hidden="true">
+                  {userAvatarSrc ? (
+                    <img src={userAvatarSrc} alt={currentUser?.name || "Utilisateur"} loading="lazy" />
+                  ) : (
+                    <span className="header-user-avatar-initials">{userInitials}</span>
+                  )}
+                </span>
+              </summary>
+              <div className="user-menu-dropdown" role="menu" aria-label="Menu utilisateur" onClick={handleMenuDropdownClick}>
+                <NavLink role="menuitem" to="/profile">Mon profil</NavLink>
+                <NavLink role="menuitem" to="/tierlist">Tierlist</NavLink>
+                {EXPLORE_NAV.map((item) => (
+                  <NavLink key={item.to} role="menuitem" to={item.to}>
+                    {item.label}
+                  </NavLink>
+                ))}
+                <button type="button" role="menuitem" className="user-menu-logout-btn" onClick={handleLogout}>
+                  Deconnexion
+                </button>
+              </div>
+            </details>
+          ) : (
+            <>
+              <NavLink className="ghost-header header-auth-cta is-login" to="/login">Se connecter</NavLink>
+              <NavLink className="cta cta-header header-auth-cta is-signup" to="/join">S inscrire</NavLink>
+            </>
+          )}
         </div>
       </div>
     </header>

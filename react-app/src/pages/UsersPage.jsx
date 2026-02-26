@@ -8,11 +8,6 @@ function UsersPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>Users</h1>
-        <p className="lede">Migration React de la page profils.</p>
-      </div>
-
       <label className="search-wrap" htmlFor="user-search">
         <span>Recherche</span>
         <input

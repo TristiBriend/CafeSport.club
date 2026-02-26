@@ -14,11 +14,6 @@ function AthletesPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>Athletes</h1>
-        <p className="lede">Migration React de la page athletes.</p>
-      </div>
-
       <label className="search-wrap" htmlFor="athlete-search">
         <span>Recherche</span>
         <input

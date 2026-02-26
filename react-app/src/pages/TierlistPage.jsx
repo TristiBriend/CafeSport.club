@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ScoreBadge from "../components/ScoreBadge";
 import { getRatedPastEvents } from "../services/ratingsService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 function toMonthKey(dateISO) {
   const parsed = Date.parse(dateISO || "");
@@ -20,7 +21,9 @@ function parseMonthKey(value) {
 }
 
 function TierlistPage() {
-  const ratedEvents = useMemo(() => getRatedPastEvents(), []);
+  const { revisionByDomain } = useSocialSync();
+  const ratingsRevision = Number(revisionByDomain?.ratings || 0);
+  const ratedEvents = useMemo(() => getRatedPastEvents(), [ratingsRevision]);
 
   const monthBounds = useMemo(() => {
     if (!ratedEvents.length) {
@@ -90,14 +93,6 @@ function TierlistPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>MaTierlist</h1>
-        <p className="lede">
-          {filteredEvents.length} evenement(s) notes
-          {ratedEvents.length !== filteredEvents.length ? ` (${ratedEvents.length} au total)` : ""}
-        </p>
-      </div>
-
       <section className="related-section">
         <div className="tierlist-controls-react">
           <div>

@@ -23,9 +23,8 @@ function SportDiscoverPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
     if (!fallbackSport) {
       return (
         <section className="discover-page">
-          <div className="discover-head">
-            <h1>Sports</h1>
-            <p className="lede">Aucun sport disponible.</p>
+          <div className="simple-page">
+            <p>Aucun sport disponible.</p>
           </div>
         </section>
       );
@@ -38,8 +37,6 @@ function SportDiscoverPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
       watchlistIds={watchlistIds}
       onToggleWatchlist={onToggleWatchlist}
       forcedSport={selectedSport}
-      title={`Sport · ${selectedSport}`}
-      subtitle={`Vue sports: meme experience que Decouvrir, filtree sur ${selectedSport}.`}
     />
   );
 }

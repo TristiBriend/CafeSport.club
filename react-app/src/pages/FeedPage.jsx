@@ -57,6 +57,7 @@ import {
   getAllFollowedTargets,
   getTargetFollowerCount,
 } from "../services/userFollowService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 const FEED_SCOPE = {
   MY: "my",
@@ -412,9 +413,15 @@ function getFeedEmptyStateText(request) {
 function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { revisionByDomain } = useSocialSync();
+  const tabsRevision = Number(revisionByDomain?.tabs || 0);
   const [optionalTabs, setOptionalTabs] = useState(() => loadOptionalFeedTabs());
   const [, setCommentsVersion] = useState(0);
   const request = normalizeFeedRequest(searchParams);
+
+  useEffect(() => {
+    setOptionalTabs(loadOptionalFeedTabs());
+  }, [tabsRevision]);
 
   if (request.scope === FEED_SCOPE.OBJECT) {
     const objectMeta = resolveObjectMeta(request.targetType, request.targetId);
@@ -422,10 +429,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     const subtitle = `${objectMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`;
     return (
       <section className="feed-page is-editorial">
-        <div className="discover-head">
-          <h1 className="typo-h1">{title}</h1>
-          <p className="lede typo-body">{subtitle}</p>
-        </div>
         <ObjectFeedScopePanel
           targetType={request.targetType}
           targetId={request.targetId}
@@ -667,24 +670,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     3,
   );
 
-  const title = isObjectScope
-    ? objectMeta?.title || "Feed objet"
-    : "Mon Feed";
-
-  const subtitle = isObjectScope
-    ? `${objectMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`
-    : (
-      request.mode === FEED_MODE.FAVORITES
-        ? "Likes, suivis et watchlist."
-        : request.mode === FEED_MODE.ACTIVITY_RECENT
-          ? "Historique recent de tes actions."
-          : request.mode === FEED_MODE.ACTIVITY_POPULAR
-            ? "Actions triees par impact social."
-            : request.mode === FEED_MODE.RECENT
-              ? "Flux chronologique global."
-              : "Flux personnalise social + popularite."
-    );
-
   function handleAddCurrentObjectFeed() {
     if (!isObjectScope) return;
     const result = upsertOptionalFeedTab({
@@ -899,11 +884,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   return (
     <section className="feed-page is-editorial">
-      <div className="discover-head">
-        <h1 className="typo-h1">{title}</h1>
-        <p className="lede typo-body">{subtitle}</p>
-      </div>
-
       <section className="related-section">
         <div className="filter-row">
           {modeTabs.map((tab) => (

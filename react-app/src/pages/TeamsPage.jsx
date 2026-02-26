@@ -14,11 +14,6 @@ function TeamsPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>Teams</h1>
-        <p className="lede">Migration React de la page teams.</p>
-      </div>
-
       <label className="search-wrap" htmlFor="team-search">
         <span>Recherche</span>
         <input

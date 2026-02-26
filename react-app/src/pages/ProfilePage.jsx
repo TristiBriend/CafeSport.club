@@ -1,17 +1,9 @@
-import { useEffect, useMemo } from "react";
 import UserProfileLayout from "../components/UserProfileLayout";
-import { getUsers } from "../services/catalogService";
-import { getCurrentProfileUserId, setCurrentProfileUserId } from "../services/profileService";
+import { useAuth } from "../contexts/AuthContext";
 
 function ProfilePage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
-  const allUsers = useMemo(() => getUsers({ query: "" }), []);
-  const defaultProfileUserId = allUsers[0]?.id || "";
-  const profileUserId = getCurrentProfileUserId(defaultProfileUserId);
-
-  useEffect(() => {
-    if (!profileUserId) return;
-    setCurrentProfileUserId(profileUserId);
-  }, [profileUserId]);
+  const { currentUser } = useAuth();
+  const profileUserId = String(currentUser?.id || "").trim();
 
   if (!profileUserId) {
     return (

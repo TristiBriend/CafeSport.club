@@ -167,13 +167,6 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   return (
     <section className="watchlist-page">
-      <div className="discover-head">
-        <h1>Watchlist</h1>
-        <p className="lede">
-          Donnees stockees localement. {watchlistEvents.length} evenement(s) suivi(s).
-        </p>
-      </div>
-
       <div className="calendar-mode-switch" role="group" aria-label="Mode d affichage watchlist">
         <button
           className={`calendar-mode-btn ${viewMode === WATCHLIST_VIEW.CALENDAR ? "is-active" : ""}`}

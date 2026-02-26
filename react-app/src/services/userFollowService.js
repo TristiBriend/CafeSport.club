@@ -1,3 +1,11 @@
+import { setUserFollowStateCloud } from "./followsFirestoreService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
+
 const USER_FOLLOWS_KEY = "cafesport.club_user_follows";
 const TARGET_FOLLOWS_KEY = "cafesport.club_target_follows_v1";
 
@@ -38,6 +46,12 @@ function writeStorageObject(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function mirrorFollowToCloud(targetType, targetId, isFollowed) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.FOLLOWS)) return;
+  setUserFollowStateCloud(firebaseUid, targetType, targetId, Boolean(isFollowed)).catch(() => {});
+}
+
 export function readUserFollowMap() {
   const raw = readStorageObject(USER_FOLLOWS_KEY);
   return Object.entries(raw).reduce((acc, [userId, isFollowed]) => {
@@ -57,6 +71,8 @@ export function setUserFollowed(userId, isFollowed) {
   const map = readUserFollowMap();
   map[userId] = Boolean(isFollowed);
   writeStorageObject(USER_FOLLOWS_KEY, map);
+  mirrorFollowToCloud(FOLLOW_TARGET.USER, userId, map[userId]);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.FOLLOWS);
   return map[userId];
 }
 
@@ -105,6 +121,8 @@ export function setTargetFollowed(targetType, targetId, isFollowed) {
   const map = readTargetFollowMap();
   map[key] = Boolean(isFollowed);
   writeStorageObject(TARGET_FOLLOWS_KEY, map);
+  mirrorFollowToCloud(safeType, safeId, map[key]);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.FOLLOWS);
   return map[key];
 }
 

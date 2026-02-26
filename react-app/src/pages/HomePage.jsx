@@ -14,6 +14,7 @@ import {
 import { getCuratedLists } from "../services/catalogService";
 import { getAllEvents, getWatchlistEvents } from "../services/eventsService";
 import { getFavoriteSportsByRatings, isUpcomingEvent } from "../services/ratingsService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 function toTimeValue(dateISO) {
   const value = Date.parse(dateISO || "");
@@ -45,15 +46,18 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
   const [bestOfDays, setBestOfDays] = useState(7);
   const [bestOfSport, setBestOfSport] = useState("Tous");
   const [commentVersion, setCommentVersion] = useState(0);
+  const { revisionByDomain } = useSocialSync();
+  const commentsRevision = Number(revisionByDomain?.comments || 0);
+  const ratingsRevision = Number(revisionByDomain?.ratings || 0);
 
   const allEvents = useMemo(() => getAllEvents(), []);
-  const allComments = useMemo(() => getAllComments(), [commentVersion]);
+  const allComments = useMemo(() => getAllComments(), [commentVersion, commentsRevision]);
   const allLists = useMemo(() => getCuratedLists(), []);
   const sports = useMemo(
     () => Array.from(new Set(allEvents.map((event) => event.sport))).sort((a, b) => a.localeCompare(b)),
     [allEvents],
   );
-  const favoriteSports = useMemo(() => getFavoriteSportsByRatings(), []);
+  const favoriteSports = useMemo(() => getFavoriteSportsByRatings(), [ratingsRevision]);
 
   const pastEvents = useMemo(
     () => allEvents.filter((event) => !isUpcomingEvent(event)),

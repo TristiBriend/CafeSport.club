@@ -17,11 +17,6 @@ function ListsPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>Lists</h1>
-        <p className="lede">Migration React de la page classements.</p>
-      </div>
-
       <label className="search-wrap" htmlFor="list-search">
         <span>Recherche</span>
         <input

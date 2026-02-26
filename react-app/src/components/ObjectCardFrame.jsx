@@ -7,6 +7,7 @@ import {
   isTargetFollowed,
   toggleTargetFollow,
 } from "../services/userFollowService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 function IconMore() {
   return (
@@ -110,6 +111,8 @@ function ObjectCardFrame({
   const [isFollowed, setIsFollowed] = useState(false);
   const [resolvedFollowers, setResolvedFollowers] = useState(Number(baseFollowCount || 0));
   const moreMenuRef = useRef(null);
+  const { revisionByDomain } = useSocialSync();
+  const followsRevision = Number(revisionByDomain?.follows || 0);
 
   useEffect(() => {
     const safeType = String(objectType || "").trim();
@@ -121,7 +124,7 @@ function ObjectCardFrame({
     }
     setIsFollowed(isTargetFollowed(safeType, safeId));
     setResolvedFollowers(getTargetFollowerCount(safeType, safeId, Number(baseFollowCount || 0)));
-  }, [baseFollowCount, objectId, objectType]);
+  }, [baseFollowCount, objectId, objectType, followsRevision]);
 
   useEffect(() => {
     if (!isMoreMenuOpen) return undefined;

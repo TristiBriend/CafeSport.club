@@ -59,3 +59,19 @@ Then open the local Vite URL displayed in the terminal.
 - Object tags migrated:
   - `objectTagsService` with localStorage + seeded defaults
   - add/vote (+/-) tags on object surfaces (`event`, `user`, `athlete`, `team`, `league`, `league-season`, `list`)
+
+### Cloud sync domains (Firebase)
+
+- Auth via Firebase (`react-app/src/contexts/AuthContext.jsx`)
+- Watchlist cloud (`users/{uid}/watchlist`) + local guest fallback
+- Social sync orchestrator (`react-app/src/services/socialSyncService.js`)
+  - domains: `follows`, `comments`, `ratings`, `tags`, `tabs`, `profile`
+  - mode guest: localStorage/sessionStorage
+  - mode authenticated: non-destructive local->cloud seed + cloud->local hydration
+- Domain flags (optional) in `react-app/.env.local`:
+  - `VITE_FIREBASE_SYNC_FOLLOWS`
+  - `VITE_FIREBASE_SYNC_COMMENTS`
+  - `VITE_FIREBASE_SYNC_RATINGS`
+  - `VITE_FIREBASE_SYNC_TAGS`
+  - `VITE_FIREBASE_SYNC_FEED_TABS`
+  - `VITE_FIREBASE_SYNC_PROFILE`

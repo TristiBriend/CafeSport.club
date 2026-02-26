@@ -21,6 +21,7 @@ import {
   isTargetFollowed,
   toggleTargetFollow,
 } from "../services/userFollowService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 function ObjectSocialPanel({
   targetType,
@@ -43,6 +44,8 @@ function ObjectSocialPanel({
   const [composerText, setComposerText] = useState("");
   const [isFollowed, setIsFollowed] = useState(false);
   const [followers, setFollowers] = useState(0);
+  const { revisionByDomain } = useSocialSync();
+  const followsRevision = Number(revisionByDomain?.follows || 0);
 
   const resolvedFollowType = String(followTargetType || targetType || "").trim();
 
@@ -57,7 +60,7 @@ function ObjectSocialPanel({
       setIsFollowed(isTargetFollowed(resolvedFollowType, targetId));
       setFollowers(getTargetFollowerCount(resolvedFollowType, targetId, followBaseCount));
     }
-  }, [canReviewTarget, followBaseCount, resolvedFollowType, showFollow, targetId, targetType]);
+  }, [canReviewTarget, followBaseCount, followsRevision, resolvedFollowType, showFollow, targetId, targetType]);
 
   useEffect(() => {
     if (canReviewTarget) return;

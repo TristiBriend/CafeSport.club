@@ -61,13 +61,6 @@ function JoinPage() {
 
   return (
     <section className="join-page-react">
-      <div className="discover-head">
-        <h1>Rejoindre la beta</h1>
-        <p className="lede">
-          Acces anticipe CafeSport.club: partage tes sports preferes et ce que tu veux suivre.
-        </p>
-      </div>
-
       <div className="join-layout">
         <article className="event-detail-card">
           <h2>Ce que tu obtiens</h2>

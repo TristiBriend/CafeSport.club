@@ -5,6 +5,7 @@ import {
   isObjectTagType,
   toggleObjectTagVote,
 } from "../services/objectTagsService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 function formatScore(score) {
   const value = Number(score || 0);
@@ -23,6 +24,8 @@ function ObjectTagsWidget({
   const [draft, setDraft] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const widgetRef = useRef(null);
+  const { revisionByDomain } = useSocialSync();
+  const tagsRevision = Number(revisionByDomain?.tags || 0);
 
   const safeType = String(objectType || "").trim();
   const safeId = String(objectId || "").trim();
@@ -33,7 +36,7 @@ function ObjectTagsWidget({
       return;
     }
     setEntries(getObjectTagEntries(safeType, safeId));
-  }, [safeId, safeType]);
+  }, [safeId, safeType, tagsRevision]);
 
   const topEntries = useMemo(() => entries.slice(0, 3), [entries]);
 

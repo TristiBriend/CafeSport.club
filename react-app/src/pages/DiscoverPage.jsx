@@ -18,8 +18,6 @@ function DiscoverPage({
   watchlistIds = [],
   onToggleWatchlist,
   forcedSport = "",
-  title = "Parcourir les evenements",
-  subtitle = "Migration React de la section events avec filtres et recherche.",
 }) {
   const [sportFilter, setSportFilter] = useState("Tous");
   const [query, setQuery] = useState("");
@@ -44,11 +42,6 @@ function DiscoverPage({
 
   return (
     <section className="discover-page">
-      <div className="discover-head">
-        <h1>{title}</h1>
-        <p className="lede">{subtitle}</p>
-      </div>
-
       <label className="search-wrap" htmlFor="discover-search">
         <span>Recherche</span>
         <input

@@ -30,6 +30,7 @@ import {
   setProfileAvatarOverride,
   setProfileDetailsOverride,
 } from "../services/profileService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 const RADAR_COLORS = [
   "#ecef46",
@@ -95,8 +96,6 @@ function buildRadarBins(ratedEvents) {
 function buildProfileCopy({ isOwnProfile, userName }) {
   if (isOwnProfile) {
     return {
-      pageTitle: "Mon profil",
-      pageSubtitle: "Ta carte profil, ton social graph, ton radar de notes et ton activite.",
       topEventsTitle: "Mon Top 5 events",
       infoTitle: "Mes infos perso",
       radarTitle: "Mon radar des notes",
@@ -109,8 +108,6 @@ function buildProfileCopy({ isOwnProfile, userName }) {
     };
   }
   return {
-    pageTitle: `Profil de ${userName}`,
-    pageSubtitle: `Vue publique du profil de ${userName}.`,
     topEventsTitle: `Top 5 events de ${userName}`,
     infoTitle: `Infos perso de ${userName}`,
     followersTitle: `Followers de ${userName}`,
@@ -155,6 +152,11 @@ function UserProfileLayout({
   watchlistIds = [],
   onToggleWatchlist = () => {},
 }) {
+  const { revisionByDomain } = useSocialSync();
+  const commentsRevision = Number(revisionByDomain?.comments || 0);
+  const ratingsRevision = Number(revisionByDomain?.ratings || 0);
+  const followsRevision = Number(revisionByDomain?.follows || 0);
+  const profileRevision = Number(revisionByDomain?.profile || 0);
   const allUsers = useMemo(() => getUsers({ query: "" }), []);
   const defaultUserId = allUsers[0]?.id || "";
   const resolvedUserId = String(
@@ -172,7 +174,7 @@ function UserProfileLayout({
 
   const avatarOverride = useMemo(
     () => getProfileAvatarOverride(baseUser?.id),
-    [avatarVersion, baseUser?.id],
+    [avatarVersion, baseUser?.id, profileRevision],
   );
   const profileUser = baseUser
     ? { ...baseUser, image: avatarOverride || baseUser.image }
@@ -185,7 +187,7 @@ function UserProfileLayout({
 
   const allComments = useMemo(
     () => getAllComments(),
-    [commentsVersion],
+    [commentsRevision, commentsVersion],
   );
   const authoredComments = useMemo(
     () => resolveAuthoredComments(allComments, profileUser),
@@ -193,7 +195,7 @@ function UserProfileLayout({
   );
   const likedEntries = useMemo(
     () => (isOwnProfile ? getLikedComments({ limit: 24 }) : []),
-    [commentsVersion, isOwnProfile],
+    [commentsRevision, commentsVersion, isOwnProfile],
   );
   const watchlistEvents = useMemo(
     () => (isOwnProfile ? getWatchlistEvents(watchlistIds) : []),
@@ -201,7 +203,7 @@ function UserProfileLayout({
   );
   const ratedEvents = useMemo(
     () => (isOwnProfile ? getRatedPastEvents() : []),
-    [commentsVersion, isOwnProfile],
+    [isOwnProfile, ratingsRevision],
   );
   const radarBins = useMemo(
     () => buildRadarBins(ratedEvents),
@@ -209,7 +211,7 @@ function UserProfileLayout({
   );
   const favoriteSports = useMemo(
     () => (isOwnProfile ? getFavoriteSportsByRatings() : []),
-    [commentsVersion, isOwnProfile],
+    [isOwnProfile, ratingsRevision],
   );
   const friends = useMemo(() => {
     if (!isOwnProfile) return [];
@@ -218,7 +220,7 @@ function UserProfileLayout({
       .filter(([followedUserId, isFollowed]) => Boolean(isFollowed) && followedUserId !== profileUser?.id)
       .map(([followedUserId]) => getUserById(followedUserId))
       .filter(Boolean);
-  }, [commentsVersion, isOwnProfile, profileUser?.id]);
+  }, [commentsVersion, followsRevision, isOwnProfile, profileUser?.id]);
   const followers = useMemo(() => {
     if (!profileUser) return [];
     return allUsers
@@ -232,11 +234,11 @@ function UserProfileLayout({
   }, [allUsers, profileUser]);
   const topEventsData = useMemo(
     () => (profileUser ? getTop5EventsForUser(profileUser.id, 5) : { events: [], rankingList: null }),
-    [commentsVersion, profileUser],
+    [commentsRevision, commentsVersion, profileUser],
   );
   const detailsOverride = useMemo(
     () => getProfileDetailsOverride(profileUser?.id),
-    [detailsVersion, profileUser?.id],
+    [detailsVersion, profileRevision, profileUser?.id],
   );
   const profileDetails = useMemo(
     () => mergeProfileDetails(profileUser, detailsOverride),
@@ -350,11 +352,6 @@ function UserProfileLayout({
 
   return (
     <section className={`profile-page profile-page-shell ${isOwnProfile ? "profile-mode-owner" : "profile-mode-visitor"}`.trim()}>
-      <div className="discover-head">
-        <h1>{copy.pageTitle}</h1>
-        <p className="lede">{copy.pageSubtitle}</p>
-      </div>
-
       <section className="profile-top-grid">
         <div className="profile-primary-column">
           <article className="entity-card profile-panel">

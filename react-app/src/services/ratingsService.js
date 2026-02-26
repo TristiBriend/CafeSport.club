@@ -1,4 +1,11 @@
 import { events as eventsData } from "../data/modelStore";
+import { deleteUserRatingCloud, setUserRatingCloud } from "./ratingsFirestoreService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
 
 const RATINGS_KEY = "cafesport.club_ratings";
 let hasSeededSession = false;
@@ -39,6 +46,16 @@ function readStorageObject(key) {
 function writeStorageObject(key, value) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function mirrorRatingToCloud(eventId, scoreOrNull) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.RATINGS)) return;
+  if (scoreOrNull == null) {
+    deleteUserRatingCloud(firebaseUid, eventId).catch(() => {});
+    return;
+  }
+  setUserRatingCloud(firebaseUid, eventId, scoreOrNull).catch(() => {});
 }
 
 function getAllEvents(list = null) {
@@ -92,6 +109,8 @@ export function setEventRating(eventId, score) {
   const nextScore = normalizeScore(score);
   map[safeId] = nextScore;
   writeStorageObject(RATINGS_KEY, map);
+  mirrorRatingToCloud(safeId, nextScore);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.RATINGS);
   return nextScore;
 }
 
@@ -102,6 +121,8 @@ export function deleteEventRating(eventId) {
   if (!(safeId in map)) return false;
   delete map[safeId];
   writeStorageObject(RATINGS_KEY, map);
+  mirrorRatingToCloud(safeId, null);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.RATINGS);
   return true;
 }
 

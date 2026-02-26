@@ -1,4 +1,11 @@
 import { users } from "../data/modelStore";
+import { upsertPublicProfileOverride } from "./profileFirestoreService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
 
 const PROFILE_USER_ID_KEY = "cafesport.club_profile_user_id";
 const PROFILE_AVATAR_OVERRIDES_KEY = "cafesport.club_profile_avatar_overrides";
@@ -31,6 +38,14 @@ function readStorageObject(key) {
 function writeStorageObject(key, value) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function mirrorProfilePatchToCloud(userId, patch) {
+  const safeUserId = String(userId || "").trim();
+  const { isCloudMode, firebaseUid, appUserId } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !appUserId || appUserId !== safeUserId) return;
+  if (!isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.PROFILE)) return;
+  upsertPublicProfileOverride(appUserId, firebaseUid, patch).catch(() => {});
 }
 
 export function getCurrentProfileUserId(fallbackUserId = "") {
@@ -73,6 +88,8 @@ export function setProfileAvatarOverride(userId, dataUrl) {
   const map = readStorageObject(PROFILE_AVATAR_OVERRIDES_KEY);
   map[safeUserId] = safeDataUrl;
   writeStorageObject(PROFILE_AVATAR_OVERRIDES_KEY, map);
+  mirrorProfilePatchToCloud(safeUserId, { avatarUrl: safeDataUrl });
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);
   return safeDataUrl;
 }
 
@@ -83,6 +100,8 @@ export function clearProfileAvatarOverride(userId) {
   if (!(safeUserId in map)) return false;
   delete map[safeUserId];
   writeStorageObject(PROFILE_AVATAR_OVERRIDES_KEY, map);
+  mirrorProfilePatchToCloud(safeUserId, { avatarUrl: "" });
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);
   return true;
 }
 
@@ -131,6 +150,8 @@ export function setProfileDetailsOverride(userId, patch = {}) {
     delete map[safeUserId];
   }
   writeStorageObject(PROFILE_DETAILS_OVERRIDES_KEY, map);
+  mirrorProfilePatchToCloud(safeUserId, next);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);
   return next;
 }
 
@@ -141,5 +162,14 @@ export function clearProfileDetailsOverride(userId) {
   if (!(safeUserId in map)) return false;
   delete map[safeUserId];
   writeStorageObject(PROFILE_DETAILS_OVERRIDES_KEY, map);
+  mirrorProfilePatchToCloud(safeUserId, {
+    age: "",
+    city: "",
+    bioLong: "",
+    favoriteTeam: "",
+    favoriteAthlete: "",
+    quote: "",
+  });
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);
   return true;
 }

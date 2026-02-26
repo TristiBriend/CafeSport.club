@@ -40,6 +40,7 @@ import {
 } from "../services/feedStreamComposer";
 import { getEventById } from "../services/eventsService";
 import { getLeagueById, getLeagueSeasonById } from "../services/leaguesService";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 
 const FEED_MODE = {
   RECENT: "recent",
@@ -225,9 +226,11 @@ function ObjectFeedScopePanel({
   const isControlledMode = mode === FEED_MODE.RECENT || mode === FEED_MODE.POPULAR;
   const [internalMode, setInternalMode] = useState(FEED_MODE.RECENT);
   const [commentsVersion, setCommentsVersion] = useState(0);
+  const { revisionByDomain } = useSocialSync();
+  const commentsRevision = Number(revisionByDomain?.comments || 0);
   const activeMode = isControlledMode ? mode : internalMode;
   const watchlistSet = useMemo(() => new Set(watchlistIds), [watchlistIds]);
-  const allComments = useMemo(() => getAllComments(), [commentsVersion]);
+  const allComments = useMemo(() => getAllComments(), [commentsRevision, commentsVersion]);
 
   const objectMeta = useMemo(
     () => (hasTarget ? resolveObjectMeta(safeTargetType, safeTargetId) : null),
@@ -245,7 +248,7 @@ function ObjectFeedScopePanel({
         }
         return toTimestamp(b.createdAt) - toTimestamp(a.createdAt);
       });
-  }, [activeMode, hasTarget, safeTargetId, safeTargetType, commentsVersion]);
+  }, [activeMode, commentsRevision, hasTarget, safeTargetId, safeTargetType, commentsVersion]);
 
   const objectEvents = useMemo(() => {
     if (!hasTarget) return [];

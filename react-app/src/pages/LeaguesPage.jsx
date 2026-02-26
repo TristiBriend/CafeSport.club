@@ -14,11 +14,6 @@ function LeaguesPage() {
 
   return (
     <section>
-      <div className="discover-head">
-        <h1>Leagues</h1>
-        <p className="lede">Migration React de la page leagues.</p>
-      </div>
-
       <label className="search-wrap" htmlFor="league-search">
         <span>Recherche</span>
         <input

@@ -1,6 +1,16 @@
 import { getAthleteById, getListById, getTeamById, getUserById } from "./catalogService";
 import { getEventById } from "./eventsService";
 import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
+import {
+  addUserTagToObjectCloud,
+  toggleObjectTagVoteCloud,
+} from "./objectTagsFirestoreService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
 
 const TAG_CATALOG_KEY = "cafesport.club_tag_catalog_v1";
 const OBJECT_TAGS_KEY = "cafesport.club_object_tags_v2";
@@ -36,6 +46,18 @@ function readStorageObject(key) {
 function writeStorageObject(key, value) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function mirrorAddTagCloud(objectType, objectId, label) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.TAGS)) return;
+  addUserTagToObjectCloud(firebaseUid, objectType, objectId, label).catch(() => {});
+}
+
+function mirrorVoteCloud(objectType, objectId, tagId, voteValue) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.TAGS)) return;
+  toggleObjectTagVoteCloud(firebaseUid, objectType, objectId, tagId, voteValue).catch(() => {});
 }
 
 function hashCode(value) {
@@ -361,6 +383,8 @@ export function addUserTagToObject(objectType, objectId, rawLabel) {
   if (!tagId) return null;
   ensureObjectTagLink(safeType, safeId, tagId);
   setObjectTagVote(safeType, safeId, tagId, 1);
+  mirrorAddTagCloud(safeType, safeId, safeLabel);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TAGS);
 
   return {
     tagId,
@@ -379,7 +403,12 @@ export function toggleObjectTagVote(objectType, objectId, tagId, voteValue) {
   const targetVote = Number(voteValue) === -1 ? -1 : 1;
   const current = getVoteSummary(safeType, safeId, safeTagId).currentUserVote;
   const nextVote = current === targetVote ? 0 : targetVote;
-  return setObjectTagVote(safeType, safeId, safeTagId, nextVote);
+  const updated = setObjectTagVote(safeType, safeId, safeTagId, nextVote);
+  if (updated) {
+    mirrorVoteCloud(safeType, safeId, safeTagId, targetVote);
+    notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TAGS);
+  }
+  return updated;
 }
 
 export function getTopObjectTags(objectType, objectId, limit = 6) {

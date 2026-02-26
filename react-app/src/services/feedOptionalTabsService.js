@@ -1,6 +1,16 @@
 import { getAthleteById, getListById, getTeamById, getUserById } from "./catalogService";
 import { getEventById } from "./eventsService";
+import {
+  removeUserFeedTabCloud,
+  upsertUserFeedTabCloud,
+} from "./feedTabsFirestoreService";
 import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
+import {
+  getSocialSyncCloudIdentity,
+  isSocialDomainEnabled,
+  notifyDomainDirty,
+  SOCIAL_SYNC_DOMAIN,
+} from "./socialSyncService";
 
 const FEED_OPTIONAL_TABS_STORAGE_KEY = "sofa_feed_optional_tabs_v1";
 const FEED_OPTIONAL_TABS_MAX = 12;
@@ -32,6 +42,18 @@ function readStorageArray(key) {
 function writeStorageArray(key, list) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(key, JSON.stringify(list));
+}
+
+function mirrorTabUpsertCloud(tab) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.TABS)) return;
+  upsertUserFeedTabCloud(firebaseUid, tab).catch(() => {});
+}
+
+function mirrorTabRemoveCloud(tabId) {
+  const { isCloudMode, firebaseUid } = getSocialSyncCloudIdentity();
+  if (!isCloudMode || !firebaseUid || !isSocialDomainEnabled(SOCIAL_SYNC_DOMAIN.TABS)) return;
+  removeUserFeedTabCloud(firebaseUid, tabId).catch(() => {});
 }
 
 function normalizeTargetType(targetType) {
@@ -226,8 +248,15 @@ export function upsertOptionalFeedTab({
     });
   }
 
+  const saved = saveOptionalFeedTabs(nextTabs);
+  const createdOrUpdated = saved.find((tab) => tab.id === tabId);
+  if (createdOrUpdated) {
+    mirrorTabUpsertCloud(createdOrUpdated);
+    notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
+  }
+
   return {
-    tabs: saveOptionalFeedTabs(nextTabs),
+    tabs: saved,
     added: existingIndex < 0,
     error: "",
   };
@@ -237,7 +266,10 @@ export function removeOptionalFeedTab(tabId) {
   const safeId = String(tabId || "").trim();
   if (!safeId) return loadOptionalFeedTabs();
   const currentTabs = loadOptionalFeedTabs();
-  return saveOptionalFeedTabs(currentTabs.filter((tab) => tab.id !== safeId));
+  const next = saveOptionalFeedTabs(currentTabs.filter((tab) => tab.id !== safeId));
+  mirrorTabRemoveCloud(safeId);
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
+  return next;
 }
 
 export function setOptionalFeedTabMode(tabId, mode) {
@@ -252,7 +284,13 @@ export function setOptionalFeedTabMode(tabId, mode) {
       mode: nextMode,
     };
   });
-  return saveOptionalFeedTabs(nextTabs);
+  const saved = saveOptionalFeedTabs(nextTabs);
+  const updated = saved.find((tab) => tab.id === safeId);
+  if (updated) {
+    mirrorTabUpsertCloud(updated);
+    notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
+  }
+  return saved;
 }
 
 export { FEED_OPTIONAL_TABS_MAX, FEED_TARGET };

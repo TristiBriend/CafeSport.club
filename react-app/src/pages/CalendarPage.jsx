@@ -351,17 +351,8 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   const isMonthView = viewMode === CALENDAR_VIEW.MONTH;
   const isYearView = viewMode === CALENDAR_VIEW.YEAR;
-  const summaryPrefix = timelineOnly
-    ? (spotlightOnly ? "Base perso + spotlight" : "Base perso")
-    : (spotlightOnly ? "Spotlight global" : "Tous les events");
-
   return (
     <section>
-      <div className="discover-head">
-        <h1>Calendar</h1>
-        <p className="lede">{summaryPrefix} · {filteredEvents.length} events · {formatRangeLabel(range.start, range.end)}</p>
-      </div>
-
       <div className="filter-row">
         <button
           className={`filter-btn ${displayMode === "calendar" ? "is-active" : ""}`}
