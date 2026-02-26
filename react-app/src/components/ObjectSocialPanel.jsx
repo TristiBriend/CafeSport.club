@@ -10,6 +10,7 @@ import {
   deleteCommentReply,
   filterCommentsByMode,
   getCommentsForTarget,
+  isReviewAllowedTarget,
   toggleCommentLike,
   toggleReplyLike,
   updateComment,
@@ -36,7 +37,8 @@ function ObjectSocialPanel({
 }) {
   const [comments, setComments] = useState([]);
   const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
-  const [composerMode, setComposerMode] = useState(allowReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
+  const canReviewTarget = allowReview && isReviewAllowedTarget(targetType);
+  const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [isFollowed, setIsFollowed] = useState(false);
@@ -48,18 +50,25 @@ function ObjectSocialPanel({
     if (!targetType || !targetId) return;
     setComments(getCommentsForTarget(targetType, targetId));
     setActiveMode(COMMENT_MODE.ALL);
-    setComposerMode(allowReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
+    setComposerMode(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
     setComposerText("");
     setComposerRating(80);
     if (showFollow && resolvedFollowType) {
       setIsFollowed(isTargetFollowed(resolvedFollowType, targetId));
       setFollowers(getTargetFollowerCount(resolvedFollowType, targetId, followBaseCount));
     }
-  }, [allowReview, followBaseCount, resolvedFollowType, showFollow, targetId, targetType]);
+  }, [canReviewTarget, followBaseCount, resolvedFollowType, showFollow, targetId, targetType]);
+
+  useEffect(() => {
+    if (canReviewTarget) return;
+    if (activeMode === COMMENT_MODE.REVIEW) {
+      setActiveMode(COMMENT_MODE.ALL);
+    }
+  }, [activeMode, canReviewTarget]);
 
   const visibleComments = useMemo(
     () => filterCommentsByMode(comments, activeMode),
-    [activeMode, comments],
+  [activeMode, comments],
   );
 
   function refreshComments() {
@@ -68,7 +77,7 @@ function ObjectSocialPanel({
 
   function handleCreateComment(event) {
     event.preventDefault();
-    const mode = allowReview ? composerMode : COMMENT_MODE.COMMENT;
+    const mode = canReviewTarget ? composerMode : COMMENT_MODE.COMMENT;
     const created = createTargetComment(targetType, targetId, {
       mode,
       note: composerText,
@@ -191,13 +200,15 @@ function ObjectSocialPanel({
           >
             Tous
           </button>
-          <button
-            className={`filter-btn ${activeMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
-            onClick={() => setActiveMode(COMMENT_MODE.REVIEW)}
-            type="button"
-          >
-            Critiques
-          </button>
+          {canReviewTarget ? (
+            <button
+              className={`filter-btn ${activeMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
+              onClick={() => setActiveMode(COMMENT_MODE.REVIEW)}
+              type="button"
+            >
+              Critiques
+            </button>
+          ) : null}
           <button
             className={`filter-btn ${activeMode === COMMENT_MODE.COMMENT ? "is-active" : ""}`}
             onClick={() => setActiveMode(COMMENT_MODE.COMMENT)}
@@ -215,14 +226,14 @@ function ObjectSocialPanel({
                 id={`comment-mode-${targetType}-${targetId}`}
                 value={composerMode}
                 onChange={(changeEvent) => setComposerMode(changeEvent.target.value)}
-                disabled={!allowReview}
+                disabled={!canReviewTarget}
               >
                 <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
-                <option value={COMMENT_MODE.REVIEW}>Critique</option>
+                {canReviewTarget ? <option value={COMMENT_MODE.REVIEW}>Critique</option> : null}
               </select>
             </label>
 
-            {allowReview && composerMode === COMMENT_MODE.REVIEW ? (
+            {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
               <label className="select-wrap" htmlFor={`comment-rating-${targetType}-${targetId}`}>
                 <span>Note (0-100)</span>
                 <input

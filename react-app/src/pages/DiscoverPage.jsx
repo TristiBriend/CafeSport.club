@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import EventCard from "../components/EventCard";
 import SportFilters from "../components/SportFilters";
 import {
@@ -8,23 +8,45 @@ import {
   groupEventsBySport,
 } from "../services/eventsService";
 
-function DiscoverPage({ watchlistIds = [], onToggleWatchlist }) {
+function resolveForcedSport(sports, forcedSport) {
+  const token = String(forcedSport || "").trim().toLowerCase();
+  if (!token) return "";
+  return sports.find((sport) => String(sport || "").trim().toLowerCase() === token) || "";
+}
+
+function DiscoverPage({
+  watchlistIds = [],
+  onToggleWatchlist,
+  forcedSport = "",
+  title = "Parcourir les evenements",
+  subtitle = "Migration React de la section events avec filtres et recherche.",
+}) {
   const [sportFilter, setSportFilter] = useState("Tous");
   const [query, setQuery] = useState("");
   const events = getAllEvents();
   const sports = useMemo(() => getSports(), []);
+  const lockedSport = useMemo(
+    () => resolveForcedSport(sports, forcedSport),
+    [forcedSport, sports],
+  );
+  const activeSport = lockedSport || sportFilter;
+
+  useEffect(() => {
+    if (!lockedSport) return;
+    setSportFilter(lockedSport);
+  }, [lockedSport]);
 
   const filtered = useMemo(() => {
-    return filterEvents(events, { sportFilter, query });
-  }, [events, query, sportFilter]);
+    return filterEvents(events, { sportFilter: activeSport, query });
+  }, [activeSport, events, query]);
 
   const grouped = useMemo(() => groupEventsBySport(filtered), [filtered]);
 
   return (
     <section className="discover-page">
       <div className="discover-head">
-        <h1>Parcourir les evenements</h1>
-        <p className="lede">Migration React de la section events avec filtres et recherche.</p>
+        <h1>{title}</h1>
+        <p className="lede">{subtitle}</p>
       </div>
 
       <label className="search-wrap" htmlFor="discover-search">
@@ -38,7 +60,9 @@ function DiscoverPage({ watchlistIds = [], onToggleWatchlist }) {
         />
       </label>
 
-      <SportFilters sports={sports} activeSport={sportFilter} onChange={setSportFilter} />
+      {!lockedSport ? (
+        <SportFilters sports={sports} activeSport={sportFilter} onChange={setSportFilter} />
+      ) : null}
 
       <p className="results-count">{filtered.length} evenements affiches</p>
 
@@ -46,7 +70,7 @@ function DiscoverPage({ watchlistIds = [], onToggleWatchlist }) {
         <div className="simple-page">
           <p>Aucun evenement ne correspond a ta recherche.</p>
         </div>
-      ) : sportFilter === "Tous" ? (
+      ) : activeSport === "Tous" ? (
         <div className="group-stack">
           {grouped.map(([sport, items]) => (
             <section key={sport} className="group-block">

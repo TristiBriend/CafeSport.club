@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import UserCard from "../components/UserCard";
 import { getUsers } from "../services/catalogService";
 
 function UsersPage() {
@@ -28,14 +28,7 @@ function UsersPage() {
 
       <div className="entity-grid">
         {users.map((user) => (
-          <article key={user.id} className="entity-card">
-            <h3>
-              <Link to={`/user/${user.id}`}>{user.name}</Link>
-            </h3>
-            <p className="event-meta">{user.handle}</p>
-            <p className="event-meta">{user.location}</p>
-            <p className="event-meta">{Number(user.followers || 0).toLocaleString("fr-FR")} followers</p>
-          </article>
+          <UserCard key={user.id} user={user} size="small" showTags={false} />
         ))}
       </div>
     </section>

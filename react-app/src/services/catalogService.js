@@ -104,6 +104,26 @@ export function getEventsForTeam(teamId) {
   return events.filter((event) => ids.has(event.id)).sort(sortByDateDesc);
 }
 
+export function getTeamsForEvent(eventId) {
+  const safeEventId = String(eventId || "").trim();
+  if (!safeEventId) return [];
+  const row = eventTeams.find((item) => item.eventId === safeEventId);
+  if (!row || !Array.isArray(row.teamIds)) return [];
+  return row.teamIds
+    .map((teamId) => getTeamById(teamId))
+    .filter(Boolean);
+}
+
+export function getAthletesForEvent(eventId) {
+  const safeEventId = String(eventId || "").trim();
+  if (!safeEventId) return [];
+  const row = athleteParticipation.find((item) => item.eventId === safeEventId);
+  if (!row || !Array.isArray(row.athleteIds)) return [];
+  return row.athleteIds
+    .map((athleteId) => getAthleteById(athleteId))
+    .filter(Boolean);
+}
+
 export function getEventsForAthlete(athleteId) {
   const teamIds = getTeamIdsForAthlete(athleteId);
   const ids = new Set(

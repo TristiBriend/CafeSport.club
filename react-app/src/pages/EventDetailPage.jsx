@@ -160,10 +160,6 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   return (
     <section className="event-detail-page">
-      <Link className="back-link" to="/discover">
-        {"<- Retour a Decouvrir"}
-      </Link>
-
       <article className="event-detail-card">
         <div className="event-detail-head">
           <span className="event-chip">{event.sport}</span>

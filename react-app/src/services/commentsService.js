@@ -6,6 +6,7 @@ import {
   getEventsForAthlete,
   getEventsForTeam,
   getListById,
+  getTeamById,
   getUserById,
   resolveListEntries,
 } from "./catalogService";
@@ -16,6 +17,8 @@ const MANUAL_REPLIES_KEY = "cafesport.club_manual_replies_v1";
 const REVIEW_LIKES_KEY = "cafesport.club_review_likes";
 const COMMENT_LIKES_KEY = "cafesport.club_comment_likes";
 const REPLY_LIKES_KEY = "cafesport.club_reply_likes";
+const COMMENT_IMPRESSIONS_KEY = "cafesport.club_comment_impressions";
+const COMMENT_IMPRESSIONS_SESSION_KEY = "cafesport.club_comment_impressions_session";
 
 export const COMMENT_MODE = {
   ALL: "all",
@@ -34,6 +37,16 @@ export const COMMENT_TARGET = {
 };
 
 const TARGET_TYPES = new Set(Object.values(COMMENT_TARGET));
+const REVIEW_ALLOWED_TARGETS = new Set([
+  COMMENT_TARGET.EVENT,
+  COMMENT_TARGET.LEAGUE,
+  COMMENT_TARGET.LEAGUE_SEASON,
+]);
+
+export function isReviewAllowedTarget(targetType) {
+  const safeType = normalizeTargetType(targetType);
+  return REVIEW_ALLOWED_TARGETS.has(safeType);
+}
 
 const reviewLines = [
   "Match intense du debut a la fin.",
@@ -160,7 +173,9 @@ function normalizeComment(raw, fallbackTarget = {}) {
 
   if (!targetType || !targetId || !note) return null;
 
-  const mode = raw.commentType === COMMENT_MODE.REVIEW ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT;
+  const mode = raw.commentType === COMMENT_MODE.REVIEW && isReviewAllowedTarget(targetType)
+    ? COMMENT_MODE.REVIEW
+    : COMMENT_MODE.COMMENT;
   const explicitEventId = normalizeTargetId(raw.eventId);
   const eventId = explicitEventId || (targetType === COMMENT_TARGET.EVENT ? targetId : "");
 
@@ -236,6 +251,22 @@ function writeStorageObject(key, obj) {
   window.localStorage.setItem(key, JSON.stringify(obj));
 }
 
+function readSessionObject(key) {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeSessionObject(key, obj) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(key, JSON.stringify(obj));
+}
+
 function readManualReplyMap() {
   const raw = readStorageObject(MANUAL_REPLIES_KEY);
   return Object.entries(raw).reduce((acc, [commentId, replies]) => {
@@ -275,6 +306,7 @@ function withComputedLikes(comment) {
     ...comment,
     isLiked: liked,
     totalLikes: Number(comment.likes || 0) + (liked ? 1 : 0),
+    totalImpressions: getCommentImpressions(comment.id),
   };
 }
 
@@ -312,9 +344,94 @@ function dedupeComments(list) {
 }
 
 function getManualCommentsNormalized() {
-  return readManualComments()
+  return sanitizeManualCommentsStorage()
     .map((item) => normalizeComment(item))
     .filter(Boolean);
+}
+
+function removeIdsFromStorageObject(key, ids = []) {
+  const safeIds = new Set(
+    (Array.isArray(ids) ? ids : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean),
+  );
+  if (!safeIds.size) return;
+  const map = readStorageObject(key);
+  let changed = false;
+  safeIds.forEach((id) => {
+    if (!(id in map)) return;
+    delete map[id];
+    changed = true;
+  });
+  if (changed) {
+    writeStorageObject(key, map);
+  }
+}
+
+function removeIdsFromSessionObject(key, ids = []) {
+  const safeIds = new Set(
+    (Array.isArray(ids) ? ids : [])
+      .map((id) => String(id || "").trim())
+      .filter(Boolean),
+  );
+  if (!safeIds.size) return;
+  const map = readSessionObject(key);
+  let changed = false;
+  safeIds.forEach((id) => {
+    if (!(id in map)) return;
+    delete map[id];
+    changed = true;
+  });
+  if (changed) {
+    writeSessionObject(key, map);
+  }
+}
+
+function sanitizeManualCommentsStorage() {
+  const manual = readManualComments();
+  if (!manual.length) return manual;
+
+  const invalidReviewIds = [];
+  const filtered = manual.filter((comment) => {
+    const targetType = normalizeTargetType(comment?.targetType || comment?.type || "");
+    const isReview = comment?.commentType === COMMENT_MODE.REVIEW;
+    const isValid = !isReview || isReviewAllowedTarget(targetType);
+    if (!isValid) {
+      invalidReviewIds.push(String(comment?.id || "").trim());
+    }
+    return isValid;
+  });
+
+  const safeInvalidIds = invalidReviewIds.filter(Boolean);
+  if (!safeInvalidIds.length) return manual;
+
+  writeManualComments(filtered);
+
+  const replyMap = readStorageObject(MANUAL_REPLIES_KEY);
+  const removedReplyIds = [];
+  let replyMapChanged = false;
+  safeInvalidIds.forEach((commentId) => {
+    const replies = Array.isArray(replyMap[commentId]) ? replyMap[commentId] : [];
+    replies.forEach((reply) => {
+      const replyId = String(reply?.id || "").trim();
+      if (replyId) removedReplyIds.push(replyId);
+    });
+    if (commentId in replyMap) {
+      delete replyMap[commentId];
+      replyMapChanged = true;
+    }
+  });
+  if (replyMapChanged) {
+    writeStorageObject(MANUAL_REPLIES_KEY, replyMap);
+  }
+
+  removeIdsFromStorageObject(REVIEW_LIKES_KEY, safeInvalidIds);
+  removeIdsFromStorageObject(COMMENT_LIKES_KEY, safeInvalidIds);
+  removeIdsFromStorageObject(COMMENT_IMPRESSIONS_KEY, safeInvalidIds);
+  removeIdsFromSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, safeInvalidIds);
+  removeIdsFromStorageObject(REPLY_LIKES_KEY, removedReplyIds);
+
+  return filtered;
 }
 
 function getSeedComments() {
@@ -496,7 +613,8 @@ export function createTargetComment(targetType, targetId, {
   const cleanNote = String(note || "").trim();
   if (!safeType || !safeTargetId || !cleanNote) return null;
 
-  const safeMode = mode === COMMENT_MODE.REVIEW ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT;
+  const canReview = isReviewAllowedTarget(safeType);
+  const safeMode = mode === COMMENT_MODE.REVIEW && canReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT;
   const resolvedEventId = safeType === COMMENT_TARGET.EVENT
     ? safeTargetId
     : normalizeTargetId(eventId);
@@ -537,6 +655,36 @@ export function toggleCommentLike(comment) {
   const likes = readStorageObject(key);
   likes[comment.id] = !likes[comment.id];
   writeStorageObject(key, likes);
+}
+
+export function getCommentImpressions(commentId) {
+  const safeId = String(commentId || "").trim();
+  if (!safeId) return 0;
+  const impressions = readStorageObject(COMMENT_IMPRESSIONS_KEY);
+  return Math.max(0, Number(impressions[safeId] || 0));
+}
+
+export function registerCommentImpression(commentId, { oncePerSession = true } = {}) {
+  const safeId = String(commentId || "").trim();
+  if (!safeId) return 0;
+
+  if (oncePerSession) {
+    const seen = readSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY);
+    if (seen[safeId]) return getCommentImpressions(safeId);
+  }
+
+  const impressions = readStorageObject(COMMENT_IMPRESSIONS_KEY);
+  const next = Math.max(0, Number(impressions[safeId] || 0)) + 1;
+  impressions[safeId] = next;
+  writeStorageObject(COMMENT_IMPRESSIONS_KEY, impressions);
+
+  if (oncePerSession) {
+    const seen = readSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY);
+    seen[safeId] = 1;
+    writeSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, seen);
+  }
+
+  return next;
 }
 
 function clearLikeEntry(key, id) {
@@ -615,6 +763,19 @@ export function deleteComment(commentId) {
 
   clearLikeEntry(REVIEW_LIKES_KEY, safeId);
   clearLikeEntry(COMMENT_LIKES_KEY, safeId);
+
+  const impressions = readStorageObject(COMMENT_IMPRESSIONS_KEY);
+  if (safeId in impressions) {
+    delete impressions[safeId];
+    writeStorageObject(COMMENT_IMPRESSIONS_KEY, impressions);
+  }
+
+  const seen = readSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY);
+  if (safeId in seen) {
+    delete seen[safeId];
+    writeSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, seen);
+  }
+
   return true;
 }
 
@@ -778,11 +939,11 @@ export function resolveTargetCommentContext(targetType, targetId) {
   }
 
   if (safeType === COMMENT_TARGET.TEAM) {
-    const teamEvents = getEventsForTeam(safeId);
+    const team = getTeamById(safeId);
     return {
       targetType: safeType,
       targetId: safeId,
-      label: teamEvents[0]?.league || "Team",
+      label: team?.nameFull || team?.name || "Team",
     };
   }
 

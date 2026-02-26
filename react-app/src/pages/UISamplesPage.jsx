@@ -2,14 +2,21 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import LeagueCard from "../components/LeagueCard";
+import LeagueSeasonCard from "../components/LeagueSeasonCard";
 import ObjectSocialPanel from "../components/ObjectSocialPanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
+import PlayerCard from "../components/PlayerCard";
 import RankingCard from "../components/RankingCard";
 import ScoreBadge from "../components/ScoreBadge";
+import TeamCard from "../components/TeamCard";
+import UserCard from "../components/UserCard";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
+import { buildUserFollowFabButton } from "../components/UserFollowFabButton";
 import {
   getAthletes,
   getCuratedLists,
+  getTeamsForEvent,
   getTeams,
   getUsers,
 } from "../services/catalogService";
@@ -23,13 +30,14 @@ import {
   getCommentDateLabel,
   getCommentModeLabel,
   getEventComments,
+  isReviewAllowedTarget,
   toggleCommentLike,
   toggleReplyLike,
   updateComment,
   updateCommentReply,
 } from "../services/commentsService";
 import { getAllEvents } from "../services/eventsService";
-import { getLeagues } from "../services/leaguesService";
+import { getLeagueById, getLeagues } from "../services/leaguesService";
 
 const UI_NAV_ITEMS = [
   { href: "#ui-legend", label: "Legende" },
@@ -42,6 +50,8 @@ const UI_NAV_ITEMS = [
   { href: "#ui-colors", label: "Palette" },
   { href: "#ui-sanity", label: "Data sanity" },
 ];
+
+const EVENT_CARD_SIZE_PRESETS = ["large", "medium", "small", "miniature"];
 
 const COMPONENT_LEGENDS = [
   {
@@ -64,9 +74,10 @@ const COMPONENT_LEGENDS = [
       "event: EventModel (required)",
       "isInWatchlist: boolean",
       "onToggleWatchlist: (eventId) => void",
-      "size?: default|compact",
+      "size?: large|medium|small|miniature|compact|default",
       "note?: string",
       "showTags?: boolean",
+      "showComment?: boolean",
       "Usage: <EventCard event={event} ... />",
     ],
   },
@@ -75,11 +86,72 @@ const COMPONENT_LEGENDS = [
     props: [
       "comment: CommentModel (required)",
       "onToggleLike: (comment) => void",
+      "showEventLink?: boolean",
       "onCreateReply: (comment, note) => CommentReply | null",
       "onToggleReplyLike: (comment, reply) => void",
       "onUpdateComment/onDeleteComment",
       "onUpdateReply/onDeleteReply",
-      "Usage: <CommentCard comment={comment} ... />",
+      "Usage: <CommentCard comment={comment} showEventLink={boolean} ... />",
+    ],
+  },
+  {
+    name: "PlayerCard",
+    props: [
+      "athlete: AthleteModel (required)",
+      "size?: large|medium|small|miniature|compact|default",
+      "variant?: listing|detail",
+      "showTags?: boolean",
+      "showMenu?: boolean",
+      "className?: string",
+      "Usage: <PlayerCard athlete={athlete} />",
+    ],
+  },
+  {
+    name: "TeamCard",
+    props: [
+      "team: TeamModel (required)",
+      "size?: large|medium|small|miniature|compact|default",
+      "variant?: listing|detail",
+      "showTags?: boolean",
+      "showMenu?: boolean",
+      "className?: string",
+      "Usage: <TeamCard team={team} />",
+    ],
+  },
+  {
+    name: "LeagueCard",
+    props: [
+      "league: LeagueModel (required)",
+      "size?: large|medium|small|miniature|compact|default",
+      "variant?: listing|detail",
+      "showTags?: boolean",
+      "showMenu?: boolean",
+      "className?: string",
+      "Usage: <LeagueCard league={league} />",
+    ],
+  },
+  {
+    name: "LeagueSeasonCard",
+    props: [
+      "season: LeagueSeasonModel (required)",
+      "size?: large|medium|small|miniature|compact|default",
+      "variant?: listing|detail",
+      "showTags?: boolean",
+      "showMenu?: boolean",
+      "className?: string",
+      "Usage: <LeagueSeasonCard season={season} />",
+    ],
+  },
+  {
+    name: "UserCard",
+    props: [
+      "user: UserModel (required)",
+      "size?: large|medium|small|miniature|compact|default",
+      "variant?: listing|detail",
+      "showTags?: boolean",
+      "showMenu?: boolean",
+      "className?: string",
+      "Usage: <UserCard user={user} />",
     ],
   },
   {
@@ -104,9 +176,24 @@ const COMPONENT_LEGENDS = [
       "followBaseCount?: number",
       "followLabel?: string",
       "allowReview?: boolean",
+      "Review note enabled only for targetType: event|league|league-season",
       "composerPlaceholder?: string",
       "showFeedLink?: boolean",
       "Usage: <ObjectSocialPanel targetType='event' targetId={id} />",
+    ],
+  },
+  {
+    name: "ObjectFeedScopePanel",
+    props: [
+      "targetType: object type (required)",
+      "targetId: string (required)",
+      "watchlistIds?: string[]",
+      "onToggleWatchlist?: (eventId) => void",
+      "title?: string",
+      "subtitle?: string",
+      "mode?: recent|popular",
+      "onModeChange?: (mode) => void",
+      "Usage: <ObjectFeedScopePanel targetType='team' targetId={id} />",
     ],
   },
   {
@@ -124,7 +211,7 @@ const COMPONENT_LEGENDS = [
     props: [
       "value: number (required)",
       "scale: percent",
-      "variant: badge|user-chip|community-chip",
+      "variant: badge|user-chip|community-chip|teaser-chip",
       "Usage: <ScoreBadge value={82} scale='percent' variant='user-chip' />",
     ],
   },
@@ -143,6 +230,14 @@ const COMPONENT_LEGENDS = [
       "Named export from WatchlistFabButton.jsx",
       "options: { eventId?, isSaved?, watchlistCount?, className?, buttonClassName?, countClassName?, activeLabel?, inactiveLabel?, activeSymbol?, inactiveSymbol?, onToggle? }",
       "Usage: {buildAddWatchlistFabButton({ isSaved: true, watchlistCount: 12 })}",
+    ],
+  },
+  {
+    name: "buildUserFollowFabButton",
+    props: [
+      "Named export from UserFollowFabButton.jsx",
+      "options: { userId?, isFollowed?, followerCount?, className?, buttonClassName?, countClassName?, activeLabel?, inactiveLabel?, activeSymbol?, inactiveSymbol?, onToggle? }",
+      "Usage: {buildUserFollowFabButton({ isFollowed: true, followerCount: 1200 })}",
     ],
   },
 ];
@@ -172,6 +267,14 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     ],
   },
   {
+    name: "UI de base · Follow User FAB",
+    details: [
+      "Factory: buildUserFollowFabButton(options)",
+      "Bindings: { isFollowed:false, followerCount:1200 } + { isFollowed:true, followerCount:1200 }",
+      "Classes: base watchlist-btn/watchlist-btn-fab/watchlist-btn-fab-count + hooks follow-btn-fab/follow-btn-fab-wrap/follow-btn-fab-count",
+    ],
+  },
+  {
     name: "UI de base · Tags / Pills",
     details: [
       "Markup utilitaire: .pill / .pill.ghost / .tag / .tag.ghost / .mini-pill",
@@ -181,8 +284,8 @@ const DISPLAYED_SAMPLE_LEGENDS = [
   {
     name: "UI de base · ScoreBadge",
     details: [
-      "Composant: <ScoreBadge value={number} scale='percent' variant='badge|user-chip|community-chip' />",
-      "Bindings: user-chip(82%), user-chip(0%), community-chip(87%)",
+      "Composant: <ScoreBadge value={number} scale='percent' variant='badge|user-chip|community-chip|teaser-chip' />",
+      "Bindings: user-chip(82%), user-chip(0%), community-chip(87%), teaser-chip",
     ],
   },
   {
@@ -244,7 +347,7 @@ const DISPLAYED_SAMPLE_LEGENDS = [
   {
     name: "Cards · EventCard grid",
     details: [
-      "Composant: <EventCard event isInWatchlist onToggleWatchlist />",
+      "Composant: <EventCard event isInWatchlist onToggleWatchlist size showComment />",
       "Bindings: allEvents.slice(0,8), sampleWatchlistIds",
     ],
   },
@@ -253,6 +356,13 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     details: [
       "Composant: <RankingCard list />",
       "Bindings: allLists.slice(0,4)",
+    ],
+  },
+  {
+    name: "Cards · Object cards unifiees",
+    details: [
+      "Composants: <PlayerCard/> <TeamCard/> <LeagueCard/> <LeagueSeasonCard/> <UserCard/> + <RankingCard/>",
+      "Bindings: premiers objets du dataset + styles inspires EventCard",
     ],
   },
   {
@@ -282,6 +392,13 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     details: [
       "Composant: <ObjectSocialPanel targetType targetId ... />",
       "Bindings: activeSocialTarget (event/athlete/team/league/season/list/user)",
+    ],
+  },
+  {
+    name: "Social · ObjectFeedScopePanel",
+    details: [
+      "Composant: <ObjectFeedScopePanel targetType targetId ... />",
+      "Bindings: feed objet complet (tabs chrono/populaires + stream mixte)",
     ],
   },
   {
@@ -315,13 +432,12 @@ const DISPLAYED_SAMPLE_LEGENDS = [
 ];
 
 const COLOR_TOKENS = [
-  { token: "--sofa-red", fallback: "#ff3131", source: ":root" },
-  { token: "--sofa-green", fallback: "#99ff66", source: ":root" },
-  { token: "--gum-paper", fallback: "#f6f5f2", source: ":root" },
-  { token: "--gum-paper-soft", fallback: "#ecebe7", source: ":root" },
-  { token: "--gum-pink", fallback: "#ec8bd7", source: ":root" },
-  { token: "--gum-yellow", fallback: "#ecef46", source: ":root" },
-  { token: "--gum-teal", fallback: "#2caea3", source: ":root" },
+  { token: "--tristi-ink", fallback: "#111111", source: ":root" },
+  { token: "--tristi-paper", fallback: "#f6f5f2", source: ":root" },
+  { token: "--tristi-paper-soft", fallback: "#ecebe7", source: ":root" },
+  { token: "--tristi-pink", fallback: "#ec8bd7", source: ":root" },
+  { token: "--tristi-yellow", fallback: "#ecef46", source: ":root" },
+  { token: "--tristi-teal", fallback: "#2caea3", source: ":root" },
   { token: "--text", fallback: "#191c1f", source: ":root" },
 ];
 
@@ -382,6 +498,14 @@ function UISamplesPage() {
   const allLeagues = useMemo(() => getLeagues({ sportFilter: "Tous", query: "" }), []);
 
   const focusEvent = allEvents[0] || null;
+  const focusAthlete = allAthletes[0] || null;
+  const focusTeam = allTeams[0] || null;
+  const focusLeagueCard = allLeagues[0] || null;
+  const focusLeagueSeasonCard = focusLeagueCard?.seasons?.[0] || null;
+  const focusUser = allUsers[0] || null;
+  const focusList = allLists[0] || null;
+  const focusLeague = focusEvent ? getLeagueById(focusEvent.competitionId) : null;
+  const focusTeams = focusEvent ? getTeamsForEvent(focusEvent.id) : [];
   const [sampleWatchlistIds, setSampleWatchlistIds] = useState(() => (
     allEvents.slice(0, 3).map((event) => event.id)
   ));
@@ -415,6 +539,9 @@ function UISamplesPage() {
   }, [activeSocialTargetId, socialTargets]);
 
   const activeSocialTarget = socialTargets.find((target) => target.id === activeSocialTargetId) || null;
+  const activeSocialTargetCanReview = activeSocialTarget
+    ? isReviewAllowedTarget(activeSocialTarget.type)
+    : false;
 
   useEffect(() => {
     if (!commentFocusEventId) {
@@ -595,6 +722,15 @@ function UISamplesPage() {
           </article>
 
           <article className="ui-sample-card">
+            <h3>Follow user FAB</h3>
+            <div className="ui-watchlist-fab-stack">
+              {buildUserFollowFabButton({ isFollowed: false, followerCount: 1200 })}
+              {buildUserFollowFabButton({ isFollowed: true, followerCount: 1200 })}
+            </div>
+            <pre className="ui-component-code"><code>buildUserFollowFabButton({"{ isFollowed, followerCount }"})</code></pre>
+          </article>
+
+          <article className="ui-sample-card">
             <h3>Tags et pills</h3>
             <div className="ui-row">
               <span className="pill">A la une</span>
@@ -615,8 +751,9 @@ function UISamplesPage() {
               <ScoreBadge variant="user-chip" value={82} scale="percent" />
               <ScoreBadge variant="user-chip" value={0} scale="percent" />
               <ScoreBadge variant="community-chip" value={87} scale="percent" />
+              <ScoreBadge variant="teaser-chip" />
             </div>
-            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="percent" variant="badge|user-chip|community-chip" />'}</code></pre>
+            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="percent" variant="badge|user-chip|community-chip|teaser-chip" />'}</code></pre>
           </article>
 
           <article className="ui-sample-card">
@@ -667,14 +804,27 @@ function UISamplesPage() {
 
         <div className="ui-samples-grid">
           <article className="ui-sample-card">
-            <h3>Formats de texte</h3>
-            <p className="ui-text-format-sample display">Display: Sofa Critics note chaque evenement.</p>
-            <p className="ui-text-format-sample heading">Heading: Finale Coupe du monde 2022</p>
-            <p className="ui-text-format-sample body">Body: Compare les avis, puis ajoute ton propre commentaire.</p>
-            <p className="ui-text-format-sample muted">Muted: metadata secondaire et contexte.</p>
-            <p className="ui-text-format-sample small">Small: label utilitaire court.</p>
-            <p className="ui-text-format-sample caption">Caption: 18 DEC 2022 · LUSAIL</p>
-            <p className="ui-text-format-sample mono">event_id: {focusEvent?.id || "N/A"}</p>
+            <h3>Formats de texte (8 styles)</h3>
+            <p className="ui-text-format-sample typo-display">Display: Sofa Critics note chaque evenement.</p>
+            <p className="ui-text-format-sample typo-h1">Heading-1: Finale Coupe du monde 2022</p>
+            <p className="ui-text-format-sample typo-h2">Heading-2: Demi-finale legendaire</p>
+            <p className="ui-text-format-sample typo-body">Body: Compare les avis, puis ajoute ton propre commentaire.</p>
+            <p className="ui-text-format-sample typo-body-strong">Body-strong: Cette action change le match.</p>
+            <p className="ui-text-format-sample typo-meta">Meta: metadata secondaire et contexte.</p>
+            <p className="ui-text-format-sample typo-label">Label: Termine</p>
+            <p className="ui-text-format-sample typo-caption">Caption: 18 DEC 2022 · LUSAIL</p>
+            <p className="ui-text-format-sample mono">token_id: {focusEvent?.id || "N/A"}</p>
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>Do / Don&apos;t</h3>
+            <ul className="ui-typo-guidelines">
+              <li><strong>Do:</strong> utiliser `.typo-*` et les variables `--typo-*`.</li>
+              <li><strong>Do:</strong> reutiliser `body/meta/label/caption` avant de creer un style local.</li>
+              <li><strong>Don&apos;t:</strong> fixer des `font-size` arbitraires dans les composants.</li>
+              <li><strong>Don&apos;t:</strong> ajouter de nouvelles variantes typo sans token central.</li>
+            </ul>
+            <pre className="ui-component-code"><code>{'.typo-display · .typo-h1 · .typo-h2 · .typo-body · .typo-body-strong · .typo-meta · .typo-label · .typo-caption'}</code></pre>
           </article>
 
           <article className="ui-sample-card">
@@ -685,7 +835,21 @@ function UISamplesPage() {
                   <span className="ui-event-description-line-name">{focusEvent.title}</span>
                 </p>
                 <p className="ui-event-description-line ui-event-description-line-meta">
-                  {focusEvent.league} <span className="ui-event-description-sep">·</span> {focusEvent.date} <span className="ui-event-description-sep">·</span> {focusEvent.location}
+                  {focusLeague ? (
+                    <Link className="ui-event-description-inline-link" to={`/league/${focusLeague.id}`}>
+                      {focusLeague.title}
+                    </Link>
+                  ) : focusEvent.league}
+                  {focusTeams.length ? <span className="ui-event-description-sep">·</span> : null}
+                  {focusTeams.map((team, index) => (
+                    <span key={team.id}>
+                      {index > 0 ? <span className="ui-event-description-sep">vs</span> : null}
+                      <Link className="ui-event-description-inline-link" to={`/team/${team.id}`}>
+                        {team.name}
+                      </Link>
+                    </span>
+                  ))}
+                  <span className="ui-event-description-sep">·</span> {focusEvent.date} <span className="ui-event-description-sep">·</span> {focusEvent.location}
                 </p>
                 {focusEvent.result ? (
                   <p className="ui-event-description-line">
@@ -780,7 +944,7 @@ function UISamplesPage() {
         <div className="section-head">
           <div>
             <h2>Cards</h2>
-            <p className="muted">Event cards, list cards et timeline mini calendar.</p>
+            <p className="muted">Event cards, object cards, list cards et timeline mini calendar.</p>
           </div>
         </div>
 
@@ -796,8 +960,45 @@ function UISamplesPage() {
           ))}
         </div>
         <pre className="ui-component-code">
-          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} />"}</code>
+          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} size='medium' showComment={boolean} />"}</code>
         </pre>
+
+        {focusEvent ? (
+          <article className="ui-sample-card ui-event-size-preview">
+            <h3>EventCard sizes (contenu identique)</h3>
+            <div className="ui-event-size-grid">
+              {EVENT_CARD_SIZE_PRESETS.map((sizePreset) => (
+                <div key={sizePreset} className="ui-event-size-cell">
+                  <p className="muted ui-event-size-label">{sizePreset}</p>
+                  <EventCard
+                    event={focusEvent}
+                    size={sizePreset}
+                    showComment={false}
+                    isInWatchlist={sampleWatchlistIds.includes(focusEvent.id)}
+                    onToggleWatchlist={handleToggleWatchlist}
+                  />
+                </div>
+              ))}
+            </div>
+          </article>
+        ) : null}
+
+        {(focusAthlete || focusTeam || focusLeagueCard || focusLeagueSeasonCard || focusUser || focusList) ? (
+          <article className="ui-sample-card">
+            <h3>Object cards unifiees</h3>
+            <div className="ui-cards-grid">
+              {focusAthlete ? <PlayerCard athlete={focusAthlete} size="small" /> : null}
+              {focusTeam ? <TeamCard team={focusTeam} size="small" /> : null}
+              {focusLeagueCard ? <LeagueCard league={focusLeagueCard} size="small" /> : null}
+              {focusLeagueSeasonCard ? <LeagueSeasonCard season={focusLeagueSeasonCard} size="small" /> : null}
+              {focusUser ? <UserCard user={focusUser} size="small" /> : null}
+              {focusList ? <RankingCard list={focusList} /> : null}
+            </div>
+            <pre className="ui-component-code">
+              <code>{"<PlayerCard athlete={athlete} /> · <TeamCard team={team} /> · <LeagueCard league={league} /> · <LeagueSeasonCard season={season} /> · <UserCard user={user} /> · <RankingCard list={list} />"}</code>
+            </pre>
+          </article>
+        ) : null}
 
         <div className="list-grid">
           {allLists.slice(0, 4).map((list) => (
@@ -920,7 +1121,7 @@ function UISamplesPage() {
           </article>
         )}
         <pre className="ui-component-code">
-          <code>{"<CommentCard comment={comment} onToggleLike={fn} onCreateReply={fn} onToggleReplyLike={fn} onUpdateComment={fn} onDeleteComment={fn} onUpdateReply={fn} onDeleteReply={fn} />"}</code>
+          <code>{"<CommentCard comment={comment} showEventLink={boolean} onToggleLike={fn} onCreateReply={fn} onToggleReplyLike={fn} onUpdateComment={fn} onDeleteComment={fn} onUpdateReply={fn} onDeleteReply={fn} />"}</code>
         </pre>
 
         <article className="ui-sample-card">
@@ -957,7 +1158,7 @@ function UISamplesPage() {
             targetType={activeSocialTarget.type}
             targetId={activeSocialTarget.targetId}
             title={`Panel social · ${activeSocialTarget.type}`}
-            subtitle="Surface de test complete pour interactions sociales"
+            subtitle={`Surface de test complete pour interactions sociales${activeSocialTargetCanReview ? " · Critique active" : " · Critique indisponible"}`}
             showFollow={activeSocialTarget.type !== "event"}
             followTargetType={activeSocialTarget.type !== "event" ? activeSocialTarget.type : ""}
             followBaseCount={120}

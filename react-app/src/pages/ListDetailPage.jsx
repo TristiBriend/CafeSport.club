@@ -1,9 +1,17 @@
 import { Link, useParams } from "react-router-dom";
-import ObjectSocialPanel from "../components/ObjectSocialPanel";
-import ScoreBadge from "../components/ScoreBadge";
-import { getListById, getUserById, resolveListEntries } from "../services/catalogService";
+import CommentCard from "../components/CommentCard";
+import EventCard from "../components/EventCard";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
+import PlayerCard from "../components/PlayerCard";
+import RankingCard from "../components/RankingCard";
+import { getListById, resolveListEntries } from "../services/catalogService";
+import { COMMENT_TARGET, getCommentsForTarget } from "../services/commentsService";
+import {
+  getExpectedEventsForObject,
+  getTopRatedEventsForObject,
+} from "../services/objectEventSectionsService";
 
-function ListDetailPage() {
+function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { listId } = useParams();
   const list = getListById(listId);
 
@@ -18,70 +26,149 @@ function ListDetailPage() {
     );
   }
 
-  const owner = getUserById(list.ownerId);
-  const entries = resolveListEntries(list);
+  const listEntries = resolveListEntries(list);
+  const expectedEvents = getExpectedEventsForObject("list", list.id, 6);
+  const topRatedEvents = getTopRatedEventsForObject("list", list.id, 6);
 
   return (
-    <section>
-      <Link className="back-link" to="/lists">
-        {"<- Retour lists"}
-      </Link>
+    <section className="object-detail-page">
+      <div className="object-detail-top-left">
+        <RankingCard list={list} />
+      </div>
 
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{list.sport || "Sport"}</span>
-          <span className="event-status">{entries.length} items</span>
+      <section className="related-section list-ranking-table-section">
+        <div className="group-title">
+          <h2>Classement</h2>
+          <span>{listEntries.length}</span>
         </div>
-        <h1>{list.title}</h1>
-        <p className="event-detail-subtitle">{list.description || "Sans description"}</p>
-        <p className="event-meta">Auteur: {owner ? owner.name : "Inconnu"}</p>
-      </article>
-
-      <ObjectSocialPanel
-        targetType="list"
-        targetId={list.id}
-        title="Feed list"
-        subtitle="Commentaires sur ce classement et ses entrees"
-        followTargetType="list"
-        followBaseCount={Number(list.likes || 0)}
-        followLabel="likes"
-        composerPlaceholder="Ton avis sur cette list..."
-      />
+        {listEntries.length ? (
+          <div className="list-ranking-table-wrap">
+            <table className="list-ranking-table">
+              <thead>
+                <tr>
+                  <th scope="col">Position</th>
+                  <th scope="col">Card</th>
+                  <th scope="col">Commentaire</th>
+                </tr>
+              </thead>
+              <tbody>
+                {listEntries.map((entry, index) => {
+                  const note = String(entry?.note || "").trim();
+                  const isEvent = entry?.type === "event" && entry?.event?.id;
+                  const isAthlete = entry?.type === "athlete" && entry?.athlete?.id;
+                  const bestComment = isEvent
+                    ? getCommentsForTarget(COMMENT_TARGET.EVENT, entry.event.id)[0]
+                    : isAthlete
+                      ? getCommentsForTarget(COMMENT_TARGET.ATHLETE, entry.athlete.id)[0]
+                      : null;
+                  return (
+                    <tr key={entry.id}>
+                      <td className="list-ranking-position-cell">{index + 1}</td>
+                      <td className="list-ranking-card-cell">
+                        {isEvent ? (
+                          <EventCard
+                            event={entry.event}
+                            isInWatchlist={watchlistIds.includes(entry.event.id)}
+                            onToggleWatchlist={onToggleWatchlist}
+                            size="miniature"
+                            showComment={false}
+                            showTags={false}
+                          />
+                        ) : null}
+                        {isAthlete ? (
+                          <PlayerCard
+                            athlete={entry.athlete}
+                            size="miniature"
+                            showTags={false}
+                            showMenu={false}
+                          />
+                        ) : null}
+                        {!isEvent && !isAthlete ? (
+                          <article className="list-ranking-unknown-card">
+                            <p className="typo-body-strong">Element inconnu</p>
+                            <p className="event-meta">Entree non resolvable</p>
+                          </article>
+                        ) : null}
+                      </td>
+                      <td className="list-ranking-comment-cell">
+                        {bestComment ? (
+                          <CommentCard
+                            comment={bestComment}
+                            showEventLink={false}
+                          />
+                        ) : (
+                          <p className="event-meta">{note || "Aucun commentaire"}</p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun element dans ce classement.</p>
+          </article>
+        )}
+      </section>
 
       <section className="related-section">
-        <div className="entity-grid">
-          {entries.map((entry) => (
-            <article key={entry.id} className="entity-card">
-              {entry.type === "event" && entry.event ? (
-                <>
-                  <h3>
-                    <Link to={`/event/${entry.event.id}`}>{entry.event.title}</Link>
-                  </h3>
-                  <p className="event-meta">{entry.event.league}</p>
-                </>
-              ) : null}
-              {entry.type === "athlete" && entry.athlete ? (
-                <>
-                  <h3>
-                    <Link to={`/athlete/${entry.athlete.id}`}>{entry.athlete.name}</Link>
-                  </h3>
-                  <p className="event-meta">{entry.athlete.sport}</p>
-                </>
-              ) : null}
-              {entry.type === "unknown" ? <h3>Entree</h3> : null}
-              {entry.score ? (
-                <p className="event-meta">
-                  <span className="score-inline">
-                    <span className="score-inline-label">Score</span>
-                    <ScoreBadge variant="community-chip" value={entry.score} scale="percent" />
-                  </span>
-                </p>
-              ) : null}
-              {entry.note ? <p className="event-meta">{entry.note}</p> : null}
-            </article>
-          ))}
+        <div className="group-title">
+          <h2>Evenements les plus attendus</h2>
+          <span>{expectedEvents.length}</span>
         </div>
+        {expectedEvents.length ? (
+          <div className="event-grid">
+            {expectedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement a venir dans cette list.</p>
+          </article>
+        )}
       </section>
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Evenements les mieux notes</h2>
+          <span>{topRatedEvents.length}</span>
+        </div>
+        {topRatedEvents.length ? (
+          <div className="event-grid">
+            {topRatedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement note dans cette list.</p>
+          </article>
+        )}
+      </section>
+
+      <ObjectFeedScopePanel
+        targetType="list"
+        targetId={list.id}
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Feed relie a la card"
+        subtitle="Flux list complet: commentaires, events et objets lies."
+      />
     </section>
   );
 }

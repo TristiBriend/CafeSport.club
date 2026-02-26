@@ -2,6 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 
 const FOOTER_LINKS = [
   { to: "/discover", label: "Decouvrir" },
+  { to: "/profile", label: "Mon profil" },
   { to: "/feed", label: "Mon Feed" },
   { to: "/calendar", label: "Calendar" },
   { to: "/watchlist", label: "Watchlist" },

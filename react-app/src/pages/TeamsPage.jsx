@@ -1,11 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  getAthletesForTeam,
-  getEventsForTeam,
-  getTeamSports,
-  getTeams,
-} from "../services/catalogService";
+import TeamCard from "../components/TeamCard";
+import { getTeamSports, getTeams } from "../services/catalogService";
 
 function TeamsPage() {
   const [sportFilter, setSportFilter] = useState("Tous");
@@ -52,16 +47,7 @@ function TeamsPage() {
 
       <div className="entity-grid">
         {teams.map((team) => (
-          <article key={team.id} className="entity-card">
-            <h3>
-              <Link to={`/team/${team.id}`}>{team.name}</Link>
-            </h3>
-            <p className="event-meta">{team.sport}</p>
-            <p className="event-meta">{team.city || "N/A"}</p>
-            <p className="event-meta">
-              {getAthletesForTeam(team.id).length} athletes · {getEventsForTeam(team.id).length} events
-            </p>
-          </article>
+          <TeamCard key={team.id} team={team} size="small" showTags={false} />
         ))}
       </div>
     </section>

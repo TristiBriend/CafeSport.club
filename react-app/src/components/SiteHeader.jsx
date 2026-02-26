@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { searchGlobal } from "../services/globalSearchService";
+import { getSports } from "../services/eventsService";
 
 const EXPLORE_NAV = [
   { to: "/athletes", label: "Athletes" },
@@ -15,6 +16,16 @@ const ADMIN_NAV = [
   { to: "/uisamples", label: "UISamples" },
 ];
 
+function toSportSlug(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function getSearchPlaceholder(pathname) {
   if (pathname.startsWith("/event/")) return "Rechercher un autre evenement...";
   if (pathname.startsWith("/league/")) return "Rechercher une ligue, un event ou un athlete...";
@@ -27,16 +38,35 @@ function SiteHeader({ watchlistCount = 0 }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const headerSearchRef = useRef(null);
+  const sportsMenuRef = useRef(null);
+  const adminMenuRef = useRef(null);
+  const userMenuRef = useRef(null);
   const inputRef = useRef(null);
+  const sports = useMemo(() => getSports(), []);
+  const isSportsActive = location.pathname.startsWith("/sports/");
 
   const results = useMemo(
     () => searchGlobal(query, { limit: 20 }),
     [query],
   );
 
+  function closeHeaderMenus({ except = null } = {}) {
+    [sportsMenuRef.current, adminMenuRef.current, userMenuRef.current].forEach((menu) => {
+      if (!menu || menu === except) return;
+      menu.open = false;
+    });
+  }
+
+  function handleMenuDropdownClick(event) {
+    if (!(event.target instanceof Element)) return;
+    if (!event.target.closest("a")) return;
+    closeHeaderMenus();
+  }
+
   useEffect(() => {
     setIsOpen(false);
     setQuery("");
+    closeHeaderMenus();
   }, [location.pathname]);
 
   useEffect(() => {
@@ -44,6 +74,11 @@ function SiteHeader({ watchlistCount = 0 }) {
       if (!headerSearchRef.current) return;
       if (!headerSearchRef.current.contains(event.target)) {
         setIsOpen(false);
+      }
+      const clickedInsideMenu = [sportsMenuRef.current, adminMenuRef.current, userMenuRef.current]
+        .some((menu) => menu?.contains(event.target));
+      if (!clickedInsideMenu) {
+        closeHeaderMenus();
       }
     }
 
@@ -60,6 +95,7 @@ function SiteHeader({ watchlistCount = 0 }) {
       }
       if (event.key === "Escape") {
         setIsOpen(false);
+        closeHeaderMenus();
       }
     }
 
@@ -73,10 +109,10 @@ function SiteHeader({ watchlistCount = 0 }) {
 
   return (
     <header className="site-header">
-      <div className="header-main gum-header-main">
-        <div className="brand brand-gum">
+      <div className="header-main tristi-header-main">
+        <div className="brand brand-tristi">
           <Link className="brand-link" to="/">
-            <img src="/images/Name.svg" alt="Logo Sofa Critics" />
+            <img src="/images/logo.svg" alt="Logo Sofa Critics" />
           </Link>
         </div>
 
@@ -135,15 +171,44 @@ function SiteHeader({ watchlistCount = 0 }) {
           </div>
         </div>
 
-        <nav className="nav nav-gum">
-          <a className={location.pathname === "/" ? "nav-pill-link" : ""} href="/#home">Decouvrir</a>
+        <nav className="nav nav-tristi">
           <NavLink to="/feed">Mon Feed</NavLink>
-          <a href="/#events">Evenements</a>
-          <NavLink to="/watchlist">Watchlist ({watchlistCount})</NavLink>
+          <NavLink to="/watchlist">Ma Watchlist ({watchlistCount})</NavLink>
+          <a className={location.pathname === "/" ? "nav-pill-link" : ""} href="/#home">Decouvrir</a>
+          <details
+            ref={sportsMenuRef}
+            className="nav-dropdown nav-sports-menu"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return;
+              closeHeaderMenus({ except: event.currentTarget });
+            }}
+          >
+            <summary className={`nav-dropdown-toggle ${isSportsActive ? "is-active" : ""}`.trim()}>
+              Sports
+            </summary>
+            <div className="nav-dropdown-menu" role="menu" aria-label="Liste des sports" onClick={handleMenuDropdownClick}>
+              {sports.map((sport) => (
+                <NavLink
+                  key={sport}
+                  role="menuitem"
+                  to={`/sports/${toSportSlug(sport)}`}
+                >
+                  {sport}
+                </NavLink>
+              ))}
+            </div>
+          </details>
         </nav>
 
         <div className="header-actions">
-          <details className="header-user-menu">
+          <details
+            ref={adminMenuRef}
+            className="header-user-menu"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return;
+              closeHeaderMenus({ except: event.currentTarget });
+            }}
+          >
             <summary className="ghost-header user-menu-toggle" aria-label="Ouvrir le menu admin">
               <span className="user-menu-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -154,7 +219,7 @@ function SiteHeader({ watchlistCount = 0 }) {
                 </svg>
               </span>
             </summary>
-            <div className="user-menu-dropdown" role="menu" aria-label="Menu admin">
+            <div className="user-menu-dropdown" role="menu" aria-label="Menu admin" onClick={handleMenuDropdownClick}>
               {ADMIN_NAV.map((item) => (
                 <NavLink key={item.to} role="menuitem" to={item.to}>
                   {item.label}
@@ -163,7 +228,14 @@ function SiteHeader({ watchlistCount = 0 }) {
             </div>
           </details>
 
-          <details className="header-user-menu">
+          <details
+            ref={userMenuRef}
+            className="header-user-menu"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return;
+              closeHeaderMenus({ except: event.currentTarget });
+            }}
+          >
             <summary className="ghost-header user-menu-toggle" aria-label="Ouvrir le menu utilisateur">
               <span className="user-menu-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -172,8 +244,8 @@ function SiteHeader({ watchlistCount = 0 }) {
                 </svg>
               </span>
             </summary>
-            <div className="user-menu-dropdown" role="menu" aria-label="Menu utilisateur">
-              <NavLink role="menuitem" to="/users">Profil</NavLink>
+            <div className="user-menu-dropdown" role="menu" aria-label="Menu utilisateur" onClick={handleMenuDropdownClick}>
+              <NavLink role="menuitem" to="/profile">Mon profil</NavLink>
               <NavLink role="menuitem" to="/tierlist">Tierlist</NavLink>
               {EXPLORE_NAV.map((item) => (
                 <NavLink key={item.to} role="menuitem" to={item.to}>

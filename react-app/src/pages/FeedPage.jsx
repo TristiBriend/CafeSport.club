@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import LeagueCard from "../components/LeagueCard";
+import LeagueSeasonCard from "../components/LeagueSeasonCard";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
+import PlayerCard from "../components/PlayerCard";
 import RankingCard from "../components/RankingCard";
+import TeamCard from "../components/TeamCard";
+import UserCard from "../components/UserCard";
 import {
   getAllActivities,
   getAthleteById,
@@ -300,6 +306,8 @@ function buildFollowedTargetPreview(entry, allComments) {
       .reduce((max, comment) => Math.max(max, toTimestamp(comment.createdAt)), 0);
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: user.name,
       subtitle: `${user.handle} · ${getTargetFollowerCount(FOLLOW_TARGET.USER, user.id, Number(user.followers || 0)).toLocaleString("fr-FR")} followers`,
       path: `/user/${user.id}`,
@@ -314,6 +322,8 @@ function buildFollowedTargetPreview(entry, allComments) {
     const events = getEventsForAthlete(athlete.id);
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: athlete.name,
       subtitle: `${athlete.sport} · ${events.length} events`,
       path: `/athlete/${athlete.id}`,
@@ -328,6 +338,8 @@ function buildFollowedTargetPreview(entry, allComments) {
     const events = getEventsForTeam(team.id);
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: team.nameFull || team.name,
       subtitle: `${team.sport} · ${events.length} events`,
       path: `/team/${team.id}`,
@@ -341,6 +353,8 @@ function buildFollowedTargetPreview(entry, allComments) {
     if (!league) return null;
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: league.title,
       subtitle: `${league.sport} · ${league.count} events`,
       path: `/league/${league.id}`,
@@ -354,6 +368,8 @@ function buildFollowedTargetPreview(entry, allComments) {
     if (!season) return null;
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: season.title,
       subtitle: `${season.count} events · ${season.dateRangeLabel}`,
       path: `/league-season/${season.id}`,
@@ -367,6 +383,8 @@ function buildFollowedTargetPreview(entry, allComments) {
     if (!list) return null;
     return {
       id: `${targetType}-${targetId}`,
+      targetType,
+      targetId,
       title: list.title,
       subtitle: `${list.sport} · ${Number(list.likes || 0).toLocaleString("fr-FR")} likes`,
       path: `/list/${list.id}`,
@@ -397,6 +415,40 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const [optionalTabs, setOptionalTabs] = useState(() => loadOptionalFeedTabs());
   const [, setCommentsVersion] = useState(0);
   const request = normalizeFeedRequest(searchParams);
+
+  if (request.scope === FEED_SCOPE.OBJECT) {
+    const objectMeta = resolveObjectMeta(request.targetType, request.targetId);
+    const title = objectMeta?.title || "Feed objet";
+    const subtitle = `${objectMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`;
+    return (
+      <section className="feed-page is-editorial">
+        <div className="discover-head">
+          <h1 className="typo-h1">{title}</h1>
+          <p className="lede typo-body">{subtitle}</p>
+        </div>
+        <ObjectFeedScopePanel
+          targetType={request.targetType}
+          targetId={request.targetId}
+          watchlistIds={watchlistIds}
+          onToggleWatchlist={onToggleWatchlist}
+          title={title}
+          subtitle={subtitle}
+          mode={request.mode}
+          onModeChange={(nextMode) => {
+            navigate(
+              buildFeedLink({
+                scope: FEED_SCOPE.OBJECT,
+                mode: nextMode,
+                targetType: request.targetType,
+                targetId: request.targetId,
+              }),
+            );
+          }}
+        />
+      </section>
+    );
+  }
+
   const allComments = getAllComments();
 
   const watchlistSet = new Set(watchlistIds);
@@ -425,7 +477,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       return rightScore - leftScore;
     });
 
-  const isObjectScope = request.scope === FEED_SCOPE.OBJECT;
+  const isObjectScope = false;
 
   const currentOptionalTabId = isObjectScope
     ? buildOptionalFeedTabId(request.targetType, request.targetId)
@@ -577,6 +629,8 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       path: target.path,
       timestamp: Number(target.timestamp || 0),
       popularity: Number(target.popularity || 0),
+      targetType: String(target.targetType || "").trim(),
+      targetId: String(target.targetId || "").trim(),
     })),
   ]
     .sort((a, b) => {
@@ -732,36 +786,79 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <article className="comment-card">
         <header className="comment-head">
           <div>
-            <strong>{reply.author || "Utilisateur"}</strong>
-            <p className="comment-meta">Reponse likee</p>
+            <strong className="typo-body-strong">{reply.author || "Utilisateur"}</strong>
+            <p className="comment-meta typo-meta">Reponse likee</p>
           </div>
         </header>
-        <p className="comment-note">{reply.note}</p>
-        <p className="event-meta">{reply.totalLikes || 0} likes</p>
-        <p className="reply-date">{getCommentDateLabel(reply)}</p>
-        {eventId ? <Link to={`/event/${eventId}`}>Voir evenement</Link> : null}
+        <p className="comment-note typo-body-strong">{reply.note}</p>
+        <p className="event-meta typo-meta">{reply.totalLikes || 0} likes</p>
+        <p className="reply-date typo-meta">{getCommentDateLabel(reply)}</p>
+        {eventId ? <Link className="typo-meta" to={`/event/${eventId}`}>Voir evenement</Link> : null}
       </article>
     );
   }
 
   function renderCardEntry(entry) {
+    function renderObjectTargetCard(targetType, targetId) {
+      const safeType = String(targetType || "").trim();
+      const safeId = String(targetId || "").trim();
+      if (!safeType || !safeId) return null;
+
+      if (safeType === COMMENT_TARGET.USER || safeType === FOLLOW_TARGET.USER) {
+        const user = getUserById(safeId);
+        return user ? <UserCard user={user} size="small" showTags={false} /> : null;
+      }
+      if (safeType === COMMENT_TARGET.ATHLETE || safeType === FOLLOW_TARGET.ATHLETE) {
+        const athlete = getAthleteById(safeId);
+        return athlete ? <PlayerCard athlete={athlete} size="small" showTags={false} /> : null;
+      }
+      if (safeType === COMMENT_TARGET.TEAM || safeType === FOLLOW_TARGET.TEAM) {
+        const team = getTeamById(safeId);
+        return team ? <TeamCard team={team} size="small" showTags={false} /> : null;
+      }
+      if (safeType === COMMENT_TARGET.LEAGUE || safeType === FOLLOW_TARGET.LEAGUE) {
+        const league = getLeagueById(safeId);
+        return league ? <LeagueCard league={league} size="small" showTags={false} /> : null;
+      }
+      if (safeType === COMMENT_TARGET.LEAGUE_SEASON || safeType === FOLLOW_TARGET.LEAGUE_SEASON) {
+        const season = getLeagueSeasonById(safeId);
+        return season ? <LeagueSeasonCard season={season} size="small" showTags={false} /> : null;
+      }
+      if (safeType === COMMENT_TARGET.LIST || safeType === FOLLOW_TARGET.LIST) {
+        const list = getListById(safeId);
+        return list ? <RankingCard list={list} maxPreview={4} className="is-feed-uniform" /> : null;
+      }
+      return null;
+    }
+
     if (entry.subtype === "event") {
       return (
         <EventCard
           event={entry.payload?.event}
           isInWatchlist={watchlistSet.has(entry.payload?.event?.id)}
           onToggleWatchlist={onToggleWatchlist}
+          size="small"
+          showComment={false}
         />
       );
     }
     if (entry.subtype === "ranking") {
+      const extraClass = entry.payload?.className ? `${entry.payload.className} is-feed-uniform` : "is-feed-uniform";
       return (
         <RankingCard
           list={entry.payload?.list}
-          className={entry.payload?.className || ""}
+          className={extraClass}
+          maxPreview={4}
         />
       );
     }
+    if (entry.subtype === "profile" && entry.payload?.user) {
+      return <UserCard user={entry.payload.user} size="small" showTags={false} />;
+    }
+
+    const targetCard = renderObjectTargetCard(entry.payload?.targetType, entry.payload?.targetId);
+    if (targetCard) return targetCard;
+
     return renderEntityCard(entry);
   }
 
@@ -803,8 +900,8 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   return (
     <section className="feed-page is-editorial">
       <div className="discover-head">
-        <h1>{title}</h1>
-        <p className="lede">{subtitle}</p>
+        <h1 className="typo-h1">{title}</h1>
+        <p className="lede typo-body">{subtitle}</p>
       </div>
 
       <section className="related-section">
@@ -838,16 +935,13 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
               >
                 {isCurrentObjectPinned ? "Retirer de mes feeds" : "Ajouter a mes feeds"}
               </button>
-              <Link className="filter-btn" to={buildFeedLink({ scope: FEED_SCOPE.MY, mode: FEED_MODE.FOR_YOU })}>
-                Retour mon feed
-              </Link>
             </>
           ) : null}
         </div>
 
         {optionalTabs.length ? (
           <div className="feed-optional-row-react">
-            <span className="event-meta">Complements:</span>
+            <span className="event-meta typo-meta">Complements:</span>
             {optionalTabs.map((tab) => {
               const isActive = isObjectScope && tab.id === currentOptionalTabId;
               return (

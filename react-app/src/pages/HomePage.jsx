@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
 import RankingCard from "../components/RankingCard";
 import ScoreBadge from "../components/ScoreBadge";
-import { COMMENT_MODE, getAllComments, getCommentDateLabel } from "../services/commentsService";
+import {
+  COMMENT_MODE,
+  createCommentReply,
+  getAllComments,
+  getCommentDateLabel,
+  toggleCommentLike,
+} from "../services/commentsService";
 import { getCuratedLists } from "../services/catalogService";
 import { getAllEvents, getWatchlistEvents } from "../services/eventsService";
 import { getFavoriteSportsByRatings, isUpcomingEvent } from "../services/ratingsService";
@@ -37,9 +44,10 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
   const [heroIndex, setHeroIndex] = useState(0);
   const [bestOfDays, setBestOfDays] = useState(7);
   const [bestOfSport, setBestOfSport] = useState("Tous");
+  const [commentVersion, setCommentVersion] = useState(0);
 
   const allEvents = useMemo(() => getAllEvents(), []);
-  const allComments = useMemo(() => getAllComments(), []);
+  const allComments = useMemo(() => getAllComments(), [commentVersion]);
   const allLists = useMemo(() => getCuratedLists(), []);
   const sports = useMemo(
     () => Array.from(new Set(allEvents.map((event) => event.sport))).sort((a, b) => a.localeCompare(b)),
@@ -156,6 +164,22 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       .sort((a, b) => Number(b.likes || 0) - Number(a.likes || 0))
       .slice(0, 6)
   ), [allLists]);
+
+  function refreshComments() {
+    setCommentVersion((value) => value + 1);
+  }
+
+  function handleToggleTopReviewLike(comment) {
+    toggleCommentLike(comment);
+    refreshComments();
+  }
+
+  function handleCreateTopReviewReply(comment, note) {
+    const created = createCommentReply(comment?.id, { note, author: "Vous" });
+    if (!created) return null;
+    refreshComments();
+    return created;
+  }
 
   return (
     <>
@@ -290,15 +314,14 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
               <h3>Meilleures critiques</h3>
               <span>{topReviews.length}</span>
             </div>
-            <div className="entity-grid">
+            <div className="entity-grid home-inline-scroll-row">
               {topReviews.map((comment) => (
-                <article key={comment.id} className="entity-card">
-                  <h3>
-                    <Link to={`/event/${comment.eventId}`}>{comment.author}</Link>
-                  </h3>
-                  <p className="event-meta">{comment.note}</p>
-                  <p className="event-meta">{comment.totalLikes || 0} likes</p>
-                </article>
+                <CommentCard
+                  key={comment.id}
+                  comment={comment}
+                  onToggleLike={handleToggleTopReviewLike}
+                  onCreateReply={handleCreateTopReviewReply}
+                />
               ))}
             </div>
           </div>
@@ -307,7 +330,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
               <h3>Meilleurs classements</h3>
               <span>{topLists.length}</span>
             </div>
-            <div className="list-grid">
+            <div className="list-grid home-inline-scroll-row">
               {topLists.map((list) => (
                 <RankingCard key={list.id} list={list} />
               ))}

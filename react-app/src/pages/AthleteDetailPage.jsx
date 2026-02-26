@@ -1,11 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
-import ObjectSocialPanel from "../components/ObjectSocialPanel";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
+import PlayerCard from "../components/PlayerCard";
 import {
   getAthleteById,
-  getEventsForAthlete,
-  getTeamForAthlete,
 } from "../services/catalogService";
+import {
+  getExpectedEventsForObject,
+  getTopRatedEventsForObject,
+} from "../services/objectEventSectionsService";
 
 function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { athleteId } = useParams();
@@ -22,57 +25,71 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
     );
   }
 
-  const team = getTeamForAthlete(athlete);
-  const events = getEventsForAthlete(athlete.id);
+  const expectedEvents = getExpectedEventsForObject("athlete", athlete.id, 6);
+  const topRatedEvents = getTopRatedEventsForObject("athlete", athlete.id, 6);
 
   return (
-    <section>
-      <Link className="back-link" to="/athletes">
-        {"<- Retour athletes"}
-      </Link>
-
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{athlete.sport || "Sport"}</span>
-          <span className="event-status">{athlete.country || "N/A"}</span>
-        </div>
-        <h1>{athlete.name}</h1>
-        <p className="event-detail-subtitle">{athlete.role || "Athlete"}</p>
-        <p className="event-meta">{athlete.bio || "Bio non renseignee."}</p>
-        {team ? (
-          <p className="event-meta">
-            Team: <Link to={`/team/${team.id}`}>{team.name}</Link>
-          </p>
-        ) : null}
-      </article>
-
-      <ObjectSocialPanel
-        targetType="athlete"
-        targetId={athlete.id}
-        title="Feed athlete"
-        subtitle="Commentaires et critiques sur cet athlete"
-        followTargetType="athlete"
-        followBaseCount={(events.length * 40) + (team ? 120 : 80)}
-        followLabel="abonnes"
-        composerPlaceholder="Ton avis sur cet athlete..."
-      />
+    <section className="object-detail-page">
+      <div className="object-detail-top-left">
+        <PlayerCard athlete={athlete} variant="detail" size="large" />
+      </div>
 
       <section className="related-section">
         <div className="group-title">
-          <h2>Evenements associes</h2>
-          <span>{events.length}</span>
+          <h2>Evenements les plus attendus</h2>
+          <span>{expectedEvents.length}</span>
         </div>
-        <div className="event-grid">
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              isInWatchlist={watchlistIds.includes(event.id)}
-              onToggleWatchlist={onToggleWatchlist}
-            />
-          ))}
-        </div>
+        {expectedEvents.length ? (
+          <div className="event-grid">
+            {expectedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement a venir pour ce player.</p>
+          </article>
+        )}
       </section>
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Evenements les mieux notes</h2>
+          <span>{topRatedEvents.length}</span>
+        </div>
+        {topRatedEvents.length ? (
+          <div className="event-grid">
+            {topRatedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement note pour ce player.</p>
+          </article>
+        )}
+      </section>
+
+      <ObjectFeedScopePanel
+        targetType="athlete"
+        targetId={athlete.id}
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Feed relie a la card"
+        subtitle="Flux athlete complet: commentaires, events et objets lies."
+      />
     </section>
   );
 }

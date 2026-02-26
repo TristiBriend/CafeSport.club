@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
-import ObjectSocialPanel from "../components/ObjectSocialPanel";
-import ScoreBadge from "../components/ScoreBadge";
+import LeagueSeasonCard from "../components/LeagueSeasonCard";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById, getLeagueSeasonById } from "../services/leaguesService";
 
 function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
@@ -20,46 +20,12 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
   }
 
   const league = getLeagueById(season.leagueId);
-  const backPath = league ? `/league/${league.id}` : "/leagues";
 
   return (
-    <section>
-      <Link className="back-link" to={backPath}>
-        {"<- Retour league"}
-      </Link>
-
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{season.sport}</span>
-          <span className="event-status">{season.count} events</span>
-        </div>
-        <h1>{season.title}</h1>
-        <p className="event-detail-subtitle">{season.dateRangeLabel}</p>
-        <p className="event-meta">
-          Competition: {league ? <Link to={`/league/${league.id}`}>{league.title}</Link> : season.leagueTitle}
-        </p>
-
-        <div className="event-detail-grid">
-          <div>
-            <span className="detail-label">Saison</span>
-            <strong>{season.year || "N/A"}</strong>
-          </div>
-          <div>
-            <span className="detail-label">Moyenne</span>
-            <strong>
-              <ScoreBadge variant="community-chip" value={season.averageScore} scale="percent" />
-            </strong>
-          </div>
-          <div>
-            <span className="detail-label">A venir</span>
-            <strong>{season.upcomingCount}</strong>
-          </div>
-          <div>
-            <span className="detail-label">Termines</span>
-            <strong>{season.pastCount}</strong>
-          </div>
-        </div>
-      </article>
+    <section className="object-detail-page">
+      <div className="object-detail-top-left">
+        <LeagueSeasonCard season={season} variant="detail" size="large" />
+      </div>
 
       <section className="related-section">
         <div className="group-title">
@@ -78,15 +44,13 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
         </div>
       </section>
 
-      <ObjectSocialPanel
+      <ObjectFeedScopePanel
         targetType="league-season"
         targetId={season.id}
-        title="Feed saison"
-        subtitle="Commentaires sur cette saison et ses evenements"
-        followTargetType="league-season"
-        followBaseCount={Math.max(80, season.count * 18)}
-        followLabel="abonnes"
-        composerPlaceholder="Ton avis sur cette saison..."
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Feed relie a la card"
+        subtitle={`Flux saison complet${league ? ` · ${league.title}` : ""}.`}
       />
     </section>
   );

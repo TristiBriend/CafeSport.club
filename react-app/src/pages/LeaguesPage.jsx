@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import ScoreBadge from "../components/ScoreBadge";
+import LeagueCard from "../components/LeagueCard";
 import { getLeagueSports, getLeagues } from "../services/leaguesService";
 
 function LeaguesPage() {
@@ -48,19 +47,7 @@ function LeaguesPage() {
 
       <div className="entity-grid">
         {leagues.map((league) => (
-          <article key={league.id} className="entity-card">
-            <h3>
-              <Link to={`/league/${league.id}`}>{league.title}</Link>
-            </h3>
-            <p className="event-meta">{league.sport}</p>
-            <p className="event-meta">{league.count} events</p>
-            <p className="event-meta">
-              <span className="score-inline">
-                <span className="score-inline-label">Moyenne</span>
-                <ScoreBadge variant="community-chip" value={league.averageScore} scale="percent" />
-              </span>
-            </p>
-          </article>
+          <LeagueCard key={league.id} league={league} size="small" showTags={false} />
         ))}
       </div>
     </section>

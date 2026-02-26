@@ -81,6 +81,8 @@ function normalizeEvents() {
       ? timestamp < new Date(new Date().setHours(0, 0, 0, 0)).getTime()
       : false;
     const status = statusValue || (isPastByDate ? "Passe" : "A venir");
+    const isPastByStatus = String(status || "").trim().toLowerCase() === "passe";
+    const shouldKeepCommunityScore = Number.isFinite(timestamp) ? isPastByDate : isPastByStatus;
 
     return {
       ...event,
@@ -94,7 +96,7 @@ function normalizeEvents() {
       result,
       image,
       reviews,
-      communityScore: toScore100(event?.communityScore),
+      communityScore: shouldKeepCommunityScore ? toScore100(event?.communityScore) : null,
       competitionId,
       seasonKey,
       seasonId,

@@ -1,8 +1,12 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
-import ObjectSocialPanel from "../components/ObjectSocialPanel";
-import ScoreBadge from "../components/ScoreBadge";
+import LeagueCard from "../components/LeagueCard";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById } from "../services/leaguesService";
+import {
+  getExpectedEventsForObject,
+  getTopRatedEventsForObject,
+} from "../services/objectEventSectionsService";
 
 function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { leagueId } = useParams();
@@ -19,67 +23,71 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     );
   }
 
+  const expectedEvents = getExpectedEventsForObject("league", league.id, 6);
+  const topRatedEvents = getTopRatedEventsForObject("league", league.id, 6);
+
   return (
-    <section>
-      <Link className="back-link" to="/leagues">
-        {"<- Retour leagues"}
-      </Link>
-
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{league.sport}</span>
-          <span className="event-status">{league.count} events</span>
-        </div>
-        <h1>{league.title}</h1>
-        <p className="event-detail-subtitle">
-          <span className="score-inline">
-            <span className="score-inline-label">Score moyen</span>
-            <ScoreBadge variant="community-chip" value={league.averageScore} scale="percent" />
-          </span>
-        </p>
-
-        <div className="event-detail-grid">
-          {league.seasons.map((season) => (
-            <div key={season.id}>
-              <span className="detail-label">Saison {season.year || "N/A"}</span>
-              <strong>
-                <span className="score-inline">
-                  <Link to={`/league-season/${season.id}`}>{season.count} events</Link>
-                  <ScoreBadge variant="community-chip" value={season.averageScore} scale="percent" />
-                </span>
-              </strong>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <ObjectSocialPanel
-        targetType="league"
-        targetId={league.id}
-        title="Feed ligue"
-        subtitle="Commentaires de la ligue et de ses evenements"
-        followTargetType="league"
-        followBaseCount={Math.max(200, league.count * 30)}
-        followLabel="abonnes"
-        composerPlaceholder="Ton avis sur cette ligue..."
-      />
+    <section className="object-detail-page">
+      <div className="object-detail-top-left">
+        <LeagueCard league={league} variant="detail" size="large" />
+      </div>
 
       <section className="related-section">
         <div className="group-title">
-          <h2>Evenements de la ligue</h2>
-          <span>{league.events.length}</span>
+          <h2>Evenements les plus attendus</h2>
+          <span>{expectedEvents.length}</span>
         </div>
-        <div className="event-grid">
-          {league.events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              isInWatchlist={watchlistIds.includes(event.id)}
-              onToggleWatchlist={onToggleWatchlist}
-            />
-          ))}
-        </div>
+        {expectedEvents.length ? (
+          <div className="event-grid">
+            {expectedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement a venir pour cette ligue.</p>
+          </article>
+        )}
       </section>
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Evenements les mieux notes</h2>
+          <span>{topRatedEvents.length}</span>
+        </div>
+        {topRatedEvents.length ? (
+          <div className="event-grid">
+            {topRatedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement note pour cette ligue.</p>
+          </article>
+        )}
+      </section>
+
+      <ObjectFeedScopePanel
+        targetType="league"
+        targetId={league.id}
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Feed relie a la card"
+        subtitle="Flux ligue complet: commentaires, events et objets lies."
+      />
     </section>
   );
 }

@@ -167,6 +167,7 @@ function buildForYouEntries(mode, datasets) {
       timestamp,
       originType: "for-you-profile",
       payload: {
+        user,
         entity: createEntityPayload({
           title: user?.name || "Profil",
           subtitle: user?.handle || "",
@@ -273,6 +274,8 @@ function buildFavoritesEntries(mode, datasets) {
       timestamp,
       originType: "favorite-followed-target",
       payload: {
+        targetType: String(target?.targetType || "").trim(),
+        targetId: String(target?.targetId || "").trim(),
         entity: createEntityPayload({
           title: target?.title || "Objet",
           subtitle: target?.subtitle || "",
@@ -331,6 +334,8 @@ function buildActivityEntries(mode, datasets) {
       timestamp,
       originType: "activity-card",
       payload: {
+        targetType: String(item?.targetType || "").trim(),
+        targetId: String(item?.targetId || "").trim(),
         entity: createEntityPayload({
           title: item?.kind || "Activite",
           subtitle: item?.label || "",
@@ -442,6 +447,7 @@ function buildObjectEntries(mode, datasets) {
       timestamp,
       originType: "object-profile",
       payload: {
+        user,
         entity: createEntityPayload({
           title: user?.name || "Profil",
           subtitle: user?.handle || "",

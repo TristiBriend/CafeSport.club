@@ -170,7 +170,7 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <div className="discover-head">
         <h1>Watchlist</h1>
         <p className="lede">
-          Donnees importees du storage legacy. {watchlistEvents.length} evenement(s) suivi(s).
+          Donnees stockees localement. {watchlistEvents.length} evenement(s) suivi(s).
         </p>
       </div>
 

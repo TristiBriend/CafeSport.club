@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import DiscoverPage from "./pages/DiscoverPage";
+import SportDiscoverPage from "./pages/SportDiscoverPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import TierlistPage from "./pages/TierlistPage";
@@ -16,6 +17,7 @@ import ListsPage from "./pages/ListsPage";
 import ListDetailPage from "./pages/ListDetailPage";
 import UsersPage from "./pages/UsersPage";
 import UserDetailPage from "./pages/UserDetailPage";
+import ProfilePage from "./pages/ProfilePage";
 import CalendarPage from "./pages/CalendarPage";
 import FeedPage from "./pages/FeedPage";
 import JoinPage from "./pages/JoinPage";
@@ -23,7 +25,6 @@ import DataModelPage from "./pages/DataModelPage";
 import UISamplesPage from "./pages/UISamplesPage";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
-import LegacyRouteRedirect from "./components/LegacyRouteRedirect";
 import { readWatchlist, writeWatchlist } from "./services/watchlistStorage";
 
 function App() {
@@ -48,7 +49,7 @@ function App() {
       <div className="bg-grid" />
       <SiteHeader watchlistCount={watchlistIds.length} />
 
-      <main className="page-wrap legacy-main-wrap">
+      <main className="page-wrap app-main-wrap">
         <Routes>
           <Route
             path="/"
@@ -68,6 +69,15 @@ function App() {
                 onToggleWatchlist={handleToggleWatchlist}
               />
             }
+          />
+          <Route
+            path="/sports/:sportSlug"
+            element={(
+              <SportDiscoverPage
+                watchlistIds={watchlistIds}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+            )}
           />
           <Route
             path="/watchlist"
@@ -128,9 +138,34 @@ function App() {
             }
           />
           <Route path="/lists" element={<ListsPage />} />
-          <Route path="/list/:listId" element={<ListDetailPage />} />
+          <Route
+            path="/list/:listId"
+            element={
+              <ListDetailPage
+                watchlistIds={watchlistIds}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+            }
+          />
           <Route path="/users" element={<UsersPage />} />
-          <Route path="/user/:userId" element={<UserDetailPage />} />
+          <Route
+            path="/profile"
+            element={
+              <ProfilePage
+                watchlistIds={watchlistIds}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+            }
+          />
+          <Route
+            path="/user/:userId"
+            element={
+              <UserDetailPage
+                watchlistIds={watchlistIds}
+                onToggleWatchlist={handleToggleWatchlist}
+              />
+            }
+          />
           <Route
             path="/calendar"
             element={
@@ -152,24 +187,6 @@ function App() {
           <Route path="/join" element={<JoinPage />} />
           <Route path="/datamodel" element={<DataModelPage />} />
           <Route path="/uisamples" element={<UISamplesPage />} />
-          <Route path="/index.html" element={<Navigate replace to="/" />} />
-          <Route path="/calendar.html" element={<Navigate replace to="/calendar" />} />
-          <Route path="/feed.html" element={<LegacyRouteRedirect kind="feed" />} />
-          <Route
-            path="/feed-favorites.html"
-            element={<LegacyRouteRedirect kind="feed" forceMode="favorites" />}
-          />
-          <Route path="/join/index.html" element={<Navigate replace to="/join" />} />
-          <Route path="/athlete.html" element={<LegacyRouteRedirect kind="athlete" />} />
-          <Route path="/team.html" element={<LegacyRouteRedirect kind="team" />} />
-          <Route path="/league.html" element={<LegacyRouteRedirect kind="league" />} />
-          <Route path="/league-season.html" element={<LegacyRouteRedirect kind="league-season" />} />
-          <Route path="/list.html" element={<LegacyRouteRedirect kind="list" />} />
-          <Route path="/profile.html" element={<LegacyRouteRedirect kind="user" />} />
-          <Route path="/event.html" element={<LegacyRouteRedirect kind="event" />} />
-          <Route path="/datamodel.html" element={<Navigate replace to="/datamodel" />} />
-          <Route path="/uisamples.html" element={<Navigate replace to="/uisamples" />} />
-          <Route path="/matierlist.html" element={<Navigate replace to="/tierlist" />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </main>

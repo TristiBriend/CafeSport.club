@@ -1,11 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
-import ObjectSocialPanel from "../components/ObjectSocialPanel";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
+import TeamCard from "../components/TeamCard";
 import {
-  getAthletesForTeam,
-  getEventsForTeam,
   getTeamById,
 } from "../services/catalogService";
+import {
+  getExpectedEventsForObject,
+  getTopRatedEventsForObject,
+} from "../services/objectEventSectionsService";
 
 function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { teamId } = useParams();
@@ -22,68 +25,71 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     );
   }
 
-  const athletes = getAthletesForTeam(team.id);
-  const events = getEventsForTeam(team.id);
+  const expectedEvents = getExpectedEventsForObject("team", team.id, 6);
+  const topRatedEvents = getTopRatedEventsForObject("team", team.id, 6);
 
   return (
-    <section>
-      <Link className="back-link" to="/teams">
-        {"<- Retour teams"}
-      </Link>
+    <section className="object-detail-page">
+      <div className="object-detail-top-left">
+        <TeamCard team={team} variant="detail" size="large" />
+      </div>
 
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{team.sport}</span>
-          <span className="event-status">{team.city || "N/A"}</span>
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Evenements les plus attendus</h2>
+          <span>{expectedEvents.length}</span>
         </div>
-        <h1>{team.nameFull || team.name}</h1>
-        <p className="event-detail-subtitle">{team.nameMini || team.name}</p>
-      </article>
+        {expectedEvents.length ? (
+          <div className="event-grid">
+            {expectedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement a venir pour ce team.</p>
+          </article>
+        )}
+      </section>
 
-      <ObjectSocialPanel
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Evenements les mieux notes</h2>
+          <span>{topRatedEvents.length}</span>
+        </div>
+        {topRatedEvents.length ? (
+          <div className="event-grid">
+            {topRatedEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+                showComment={false}
+              />
+            ))}
+          </div>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun evenement note pour ce team.</p>
+          </article>
+        )}
+      </section>
+
+      <ObjectFeedScopePanel
         targetType="team"
         targetId={team.id}
-        title="Feed team"
-        subtitle="Discussions liees a cette equipe et ses evenements"
-        followTargetType="team"
-        followBaseCount={(athletes.length * 80) + (events.length * 30)}
-        followLabel="abonnes"
-        composerPlaceholder="Ton avis sur ce team..."
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Feed relie a la card"
+        subtitle="Flux team complet: commentaires, events et objets lies."
       />
-
-      <section className="related-section">
-        <div className="group-title">
-          <h2>Athletes du team</h2>
-          <span>{athletes.length}</span>
-        </div>
-        <div className="entity-grid">
-          {athletes.map((athlete) => (
-            <article key={athlete.id} className="entity-card">
-              <h3>
-                <Link to={`/athlete/${athlete.id}`}>{athlete.name}</Link>
-              </h3>
-              <p className="event-meta">{athlete.role || "Athlete"}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="related-section">
-        <div className="group-title">
-          <h2>Evenements du team</h2>
-          <span>{events.length}</span>
-        </div>
-        <div className="event-grid">
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              isInWatchlist={watchlistIds.includes(event.id)}
-              onToggleWatchlist={onToggleWatchlist}
-            />
-          ))}
-        </div>
-      </section>
     </section>
   );
 }

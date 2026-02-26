@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import PlayerCard from "../components/PlayerCard";
 import { getAthleteSports, getAthletes } from "../services/catalogService";
 
 function AthletesPage() {
@@ -47,14 +47,7 @@ function AthletesPage() {
 
       <div className="entity-grid">
         {athletes.map((athlete) => (
-          <article key={athlete.id} className="entity-card">
-            <h3>
-              <Link to={`/athlete/${athlete.id}`}>{athlete.name}</Link>
-            </h3>
-            <p className="event-meta">{athlete.sport}</p>
-            <p className="event-meta">{athlete.country || "N/A"}</p>
-            <p className="event-meta">{athlete.role || "Athlete"}</p>
-          </article>
+          <PlayerCard key={athlete.id} athlete={athlete} size="small" showTags={false} />
         ))}
       </div>
     </section>
