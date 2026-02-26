@@ -49,8 +49,11 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
         targetId={season.id}
         watchlistIds={watchlistIds}
         onToggleWatchlist={onToggleWatchlist}
-        title="Feed relie a la card"
-        subtitle={`Flux saison complet${league ? ` · ${league.title}` : ""}.`}
+        title="Commentaires de la saison"
+        subtitle={`Flux commentaires uniquement · tri Chrono ou Populaires${league ? ` · ${league.title}` : ""}.`}
+        contentProfile="comments-only"
+        showComposer
+        emptyStateText="Aucun commentaire pour cette saison."
       />
     </section>
   );

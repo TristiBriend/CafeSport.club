@@ -166,8 +166,11 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         targetId={list.id}
         watchlistIds={watchlistIds}
         onToggleWatchlist={onToggleWatchlist}
-        title="Feed relie a la card"
-        subtitle="Flux list complet: commentaires, events et objets lies."
+        title="Commentaires du classement"
+        subtitle="Flux commentaires uniquement · tri Chrono ou Populaires."
+        contentProfile="comments-only"
+        showComposer
+        emptyStateText="Aucun commentaire pour ce classement."
       />
     </section>
   );

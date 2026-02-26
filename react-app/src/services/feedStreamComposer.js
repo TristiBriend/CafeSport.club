@@ -6,6 +6,8 @@ const FEED_MODE_FAVORITES = "favorites";
 const FEED_MODE_ACTIVITY_RECENT = "activity-recent";
 const FEED_MODE_ACTIVITY_POPULAR = "activity-popular";
 const FEED_MODE_POPULAR = "popular";
+const FEED_CONTENT_PROFILE_MIXED = "mixed";
+const FEED_CONTENT_PROFILE_COMMENTS_ONLY = "comments-only";
 
 const ORIGIN_LABELS = {
   "for-you-comment": "Discussion recommandee",
@@ -349,15 +351,16 @@ function buildActivityEntries(mode, datasets) {
   return entries;
 }
 
-function buildObjectEntries(mode, datasets) {
+function buildObjectEntries(mode, datasets, contentProfile = FEED_CONTENT_PROFILE_MIXED) {
   const objectMeta = datasets.objectMeta || null;
   const objectComments = Array.isArray(datasets.objectComments) ? datasets.objectComments : [];
   const objectEvents = Array.isArray(datasets.objectEvents) ? datasets.objectEvents : [];
   const objectLists = Array.isArray(datasets.objectLists) ? datasets.objectLists : [];
   const objectUsers = Array.isArray(datasets.objectUsers) ? datasets.objectUsers : [];
+  const commentsOnly = String(contentProfile || "").trim().toLowerCase() === FEED_CONTENT_PROFILE_COMMENTS_ONLY;
   const entries = [];
 
-  if (objectMeta) {
+  if (!commentsOnly && objectMeta) {
     entries.push({
       id: "object-meta-entry",
       type: "card",
@@ -394,6 +397,8 @@ function buildObjectEntries(mode, datasets) {
       },
     });
   });
+
+  if (commentsOnly) return entries;
 
   objectEvents.slice(0, 12).forEach((event, index) => {
     const timestamp = toStableRecentTimestamp(toTimestamp(event?.dateISO || event?.createdAt), index);
@@ -466,9 +471,10 @@ export function buildRawFeedEntries(context = {}) {
   const datasets = context.datasets || {};
   const scope = String(request.scope || "").trim().toLowerCase();
   const mode = String(request.mode || "").trim().toLowerCase();
+  const contentProfile = String(request.contentProfile || FEED_CONTENT_PROFILE_MIXED).trim().toLowerCase();
 
   if (scope === FEED_SCOPE_OBJECT) {
-    return buildObjectEntries(mode, datasets);
+    return buildObjectEntries(mode, datasets, contentProfile);
   }
 
   if (mode === FEED_MODE_FAVORITES) {

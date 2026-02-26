@@ -1,23 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
 import ScoreBadge from "../components/ScoreBadge";
 import { getEventById, getRelatedEvents } from "../services/eventsService";
-import {
-  COMMENT_MODE,
-  createCommentReply,
-  createEventComment,
-  deleteCommentReply,
-  deleteEventComment,
-  filterCommentsByMode,
-  getEventComments,
-  toggleReplyLike,
-  toggleCommentLike,
-  updateCommentReply,
-  updateEventComment,
-} from "../services/commentsService";
 import {
   deleteEventRating,
   getEventRating,
@@ -38,30 +25,12 @@ function formatDateLabel(event) {
 function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { eventId } = useParams();
   const event = getEventById(eventId);
-  const [comments, setComments] = useState([]);
-  const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
-  const [composerMode, setComposerMode] = useState(COMMENT_MODE.COMMENT);
-  const [composerRating, setComposerRating] = useState(80);
-  const [composerText, setComposerText] = useState("");
   const [userRating, setUserRating] = useState(0);
 
   useEffect(() => {
     if (!event) return;
-    setComments(getEventComments(event.id));
-    const defaultMode = String(event.status || "").toLowerCase() === "passe"
-      ? COMMENT_MODE.REVIEW
-      : COMMENT_MODE.COMMENT;
-    setComposerMode(defaultMode);
-    setComposerRating(Math.max(0, Math.min(100, Math.round(Number(event.communityScore || 80)))));
-    setComposerText("");
-    setActiveMode(COMMENT_MODE.ALL);
     setUserRating(getEventRating(event.id));
   }, [event?.id]);
-
-  const visibleComments = useMemo(
-    () => filterCommentsByMode(comments, activeMode),
-    [activeMode, comments],
-  );
 
   if (!event) {
     return (
@@ -82,71 +51,6 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     : "0";
   const status = String(event.status || "").trim() || "A venir";
   const isFutureEvent = isUpcomingEvent(event);
-
-  function refreshComments() {
-    setComments(getEventComments(event.id));
-  }
-
-  function handleCreateComment(submitEvent) {
-    submitEvent.preventDefault();
-    const created = createEventComment(event.id, {
-      mode: composerMode,
-      note: composerText,
-      rating: composerRating,
-      author: "Vous",
-    });
-    if (!created) return;
-    setComposerText("");
-    refreshComments();
-  }
-
-  function handleLikeComment(comment) {
-    toggleCommentLike(comment);
-    refreshComments();
-  }
-
-  function handleLikeReply(_comment, reply) {
-    toggleReplyLike(reply);
-    refreshComments();
-  }
-
-  function handleReplyToComment(comment, note) {
-    const created = createCommentReply(comment?.id, {
-      note,
-      author: "Vous",
-    });
-    if (!created) return null;
-    refreshComments();
-    return created;
-  }
-
-  function handleUpdateComment(comment, payload) {
-    const updated = updateEventComment(comment?.id, payload);
-    if (!updated) return false;
-    refreshComments();
-    return true;
-  }
-
-  function handleDeleteComment(comment) {
-    const deleted = deleteEventComment(comment?.id);
-    if (!deleted) return false;
-    refreshComments();
-    return true;
-  }
-
-  function handleUpdateReply(comment, reply, note) {
-    const updated = updateCommentReply(comment?.id, reply?.id, { note });
-    if (!updated) return false;
-    refreshComments();
-    return true;
-  }
-
-  function handleDeleteReply(comment, reply) {
-    const deleted = deleteCommentReply(comment?.id, reply?.id);
-    if (!deleted) return false;
-    refreshComments();
-    return true;
-  }
 
   function handleChangeUserRating(nextValue) {
     const saved = setEventRating(event.id, nextValue);
@@ -251,106 +155,17 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         ) : null}
       </article>
 
-      <section className="comments-section">
-        <div className="group-title">
-          <h2>Reviews et commentaires</h2>
-          <span>{visibleComments.length} elements</span>
-        </div>
-
-        <div className="comment-filter-row" role="tablist" aria-label="Filtrer les commentaires">
-          <button
-            className={`filter-btn ${activeMode === COMMENT_MODE.ALL ? "is-active" : ""}`}
-            onClick={() => setActiveMode(COMMENT_MODE.ALL)}
-            type="button"
-          >
-            Tous
-          </button>
-          <button
-            className={`filter-btn ${activeMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
-            onClick={() => setActiveMode(COMMENT_MODE.REVIEW)}
-            type="button"
-          >
-            Critiques
-          </button>
-          <button
-            className={`filter-btn ${activeMode === COMMENT_MODE.COMMENT ? "is-active" : ""}`}
-            onClick={() => setActiveMode(COMMENT_MODE.COMMENT)}
-            type="button"
-          >
-            Commentaires
-          </button>
-        </div>
-
-        <form className="comment-composer" onSubmit={handleCreateComment}>
-          <div className="comment-composer-top">
-            <label className="select-wrap" htmlFor="comment-mode">
-              <span>Type</span>
-              <select
-                id="comment-mode"
-                value={composerMode}
-                onChange={(changeEvent) => setComposerMode(changeEvent.target.value)}
-              >
-                <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
-                <option value={COMMENT_MODE.REVIEW}>Critique</option>
-              </select>
-            </label>
-
-            {composerMode === COMMENT_MODE.REVIEW ? (
-              <label className="select-wrap" htmlFor="comment-rating">
-                <span>Note (0-100)</span>
-                <input
-                  id="comment-rating"
-                  className="rating-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={composerRating}
-                  onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}
-                />
-              </label>
-            ) : null}
-          </div>
-
-          <label className="search-wrap" htmlFor="comment-text">
-            <span>Ton message</span>
-            <textarea
-              id="comment-text"
-              rows="3"
-              maxLength={600}
-              placeholder="Ajouter un avis sur cet evenement..."
-              value={composerText}
-              onChange={(changeEvent) => setComposerText(changeEvent.target.value)}
-            />
-          </label>
-
-          <button className="btn btn-primary" type="submit">
-            Publier
-          </button>
-        </form>
-
-        {visibleComments.length ? (
-          <div className="comment-list">
-            {visibleComments.map((comment) => (
-              <CommentCard
-                key={comment.id}
-                comment={comment}
-                onToggleLike={handleLikeComment}
-                onCreateReply={handleReplyToComment}
-                onToggleReplyLike={handleLikeReply}
-                onUpdateComment={handleUpdateComment}
-                onDeleteComment={handleDeleteComment}
-                onUpdateReply={handleUpdateReply}
-                onDeleteReply={handleDeleteReply}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="simple-page">
-            <p>Aucun element pour ce filtre.</p>
-          </div>
-        )}
-      </section>
+      <ObjectFeedScopePanel
+        targetType="event"
+        targetId={event.id}
+        watchlistIds={watchlistIds}
+        onToggleWatchlist={onToggleWatchlist}
+        title="Commentaires de l'evenement"
+        subtitle="Flux commentaires uniquement · tri Chrono ou Populaires."
+        contentProfile="comments-only"
+        showComposer
+        emptyStateText="Aucun commentaire pour cet evenement."
+      />
 
       <section className="related-section">
         <div className="group-title">

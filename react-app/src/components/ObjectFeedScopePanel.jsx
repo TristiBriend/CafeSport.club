@@ -20,13 +20,17 @@ import {
   resolveListEntries,
 } from "../services/catalogService";
 import {
+  COMMENT_FEED_SORT,
+  COMMENT_MODE,
   COMMENT_TARGET,
   createCommentReply,
+  createTargetComment,
   deleteComment,
   deleteCommentReply,
   getAllComments,
+  getCommentFeedForTarget,
   getCommentDateLabel,
-  getCommentsForTarget,
+  isReviewAllowedTarget,
   toggleCommentLike,
   toggleReplyLike,
   updateComment,
@@ -45,6 +49,11 @@ import { useSocialSync } from "../contexts/SocialSyncContext";
 const FEED_MODE = {
   RECENT: "recent",
   POPULAR: "popular",
+};
+
+const FEED_CONTENT_PROFILE = {
+  MIXED: "mixed",
+  COMMENTS_ONLY: "comments-only",
 };
 
 function toTimestamp(value) {
@@ -206,7 +215,9 @@ function resolveObjectProfiles(targetType, targetId, comments = []) {
   return Array.from(map.values());
 }
 
-function getFeedEmptyStateText() {
+function getFeedEmptyStateText(customText = "") {
+  const safe = String(customText || "").trim();
+  if (safe) return safe;
   return "Aucun contenu lie a cet objet.";
 }
 
@@ -219,18 +230,32 @@ function ObjectFeedScopePanel({
   subtitle = "",
   mode = "",
   onModeChange = null,
+  contentProfile = FEED_CONTENT_PROFILE.MIXED,
+  showComposer = false,
+  emptyStateText = "",
 }) {
   const safeTargetType = String(targetType || "").trim();
   const safeTargetId = String(targetId || "").trim();
   const hasTarget = Boolean(safeTargetType && safeTargetId);
+  const canReviewTarget = isReviewAllowedTarget(safeTargetType);
+  const resolvedContentProfile = contentProfile === FEED_CONTENT_PROFILE.COMMENTS_ONLY
+    ? FEED_CONTENT_PROFILE.COMMENTS_ONLY
+    : FEED_CONTENT_PROFILE.MIXED;
+  const isCommentsOnlyProfile = resolvedContentProfile === FEED_CONTENT_PROFILE.COMMENTS_ONLY;
   const isControlledMode = mode === FEED_MODE.RECENT || mode === FEED_MODE.POPULAR;
   const [internalMode, setInternalMode] = useState(FEED_MODE.RECENT);
   const [commentsVersion, setCommentsVersion] = useState(0);
+  const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
+  const [composerRating, setComposerRating] = useState(80);
+  const [composerText, setComposerText] = useState("");
   const { revisionByDomain } = useSocialSync();
   const commentsRevision = Number(revisionByDomain?.comments || 0);
   const activeMode = isControlledMode ? mode : internalMode;
   const watchlistSet = useMemo(() => new Set(watchlistIds), [watchlistIds]);
-  const allComments = useMemo(() => getAllComments(), [commentsRevision, commentsVersion]);
+  const allComments = useMemo(
+    () => (isCommentsOnlyProfile ? [] : getAllComments()),
+    [commentsRevision, commentsVersion, isCommentsOnlyProfile],
+  );
 
   const objectMeta = useMemo(
     () => (hasTarget ? resolveObjectMeta(safeTargetType, safeTargetId) : null),
@@ -239,19 +264,15 @@ function ObjectFeedScopePanel({
 
   const objectComments = useMemo(() => {
     if (!hasTarget) return [];
-    return getCommentsForTarget(safeTargetType, safeTargetId)
-      .slice()
-      .sort((a, b) => {
-        if (activeMode === FEED_MODE.POPULAR) {
-          const likesDiff = Number(b.totalLikes || 0) - Number(a.totalLikes || 0);
-          if (likesDiff !== 0) return likesDiff;
-        }
-        return toTimestamp(b.createdAt) - toTimestamp(a.createdAt);
-      });
+    return getCommentFeedForTarget(safeTargetType, safeTargetId, {
+      sort: activeMode === FEED_MODE.POPULAR
+        ? COMMENT_FEED_SORT.POPULAR
+        : COMMENT_FEED_SORT.RECENT,
+    });
   }, [activeMode, commentsRevision, hasTarget, safeTargetId, safeTargetType, commentsVersion]);
 
   const objectEvents = useMemo(() => {
-    if (!hasTarget) return [];
+    if (!hasTarget || isCommentsOnlyProfile) return [];
     return resolveObjectEvents(safeTargetType, safeTargetId, allComments)
       .slice()
       .sort((a, b) => {
@@ -261,10 +282,10 @@ function ObjectFeedScopePanel({
         }
         return sortByDateDesc(a, b);
       });
-  }, [activeMode, allComments, hasTarget, safeTargetId, safeTargetType]);
+  }, [activeMode, allComments, hasTarget, isCommentsOnlyProfile, safeTargetId, safeTargetType]);
 
   const objectLists = useMemo(() => {
-    if (!hasTarget) return [];
+    if (!hasTarget || isCommentsOnlyProfile) return [];
     return resolveObjectLists(safeTargetType, safeTargetId, objectEvents)
       .slice()
       .sort((a, b) => {
@@ -274,10 +295,10 @@ function ObjectFeedScopePanel({
         }
         return String(a.title || "").localeCompare(String(b.title || ""));
       });
-  }, [activeMode, hasTarget, objectEvents, safeTargetId, safeTargetType]);
+  }, [activeMode, hasTarget, isCommentsOnlyProfile, objectEvents, safeTargetId, safeTargetType]);
 
   const objectUsers = useMemo(() => {
-    if (!hasTarget) return [];
+    if (!hasTarget || isCommentsOnlyProfile) return [];
     return resolveObjectProfiles(safeTargetType, safeTargetId, objectComments)
       .slice()
       .sort((a, b) => {
@@ -287,7 +308,7 @@ function ObjectFeedScopePanel({
         }
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
-  }, [activeMode, hasTarget, objectComments, safeTargetId, safeTargetType]);
+  }, [activeMode, hasTarget, isCommentsOnlyProfile, objectComments, safeTargetId, safeTargetType]);
 
   const streamRawEntries = useMemo(() => (
     buildRawFeedEntries({
@@ -296,6 +317,7 @@ function ObjectFeedScopePanel({
         mode: activeMode,
         targetType: safeTargetType,
         targetId: safeTargetId,
+        contentProfile: resolvedContentProfile,
       },
       datasets: {
         objectMeta,
@@ -305,7 +327,7 @@ function ObjectFeedScopePanel({
         objectUsers,
       },
     })
-  ), [activeMode, objectComments, objectEvents, objectLists, objectMeta, objectUsers, safeTargetId, safeTargetType]);
+  ), [activeMode, objectComments, objectEvents, objectLists, objectMeta, objectUsers, resolvedContentProfile, safeTargetId, safeTargetType]);
 
   const streamEntries = useMemo(
     () => groupCardRows(composeBalancedFeedStream(streamRawEntries, { lookahead: 6 }), 3),
@@ -362,6 +384,20 @@ function ObjectFeedScopePanel({
     if (!deleted) return false;
     bumpComments();
     return true;
+  }
+
+  function handleCreateComment(submitEvent) {
+    submitEvent.preventDefault();
+    const created = createTargetComment(safeTargetType, safeTargetId, {
+      mode: canReviewTarget ? composerMode : COMMENT_MODE.COMMENT,
+      note: composerText,
+      rating: composerRating,
+      author: "Vous",
+      eventId: safeTargetType === COMMENT_TARGET.EVENT ? safeTargetId : "",
+    });
+    if (!created) return;
+    setComposerText("");
+    bumpComments();
   }
 
   function setMode(nextMode) {
@@ -534,6 +570,57 @@ function ObjectFeedScopePanel({
         ) : null}
       </div>
 
+      {showComposer ? (
+        <form className="comment-composer" onSubmit={handleCreateComment}>
+          <div className="comment-composer-top">
+            <label className="select-wrap" htmlFor={`object-feed-comment-mode-${safeTargetType}-${safeTargetId}`}>
+              <span>Type</span>
+              <select
+                id={`object-feed-comment-mode-${safeTargetType}-${safeTargetId}`}
+                value={canReviewTarget ? composerMode : COMMENT_MODE.COMMENT}
+                onChange={(changeEvent) => setComposerMode(changeEvent.target.value)}
+                disabled={!canReviewTarget}
+              >
+                <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
+                {canReviewTarget ? <option value={COMMENT_MODE.REVIEW}>Critique</option> : null}
+              </select>
+            </label>
+
+            {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
+              <label className="select-wrap" htmlFor={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}>
+                <span>Note (0-100)</span>
+                <input
+                  id={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}
+                  className="rating-input"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={composerRating}
+                  onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}
+                />
+              </label>
+            ) : null}
+          </div>
+
+          <label className="search-wrap" htmlFor={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}>
+            <span>Ton message</span>
+            <textarea
+              id={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}
+              rows="3"
+              maxLength={600}
+              placeholder="Ajouter un commentaire..."
+              value={composerText}
+              onChange={(changeEvent) => setComposerText(changeEvent.target.value)}
+            />
+          </label>
+
+          <button className="btn btn-primary" type="submit">
+            Publier
+          </button>
+        </form>
+      ) : null}
+
       <div className="group-title">
         <h2>Flux</h2>
         <span>{streamEntries.length}</span>
@@ -570,7 +657,7 @@ function ObjectFeedScopePanel({
       ) : (
         <article className="entity-card">
           <h3>Flux vide</h3>
-          <p className="event-meta">{getFeedEmptyStateText()}</p>
+          <p className="event-meta">{getFeedEmptyStateText(emptyStateText)}</p>
         </article>
       )}
     </section>

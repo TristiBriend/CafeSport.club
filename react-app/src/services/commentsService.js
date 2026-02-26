@@ -1,4 +1,4 @@
-import { events, toScore100 } from "../data/modelStore";
+import { toScore100 } from "../data/modelStore";
 import baseReviewSamples from "../data/baseReviewSamples.json";
 import baseCommentSamples from "../data/baseCommentSamples.json";
 import {
@@ -20,6 +20,7 @@ import {
   resolveListEntries,
 } from "./catalogService";
 import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
+import { getAllEvents, getEventById } from "./eventsService";
 import {
   getSocialSyncCloudIdentity,
   isSocialDomainEnabled,
@@ -39,6 +40,11 @@ export const COMMENT_MODE = {
   ALL: "all",
   REVIEW: "critique",
   COMMENT: "teaser",
+};
+
+export const COMMENT_FEED_SORT = {
+  RECENT: "recent",
+  POPULAR: "popular",
 };
 
 export const COMMENT_TARGET = {
@@ -410,6 +416,22 @@ function sortComments(list) {
   });
 }
 
+function normalizeCommentFeedSort(sort) {
+  const token = String(sort || "").trim().toLowerCase();
+  return token === COMMENT_FEED_SORT.POPULAR
+    ? COMMENT_FEED_SORT.POPULAR
+    : COMMENT_FEED_SORT.RECENT;
+}
+
+function compareCommentsForFeed(left, right, sort) {
+  const safeSort = normalizeCommentFeedSort(sort);
+  if (safeSort === COMMENT_FEED_SORT.POPULAR) {
+    const likesDiff = Number(right?.totalLikes || right?.likes || 0) - Number(left?.totalLikes || left?.likes || 0);
+    if (likesDiff !== 0) return likesDiff;
+  }
+  return Date.parse(right?.createdAt || "") - Date.parse(left?.createdAt || "");
+}
+
 function dedupeComments(list) {
   const map = new Map();
   list.forEach((comment) => {
@@ -544,7 +566,7 @@ function getSeedComments() {
   });
 
   const coveredEventIds = new Set(seeded.map((item) => item.eventId));
-  events.forEach((event, index) => {
+  getAllEvents().forEach((event, index) => {
     if (coveredEventIds.has(event.id)) return;
     const item = isUpcomingEvent(event)
       ? createSeedComment(event, index)
@@ -671,6 +693,19 @@ export function getCommentsForTarget(targetType, targetId) {
     ...byRelatedEvents,
     ...userAuthored,
   ]));
+}
+
+export function getCommentFeedForTarget(targetType, targetId, {
+  sort = COMMENT_FEED_SORT.RECENT,
+  limit,
+} = {}) {
+  const sorted = getCommentsForTarget(targetType, targetId)
+    .slice()
+    .sort((left, right) => compareCommentsForFeed(left, right, sort));
+
+  if (!Number.isFinite(Number(limit))) return sorted;
+  const safeLimit = Math.max(0, Number(limit));
+  return sorted.slice(0, safeLimit);
 }
 
 export function filterCommentsByMode(comments, mode = COMMENT_MODE.ALL) {
@@ -1016,7 +1051,7 @@ export function targetHasRelatedEvents(targetType, targetId) {
 export function getTargetPrimaryEvent(targetType, targetId) {
   const eventIds = Array.from(getRelatedEventIdsForTarget(targetType, targetId));
   if (!eventIds.length) return null;
-  return events.find((event) => event.id === eventIds[0]) || null;
+  return getEventById(eventIds[0]);
 }
 
 export function resolveTargetCommentContext(targetType, targetId) {
@@ -1025,7 +1060,7 @@ export function resolveTargetCommentContext(targetType, targetId) {
   if (!safeType || !safeId) return null;
 
   if (safeType === COMMENT_TARGET.EVENT) {
-    const event = events.find((item) => item.id === safeId) || null;
+    const event = getEventById(safeId);
     return {
       targetType: safeType,
       targetId: safeId,

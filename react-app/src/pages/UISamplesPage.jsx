@@ -193,7 +193,11 @@ const COMPONENT_LEGENDS = [
       "subtitle?: string",
       "mode?: recent|popular",
       "onModeChange?: (mode) => void",
+      "contentProfile?: mixed|comments-only",
+      "showComposer?: boolean",
+      "emptyStateText?: string",
       "Usage: <ObjectFeedScopePanel targetType='team' targetId={id} />",
+      "Usage (comments-only): <ObjectFeedScopePanel targetType='event' targetId={id} contentProfile='comments-only' showComposer />",
     ],
   },
   {
@@ -398,7 +402,8 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     name: "Social · ObjectFeedScopePanel",
     details: [
       "Composant: <ObjectFeedScopePanel targetType targetId ... />",
-      "Bindings: feed objet complet (tabs chrono/populaires + stream mixte)",
+      "Bindings: feed objet (tabs chrono/populaires + stream mixte par defaut)",
+      "Variant: contentProfile='comments-only' pour afficher uniquement les commentaires",
     ],
   },
   {
@@ -462,6 +467,9 @@ function getInitials(name = "") {
 function getEventImage(event) {
   const image = String(event?.image || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 
