@@ -9,6 +9,47 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
+    function isAdmin() {
+      return isAuth()
+        && exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /athletes/{athleteId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /leagues/{leagueId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /leagueSeasons/{seasonId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /lists/{listId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /adminUsers/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /users/{uid}/{document=**} {
       allow read, write: if isSelf(uid);
     }
@@ -51,8 +92,20 @@ service cloud.firestore {
 
     match /publicProfiles/{appUserId} {
       allow read: if true;
-      allow create, update, delete: if isAuth()
+      allow create: if isAuth()
         && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAuth()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+      allow delete: if isAuth()
+        && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /joinRequests/{requestId} {
+      allow create: if isAuth()
+        && request.resource.data.requesterUid == request.auth.uid;
+      allow read: if isAuth()
+        && resource.data.requesterUid == request.auth.uid;
     }
   }
 }

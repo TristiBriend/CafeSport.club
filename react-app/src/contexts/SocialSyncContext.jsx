@@ -9,7 +9,13 @@ import {
 const SocialSyncContext = createContext(null);
 
 export function SocialSyncProvider({ children }) {
-  const { authReady, currentUser, isAuthenticated, isFirebaseConfigured } = useAuth();
+  const {
+    authReady,
+    currentUser,
+    hasCloudSession,
+    isAuthenticated,
+    isFirebaseConfigured,
+  } = useAuth();
   const [snapshot, setSnapshot] = useState(() => getSocialSyncSnapshot());
 
   useEffect(() => {
@@ -21,12 +27,20 @@ export function SocialSyncProvider({ children }) {
   useEffect(() => {
     if (!authReady) return;
     initializeSocialSyncSession({
+      hasCloudSession,
       isAuthenticated,
       firebaseUid: currentUser?.firebaseUid || "",
       appUserId: currentUser?.id || "",
       firebaseConfigured: isFirebaseConfigured,
     }).catch(() => {});
-  }, [authReady, currentUser?.firebaseUid, currentUser?.id, isAuthenticated, isFirebaseConfigured]);
+  }, [
+    authReady,
+    currentUser?.firebaseUid,
+    currentUser?.id,
+    hasCloudSession,
+    isAuthenticated,
+    isFirebaseConfigured,
+  ]);
 
   const value = useMemo(() => ({
     mode: snapshot.mode,

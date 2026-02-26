@@ -54,6 +54,9 @@ function IconMore() {
 function getImagePath(value) {
   const image = String(value || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 

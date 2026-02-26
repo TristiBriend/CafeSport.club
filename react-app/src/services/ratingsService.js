@@ -1,5 +1,5 @@
-import { events as eventsData } from "../data/modelStore";
 import { deleteUserRatingCloud, setUserRatingCloud } from "./ratingsFirestoreService";
+import { getAllEvents as getCatalogEvents } from "./eventsService";
 import {
   getSocialSyncCloudIdentity,
   isSocialDomainEnabled,
@@ -59,7 +59,7 @@ function mirrorRatingToCloud(eventId, scoreOrNull) {
 }
 
 function getAllEvents(list = null) {
-  return Array.isArray(list) && list.length ? list : eventsData;
+  return Array.isArray(list) && list.length ? list : getCatalogEvents();
 }
 
 export function getRatingsMap({ seed = true } = {}) {

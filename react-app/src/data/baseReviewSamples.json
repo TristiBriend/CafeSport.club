@@ -63,15 +63,6 @@
     "likes": 54
   },
   {
-    "id": "rev_87MKF78V3ZBM87MKD78V3ZAS87",
-    "eventId": "evt_38JM576PBC5X38JM376PBC5138",
-    "userId": "usr_E3GXNGXY98Y8E3GXQGXY98Z3E3",
-    "author": "Riley K.",
-    "rating": 4,
-    "note": "Tellement de finishes. Le public etait électrique.",
-    "likes": 96
-  },
-  {
     "id": "rev_3A7M248S48B83A7M448S48C33A",
     "eventId": "evt_7CY3Q2W40JDW7CY3S2W40JEQ7C",
     "userId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
@@ -477,15 +468,6 @@
     "likes": 20
   },
   {
-    "id": "rev_E8HX9CSYEVEGE8HX7CSYEVDNE8",
-    "eventId": "evt_38JM576PBC5X38JM376PBC5138",
-    "userId": "usr_1Y8A7RTBXKQ71Y8A5RTBXKPC1Y",
-    "author": "Elle R.",
-    "rating": 7,
-    "note": "Mon voisin a sonne, je n'ai pas repondu.",
-    "likes": 23
-  },
-  {
     "id": "rev_K43YMCYC7XV0K43YJCYC7XT5K4",
     "eventId": "evt_PH1C32ZAEK9TPH1C12ZAEK8ZPH",
     "userId": "usr_B2E0M1X3B939B2E0P1X3B944B2",
@@ -558,15 +540,6 @@
     "likes": 20
   },
   {
-    "id": "rev_WYK202PAXREQWYK222PAXRFJWY",
-    "eventId": "evt_E6VMQ5TVCT68E6VMS5TVCT73E6",
-    "userId": "usr_E3GXNGXY98Y8E3GXQGXY98Z3E3",
-    "author": "Riley K.",
-    "rating": 7,
-    "note": "J'ai applaudi tout seul, dans mon salon.",
-    "likes": 23
-  },
-  {
     "id": "rev_J3151E49X63JJ314ZE49X62QJ3",
     "eventId": "evt_8ZS6A4ATFMV38ZS684ATFMT88Z",
     "userId": "usr_KHHE5RBM3W4HKHHE7RBM3W5CKH",
@@ -610,24 +583,6 @@
     "rating": 8,
     "note": "Si c'etait un film, j'aurais demande la suite.",
     "likes": 38
-  },
-  {
-    "id": "rev_QRVR1F7TTCNCQRVR3F7TTCP7QR",
-    "eventId": "evt_DJADRY5W4PK9DJADTY5W4PM5DJ",
-    "userId": "usr_B2E0M1X3B939B2E0P1X3B944B2",
-    "author": "Jamal T.",
-    "rating": 7,
-    "note": "Je voulais dormir, le match a dit non.",
-    "likes": 41
-  },
-  {
-    "id": "rev_B2QG28FHGM2BB2QG08FHGM1GB2",
-    "eventId": "evt_7N0YCT50QY527N0YAT50QY477N",
-    "userId": "usr_E3GXNGXY98Y8E3GXQGXY98Z3E3",
-    "author": "Riley K.",
-    "rating": 9,
-    "note": "Mon chien a applaudi, c'est dire.",
-    "likes": 44
   },
   {
     "id": "rev_K4R42ZFZ40ECK4R40ZFZ40DHK4",
@@ -702,15 +657,6 @@
     "likes": 41
   },
   {
-    "id": "rev_MR3WTEAE5P59MR3WREAE5P4EMR",
-    "eventId": "evt_KBXT96B0KXPNKBXT76B0KXNSKB",
-    "userId": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
-    "author": "Diego M.",
-    "rating": 9,
-    "note": "J'ai change de place 3 fois, ca a marche.",
-    "likes": 44
-  },
-  {
     "id": "rev_N3RPJFF8WZMEN3RPMFF8WZN9N3",
     "eventId": "evt_GQS1JYKF9B8HGQS1MYKF9B9CGQ",
     "userId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
@@ -765,15 +711,6 @@
     "likes": 35
   },
   {
-    "id": "rev_ZSEDCY65DTXTZSEDEY65DTYNZS",
-    "eventId": "evt_07GCYASQ1FC307GD0ASQ1FCY07",
-    "userId": "usr_2SGNEH2HBH7S2SGNCH2HBH6Y2S",
-    "author": "Diego M.",
-    "rating": 8,
-    "note": "On dirait un scenario ecrit par un fan trop motive.",
-    "likes": 38
-  },
-  {
     "id": "rev_A4YP2JHP1G3PA4YP0JHP1G2VA4",
     "eventId": "evt_TNNNYRQFVKSVTNNNWRQFVKS0TN",
     "userId": "usr_ZZG4WXPGSFTZZZG4TXPGSFT4ZZ",
@@ -808,15 +745,6 @@
     "rating": 7,
     "note": "Mon chien a applaudi, c'est dire.",
     "likes": 23
-  },
-  {
-    "id": "rev_MCMA6KG5K7XFMCMA8KG5K7YAMC",
-    "eventId": "evt_397V35GZ417T397V55GZ418P39",
-    "userId": "usr_E3GXNGXY98Y8E3GXQGXY98Z3E3",
-    "author": "Riley K.",
-    "rating": 9,
-    "note": "Plus d'action que ma semaine entiere.",
-    "likes": 26
   },
   {
     "id": "rev_5VJ707C5F2BM5VJ6Y7C5F2AS5V",

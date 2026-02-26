@@ -835,20 +835,6 @@
     "image": "images/events/samplegeneric.jpeg"
   },
   {
-    "id": "evt_38JM576PBC5X38JM376PBC5138",
-    "sport": "MMA",
-    "league": "UFC 300",
-    "title": "Carte principale",
-    "date": "12 Avr 2026",
-    "dateISO": "2026-04-12",
-    "location": "Las Vegas",
-    "status": "Passe",
-    "communityScore": 8,
-    "reviews": 870,
-    "result": "Main event passe",
-    "image": "images/events/samplegeneric.jpeg"
-  },
-  {
     "id": "evt_PH1C32ZAEK9TPH1C12ZAEK8ZPH",
     "sport": "Football",
     "league": "Ligue des champions",
@@ -957,19 +943,6 @@
     "image": "images/events/six_nations_16032024.jpg"
   },
   {
-    "id": "evt_E6VMQ5TVCT68E6VMS5TVCT73E6",
-    "sport": "Cricket",
-    "league": "T20 World Cup",
-    "title": "Finale T20 World Cup 2024",
-    "date": "29 Juin 2024",
-    "dateISO": "2024-06-29",
-    "location": "Barbade",
-    "status": "Passe",
-    "communityScore": 8.2,
-    "reviews": 540,
-    "image": "images/events/t20_world_cup_final_29062024.jpg"
-  },
-  {
     "id": "evt_8ZS6A4ATFMV38ZS684ATFMT88Z",
     "sport": "Tennis",
     "league": "Wimbledon",
@@ -1033,32 +1006,6 @@
     "communityScore": 8,
     "reviews": 760,
     "image": "images/events/winter_olympics_opening_04022022.jpg"
-  },
-  {
-    "id": "evt_DJADRY5W4PK9DJADTY5W4PM5DJ",
-    "sport": "Golf",
-    "league": "Ryder Cup",
-    "title": "Jour final 2023",
-    "date": "1 Oct 2023",
-    "dateISO": "2023-10-01",
-    "location": "Rome",
-    "status": "Passe",
-    "communityScore": 8.2,
-    "reviews": 420,
-    "image": "images/events/ryder_cup_final_day_01102023.jpg"
-  },
-  {
-    "id": "evt_7N0YCT50QY527N0YAT50QY477N",
-    "sport": "Golf",
-    "league": "Masters",
-    "title": "Finale Masters 2024",
-    "date": "14 Avr 2024",
-    "dateISO": "2024-04-14",
-    "location": "Augusta",
-    "status": "Passe",
-    "communityScore": 8.8,
-    "reviews": 680,
-    "image": "images/events/the_masters_final_round_14042024.jpg"
   },
   {
     "id": "evt_JTHE7M9TB41YJTHE5M9TB413JT",
@@ -1221,19 +1168,6 @@
     "image": "images/events/samplegeneric.jpeg"
   },
   {
-    "id": "evt_KBXT96B0KXPNKBXT76B0KXNSKB",
-    "sport": "Boxe",
-    "league": "Super fight",
-    "title": "Mayweather vs Pacquiao",
-    "date": "2 Mai 2015",
-    "dateISO": "2015-05-02",
-    "location": "Las Vegas",
-    "status": "Passe",
-    "communityScore": 8,
-    "reviews": 1400,
-    "image": "images/events/samplegeneric.jpeg"
-  },
-  {
     "id": "evt_GQS1JYKF9B8HGQS1MYKF9B9CGQ",
     "sport": "Tennis",
     "league": "ATP Finals",
@@ -1312,19 +1246,6 @@
     "image": "images/events/samplegeneric.jpeg"
   },
   {
-    "id": "evt_07GCYASQ1FC307GD0ASQ1FCY07",
-    "sport": "Boxe",
-    "league": "Heavyweight",
-    "title": "Tyson vs Holyfield II",
-    "date": "28 Juin 1997",
-    "dateISO": "1997-06-28",
-    "location": "Las Vegas",
-    "status": "Passe",
-    "communityScore": 8.2,
-    "reviews": 1800,
-    "image": "images/events/samplegeneric.jpeg"
-  },
-  {
     "id": "evt_TNNNYRQFVKSVTNNNWRQFVKS0TN",
     "sport": "Basketball",
     "league": "NBA",
@@ -1374,19 +1295,6 @@
     "status": "Passe",
     "communityScore": 9.2,
     "reviews": 1700,
-    "image": "images/events/samplegeneric.jpeg"
-  },
-  {
-    "id": "evt_397V35GZ417T397V55GZ418P39",
-    "sport": "Baseball",
-    "league": "MLB",
-    "title": "Saison 2023 d'exception",
-    "date": "1 Oct 2023",
-    "dateISO": "2023-10-01",
-    "location": "Los Angeles",
-    "status": "Passe",
-    "communityScore": 9,
-    "reviews": 980,
     "image": "images/events/samplegeneric.jpeg"
   }
 ]

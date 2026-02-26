@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   activitySamples,
   athleteParticipation,
@@ -12,6 +13,8 @@ import {
 } from "../data/modelStore";
 import { getLeagues } from "../services/leaguesService";
 import { getAllComments } from "../services/commentsService";
+import { seedCatalogCollectionsToFirestore } from "../services/catalogFirestoreBootstrapService";
+import { useAuth } from "../contexts/AuthContext";
 
 const STORAGE_KEYS = {
   tagCatalog: "cafesport.club_tag_catalog_v1",
@@ -166,6 +169,10 @@ function buildTargetModelExamples() {
 }
 
 function DataModelPage() {
+  const { isAuthenticated, isAdmin, isFirebaseConfigured } = useAuth();
+  const [isSeedingCatalog, setIsSeedingCatalog] = useState(false);
+  const [seedMessage, setSeedMessage] = useState("");
+  const [seedSummary, setSeedSummary] = useState(null);
   const leagues = getLeagues();
   const comments = getAllComments();
   const leagueSeasons = leagues.flatMap((league) => league.seasons || []);
@@ -291,6 +298,22 @@ function DataModelPage() {
 
   const targetExamples = buildTargetModelExamples();
 
+  async function handleSeedCatalog() {
+    if (!isAuthenticated || !isAdmin || !isFirebaseConfigured || isSeedingCatalog) return;
+    setIsSeedingCatalog(true);
+    setSeedMessage("");
+    setSeedSummary(null);
+    try {
+      const result = await seedCatalogCollectionsToFirestore({ merge: true });
+      setSeedSummary(result?.summary || null);
+      setSeedMessage("Collections Firestore initialisees (merge).");
+    } catch (error) {
+      setSeedMessage(String(error?.message || "Echec de l'initialisation Firestore."));
+    } finally {
+      setIsSeedingCatalog(false);
+    }
+  }
+
   return (
     <section className="data-page">
       <section className="data-hero section-shell">
@@ -315,6 +338,42 @@ function DataModelPage() {
             <p className="data-kpi-value">{item.value}</p>
           </article>
         ))}
+      </section>
+
+      <section className="data-relations section-shell">
+        <div className="section-head">
+          <h2>Bootstrap Firestore catalog</h2>
+        </div>
+        <p className="muted">
+          Cree/met a jour les collections Firestore: events, athletes, teams, leagues, leagueSeasons, lists.
+        </p>
+        <div className="profile-panel-actions">
+          <button
+            type="button"
+            className={`filter-btn ${isAuthenticated && isAdmin ? "is-active" : ""}`.trim()}
+            onClick={handleSeedCatalog}
+            disabled={!isAuthenticated || !isAdmin || !isFirebaseConfigured || isSeedingCatalog}
+          >
+            {isSeedingCatalog ? "Initialisation en cours..." : "Initialiser Firestore"}
+          </button>
+        </div>
+        {!isAuthenticated ? (
+          <p className="muted">Connecte-toi pour executer le seed.</p>
+        ) : null}
+        {isAuthenticated && !isAdmin ? (
+          <p className="muted">Droit admin requis pour executer le seed.</p>
+        ) : null}
+        {!isFirebaseConfigured ? (
+          <p className="muted">Firebase non configure dans les variables d'environnement.</p>
+        ) : null}
+        {seedMessage ? <p className="muted">{seedMessage}</p> : null}
+        {seedSummary ? (
+          <div className="data-note">
+            {Object.entries(seedSummary).map(([key, value]) => (
+              <span key={key} className="tag">{key}: {value}</span>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="data-relations section-shell">

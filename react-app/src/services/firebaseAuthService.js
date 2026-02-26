@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInAnonymously,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -45,4 +46,11 @@ export async function signUpWithEmail(email, password) {
 export async function signOutUser() {
   if (!isFirebaseConfigured || !auth) return null;
   return signOut(auth);
+}
+
+export async function ensureAnonymousSession() {
+  if (!isFirebaseConfigured || !auth) return null;
+  if (auth.currentUser) return auth.currentUser;
+  const result = await signInAnonymously(auth);
+  return result?.user || null;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import ImageCropModal from "./ImageCropModal";
 import ObjectTagsWidget from "./ObjectTagsWidget";
 import ScoreBadge from "./ScoreBadge";
 import { buildAddWatchlistFabButton } from "./WatchlistFabButton";
@@ -17,10 +18,22 @@ import {
 } from "../services/commentsService";
 import { getLeagueById } from "../services/leaguesService";
 import { getEventRating, isUpcomingEvent } from "../services/ratingsService";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  canUploadCatalogImageToCloud,
+  uploadEventImageFile,
+} from "../services/catalogImageStorageService";
+import {
+  deleteCatalogObject,
+  getDeleteDependencies,
+} from "../services/adminCatalogModerationService";
 
 function getEventImage(event) {
   const image = String(event?.image || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 
@@ -34,9 +47,21 @@ function IconMore() {
   );
 }
 
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 7.5h2l1.2-1.8h3.6L15 7.5h2A2.5 2.5 0 0 1 19.5 10v7A2.5 2.5 0 0 1 17 19.5H7A2.5 2.5 0 0 1 4.5 17v-7A2.5 2.5 0 0 1 7 7.5Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="12" cy="13.2" r="3.1" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 function getImagePath(value) {
   const image = String(value || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 
@@ -70,6 +95,7 @@ function toPercentScore(value) {
 }
 
 const EVENT_CARD_SIZES = new Set(["large", "medium", "small", "miniature"]);
+const CARD_CROP_ASPECT_FALLBACK = 1 / 1.4;
 const ATHLETE_PREVIEW_MAX_BY_SIZE = {
   large: 6,
   medium: 5,
@@ -116,9 +142,19 @@ function EventCard({
   showTags = true,
   showComment = true,
 }) {
+  const { isAdmin, currentUser } = useAuth();
   const [commentVersion, setCommentVersion] = useState(0);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isAdminDeleting, setIsAdminDeleting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoUploadError, setPhotoUploadError] = useState("");
+  const [photoOverrideUrl, setPhotoOverrideUrl] = useState("");
+  const [cropSourceFile, setCropSourceFile] = useState(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [cropAspect, setCropAspect] = useState(CARD_CROP_ASPECT_FALLBACK);
   const moreMenuRef = useRef(null);
+  const photoInputRef = useRef(null);
+  const mediaRef = useRef(null);
   const normalizedSize = normalizeEventCardSize(size);
   const isCompact = normalizedSize === "small";
   const statusClass = getStatusClass(event);
@@ -138,7 +174,13 @@ function EventCard({
   const topComment = eventComments[0];
   const baseWatchlistCount = Number(event?.watchlistCount || 0);
   const watchlistCount = Math.max(0, baseWatchlistCount + (isInWatchlist ? 1 : 0));
-  const eventImage = getEventImage(event);
+  const eventImage = photoOverrideUrl || getEventImage(event);
+  const canAdminEditPhoto = Boolean(
+    isAdmin
+      && currentUser?.firebaseUid
+      && canUploadCatalogImageToCloud()
+      && String(event?.id || "").trim(),
+  );
   const displayNote = String(note || "").trim();
   const shouldRenderCommentAddon = showComment && Boolean(topComment);
   const eventTitle = String(event?.title || "cet evenement").trim() || "cet evenement";
@@ -182,6 +224,33 @@ function EventCard({
       window.removeEventListener("keydown", handleEscape);
     };
   }, [isMoreMenuOpen]);
+
+  useEffect(() => {
+    setPhotoOverrideUrl("");
+    setPhotoUploadError("");
+    setCropSourceFile(null);
+    setIsCropOpen(false);
+  }, [event?.id, event?.image]);
+
+  useEffect(() => {
+    const mediaElement = mediaRef.current;
+    if (!mediaElement) return undefined;
+
+    function updateCropAspect() {
+      const rect = mediaElement.getBoundingClientRect();
+      const width = Number(rect.width || 0);
+      const height = Number(rect.height || 0);
+      if (width <= 0 || height <= 0) return;
+      const nextAspect = width / height;
+      if (!Number.isFinite(nextAspect) || nextAspect <= 0) return;
+      setCropAspect(nextAspect);
+    }
+
+    updateCropAspect();
+    const observer = new ResizeObserver(updateCropAspect);
+    observer.observe(mediaElement);
+    return () => observer.disconnect();
+  }, [normalizedSize, isMoreMenuOpen, showTags]);
 
   function refreshComments() {
     setCommentVersion((value) => value + 1);
@@ -232,10 +301,92 @@ function EventCard({
     setIsMoreMenuOpen((value) => !value);
   }
 
+  function handlePickPhoto() {
+    if (!canAdminEditPhoto || isUploadingPhoto) return;
+    photoInputRef.current?.click();
+  }
+
+  async function handlePhotoChange(changeEvent) {
+    const file = changeEvent.target.files?.[0];
+    changeEvent.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoUploadError("Selectionne une image valide.");
+      return;
+    }
+    if (file.size > 2_500_000) {
+      setPhotoUploadError("Image trop lourde (max 2.5 MB).");
+      return;
+    }
+
+    setPhotoUploadError("");
+    setCropSourceFile(file);
+    setIsCropOpen(true);
+  }
+
+  function handleCloseCropModal() {
+    if (isUploadingPhoto) return;
+    setIsCropOpen(false);
+    setCropSourceFile(null);
+  }
+
+  async function handleConfirmCroppedPhoto(croppedFile) {
+    if (!croppedFile) return;
+    setIsUploadingPhoto(true);
+    try {
+      const { url } = await uploadEventImageFile(currentUser.firebaseUid, event.id, croppedFile);
+      setPhotoOverrideUrl(url);
+      setPhotoUploadError("");
+      setIsCropOpen(false);
+      setCropSourceFile(null);
+    } catch {
+      setPhotoUploadError("Upload impossible pour le moment.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  }
+
   function handleToggleFollowFromMenu() {
     if (!canToggleWatchlist) return;
     onToggleWatchlist(event.id);
     setIsMoreMenuOpen(false);
+  }
+
+  async function handleAdminDeleteFromMenu() {
+    if (!isAdmin || isAdminDeleting) return;
+    const deps = await getDeleteDependencies({ type: "event", id: event?.id });
+    if (deps.blocked) {
+      const detail = deps.dependencies
+        .map((item) => `- ${item.label}: ${item.count}`)
+        .join("\n");
+      window.alert(`Suppression bloquee pour ${eventTitle}.\nDependances detectees:\n${detail}`);
+      setIsMoreMenuOpen(false);
+      return;
+    }
+
+    const confirmed = window.confirm(`Supprimer definitivement ${eventTitle} de la base ?`);
+    if (!confirmed) return;
+
+    setIsAdminDeleting(true);
+    try {
+      const result = await deleteCatalogObject({
+        type: "event",
+        id: event?.id,
+      });
+      if (!result?.ok && result?.reason === "blocked_by_dependencies") {
+        const detail = (result?.dependencies?.dependencies || [])
+          .map((item) => `- ${item.label}: ${item.count}`)
+          .join("\n");
+        window.alert(`Suppression bloquee.\n${detail}`);
+      } else if (!result?.ok) {
+        window.alert("Suppression impossible pour le moment.");
+      }
+    } catch {
+      window.alert("Erreur pendant la suppression.");
+    } finally {
+      setIsAdminDeleting(false);
+      setIsMoreMenuOpen(false);
+    }
   }
 
   return (
@@ -348,6 +499,17 @@ function EventCard({
                       {sportActionLabel}
                     </Link>
                   ) : null}
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      className="event-card-more-action is-danger"
+                      role="menuitem"
+                      onClick={handleAdminDeleteFromMenu}
+                      disabled={isAdminDeleting}
+                    >
+                      {isAdminDeleting ? "Suppression..." : "Supprimer de la base"}
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -356,7 +518,27 @@ function EventCard({
 
         <div className="event-card-body">
           <div className="event-main">
-            <div className="event-media">
+            <div className="event-media" ref={mediaRef}>
+              <input
+                ref={photoInputRef}
+                className="catalog-photo-upload-input"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+              />
+              {canAdminEditPhoto ? (
+                <button
+                  type="button"
+                  className="profile-photo-upload-icon-btn event-card-photo-upload-icon-btn"
+                  onClick={handlePickPhoto}
+                  disabled={isUploadingPhoto}
+                  aria-label={isUploadingPhoto ? "Upload en cours" : "Modifier la photo event"}
+                  title={isUploadingPhoto ? "Upload en cours..." : "Modifier la photo"}
+                >
+                  <CameraIcon />
+                </button>
+              ) : null}
+              {photoUploadError ? <p className="catalog-photo-upload-error">{photoUploadError}</p> : null}
               {eventImage ? <img src={eventImage} alt={event.title} /> : null}
               <div className={`event-media-overlay ${isCompact ? "compact" : ""}`}>
                 {visibleAthletes.length ? (
@@ -470,6 +652,16 @@ function EventCard({
           />
         </aside>
       ) : null}
+      <ImageCropModal
+        open={isCropOpen}
+        file={cropSourceFile}
+        aspect={cropAspect || CARD_CROP_ASPECT_FALLBACK}
+        previewVariant="event"
+        title="Recadrer la photo de l evenement"
+        isBusy={isUploadingPhoto}
+        onCancel={handleCloseCropModal}
+        onConfirm={handleConfirmCroppedPhoto}
+      />
     </div>
   );
 }

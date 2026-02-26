@@ -2175,6 +2175,10 @@ main {
   cursor: default;
 }
 
+.ranking-card-more-action.is-danger {
+  color: #a62323;
+}
+
 .ranking-card-head-text {
   min-width: 0;
 }
@@ -2862,7 +2866,7 @@ main {
   gap: 10px;
   width: 100%;
   min-width: 0;
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 20px;
   --event-card-gap: 10px;
   --event-overlay-padding: 16px;
@@ -2881,7 +2885,7 @@ main {
 }
 
 .event-card-shell[data-size="large"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 22px;
   --event-card-gap: 12px;
   --event-overlay-padding: 18px;
@@ -2900,13 +2904,13 @@ main {
 }
 
 .event-card-shell[data-size="medium"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-player-avatar-size: 30px;
   --event-player-gap: 5px;
 }
 
 .event-card-shell[data-size="small"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 16px;
   --event-card-gap: 9px;
   --event-overlay-padding: 14px;
@@ -2925,7 +2929,7 @@ main {
 }
 
 .event-card-shell[data-size="miniature"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 14px;
   --event-card-gap: 8px;
   --event-overlay-padding: 12px;
@@ -2957,18 +2961,35 @@ main {
 
 .event-card-shell .event-card-body {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .event-card-shell .event-main {
   min-height: 0;
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .event-card-shell .event-media {
   aspect-ratio: auto;
-  height: 100%;
+  flex: 1 1 auto;
+  height: auto;
   min-height: 0;
+  overflow: hidden;
+}
+
+.event-card-shell .event-media > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .event-card-shell .event-media-overlay {
@@ -3155,6 +3176,10 @@ main {
   cursor: default;
 }
 
+.event-card-shell .event-card-more-action.is-danger {
+  color: #a62323;
+}
+
 .event-card-shell .object-tags-inline {
   margin-top: 6px;
   min-height: var(--event-tag-row-height);
@@ -3204,7 +3229,7 @@ main {
   gap: 10px;
   width: 100%;
   min-width: 0;
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 20px;
   --event-card-gap: 10px;
   --event-overlay-padding: 16px;
@@ -3217,7 +3242,7 @@ main {
 }
 
 .object-card-shell[data-size="large"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 22px;
   --event-card-gap: 12px;
   --event-overlay-padding: 18px;
@@ -3230,11 +3255,11 @@ main {
 }
 
 .object-card-shell[data-size="medium"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
 }
 
 .object-card-shell[data-size="small"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 16px;
   --event-card-gap: 9px;
   --event-overlay-padding: 14px;
@@ -3247,7 +3272,7 @@ main {
 }
 
 .object-card-shell[data-size="miniature"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 14px;
   --event-card-gap: 8px;
   --event-overlay-padding: 12px;
@@ -3320,11 +3345,15 @@ main {
 
 .object-card-body {
   flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .object-card-media {
   position: relative;
+  flex: 1 1 auto;
   height: 100%;
   min-height: 0;
   border: 2px solid var(--tristi-ink);
@@ -3334,6 +3363,8 @@ main {
 }
 
 .object-card-media > img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -3487,6 +3518,10 @@ main {
   cursor: default;
 }
 
+.object-card-more-action.is-danger {
+  color: #a62323;
+}
+
 /* Detail pages standardized object layout. */
 .object-detail-page {
   display: grid;
@@ -3528,6 +3563,10 @@ main {
   display: none;
 }
 
+.catalog-photo-upload-input {
+  display: none;
+}
+
 .profile-panel-actions {
   display: inline-flex;
   align-items: center;
@@ -3562,9 +3601,176 @@ main {
   border-color: #111111;
 }
 
+.profile-photo-upload-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .profile-photo-upload-icon-btn svg {
   width: 14px;
   height: 14px;
+}
+
+.event-card-photo-upload-icon-btn,
+.object-card-photo-upload-icon-btn {
+  top: 8px;
+  right: 8px;
+  z-index: 8;
+}
+
+.catalog-photo-upload-error {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 17, 17, 0.68);
+  background: rgba(255, 255, 255, 0.88);
+  color: #111111;
+  font-family: var(--typo-caption-family);
+  font-size: var(--typo-caption-size);
+  line-height: var(--typo-caption-line-height);
+  font-weight: var(--typo-caption-weight);
+  z-index: 8;
+}
+
+.image-crop-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  background: rgba(17, 17, 17, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 8px;
+}
+
+.image-crop-modal-panel {
+  width: min(92vw, 280px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  border: 2px solid #111111;
+  border-radius: 16px;
+  background: var(--tristi-paper);
+  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.88);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.image-crop-modal-title {
+  margin: 0;
+}
+
+.image-crop-stage-wrap {
+  width: 100%;
+}
+
+.image-crop-stage {
+  width: 100%;
+  aspect-ratio: var(--crop-aspect, 1 / 1.4);
+  border: 2px solid #111111;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+
+.image-crop-stage-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  object-fit: cover;
+  cursor: grab;
+  pointer-events: none;
+  filter: var(--image-filter-paper-vintage);
+}
+
+.image-crop-stage-vintage-layer {
+  position: absolute;
+  inset: 0;
+  background: var(--image-overlay-paper-vintage);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.image-crop-stage-ui-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.image-crop-stage.image-crop-stage--event {
+  border-radius: 18px;
+  background: rgba(255, 49, 49, 0.08);
+}
+
+.image-crop-stage.image-crop-stage--event .image-crop-stage-ui-layer {
+  background: linear-gradient(180deg, rgba(236, 235, 231, 0.46) 0%, rgba(236, 235, 231, 0.68) 75%);
+}
+
+.image-crop-stage.image-crop-stage--object {
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.image-crop-stage.image-crop-stage--object .image-crop-stage-ui-layer {
+  background: linear-gradient(180deg, rgba(236, 235, 231, 0.48) 0%, rgba(236, 235, 231, 0.74) 78%);
+}
+
+.image-crop-stage-pan-layer {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  z-index: 3;
+}
+
+.image-crop-stage-pan-layer:active {
+  cursor: grabbing;
+}
+
+.image-crop-stage-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #444b59;
+  font-family: var(--typo-meta-family);
+  font-size: var(--typo-meta-size);
+  line-height: var(--typo-meta-line-height);
+  font-weight: var(--typo-meta-weight);
+}
+
+.image-crop-zoom-label {
+  font-family: var(--typo-meta-family);
+  font-size: var(--typo-meta-size);
+  line-height: var(--typo-meta-line-height);
+  font-weight: var(--typo-meta-weight);
+}
+
+.image-crop-zoom-range {
+  width: 100%;
+}
+
+.image-crop-error {
+  margin: 0;
+  color: #a62323;
+  font-family: var(--typo-meta-family);
+  font-size: var(--typo-meta-size);
+  line-height: var(--typo-meta-line-height);
+  font-weight: var(--typo-meta-weight);
+}
+
+.image-crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .profile-favorite-sports {
@@ -3735,7 +3941,7 @@ main {
 
 .list-ranking-card-cell .event-card-shell[data-size="miniature"],
 .list-ranking-card-cell .object-card-shell[data-size="miniature"] {
-  --event-card-aspect-ratio: 1 / 0.8;
+  --event-card-aspect-ratio: 1 / 1.4;
   --event-card-padding: 11px;
   --event-overlay-padding: 9px;
   --event-chip-min-height: 20px;
@@ -4663,7 +4869,7 @@ main {
   display: flex;
   flex-direction: column;
   height: auto;
-  aspect-ratio: 1 / 0.8;
+  aspect-ratio: 1 / 1.4;
   min-height: 0;
   overflow: hidden;
 }

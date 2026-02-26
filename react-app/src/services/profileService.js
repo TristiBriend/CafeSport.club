@@ -40,6 +40,14 @@ function writeStorageObject(key, value) {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function isValidAvatarValue(value) {
+  const safeValue = String(value || "").trim();
+  if (!safeValue) return false;
+  if (safeValue.startsWith("data:image/")) return true;
+  if (safeValue.startsWith("https://") || safeValue.startsWith("http://")) return true;
+  return false;
+}
+
 function mirrorProfilePatchToCloud(userId, patch) {
   const safeUserId = String(userId || "").trim();
   const { isCloudMode, firebaseUid, appUserId } = getSocialSyncCloudIdentity();
@@ -77,20 +85,20 @@ export function getProfileAvatarOverride(userId) {
   if (!safeUserId) return "";
   const map = readStorageObject(PROFILE_AVATAR_OVERRIDES_KEY);
   const value = String(map[safeUserId] || "").trim();
-  if (!value.startsWith("data:image/")) return "";
+  if (!isValidAvatarValue(value)) return "";
   return value;
 }
 
-export function setProfileAvatarOverride(userId, dataUrl) {
+export function setProfileAvatarOverride(userId, avatarValue) {
   const safeUserId = String(userId || "").trim();
-  const safeDataUrl = String(dataUrl || "").trim();
-  if (!safeUserId || !safeDataUrl.startsWith("data:image/")) return "";
+  const safeAvatarValue = String(avatarValue || "").trim();
+  if (!safeUserId || !isValidAvatarValue(safeAvatarValue)) return "";
   const map = readStorageObject(PROFILE_AVATAR_OVERRIDES_KEY);
-  map[safeUserId] = safeDataUrl;
+  map[safeUserId] = safeAvatarValue;
   writeStorageObject(PROFILE_AVATAR_OVERRIDES_KEY, map);
-  mirrorProfilePatchToCloud(safeUserId, { avatarUrl: safeDataUrl });
+  mirrorProfilePatchToCloud(safeUserId, { avatarUrl: safeAvatarValue });
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);
-  return safeDataUrl;
+  return safeAvatarValue;
 }
 
 export function clearProfileAvatarOverride(userId) {

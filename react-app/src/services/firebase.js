@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const rawConfig = {
   apiKey: String(import.meta.env.VITE_FIREBASE_API_KEY || "").trim(),
@@ -29,13 +30,15 @@ export const isFirebaseConfigured = firebaseMissingConfig.length === 0;
 let firebaseApp = null;
 let auth = null;
 let db = null;
+let storage = null;
 let googleProvider = null;
 
 if (isFirebaseConfigured) {
   firebaseApp = initializeApp(rawConfig);
   auth = getAuth(firebaseApp);
   db = getFirestore(firebaseApp);
+  storage = getStorage(firebaseApp);
   googleProvider = new GoogleAuthProvider();
 }
 
-export { auth, db, firebaseApp, googleProvider };
+export { auth, db, storage, firebaseApp, googleProvider };

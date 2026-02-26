@@ -563,34 +563,10 @@
     "bio": "Relances spectaculaires."
   },
   {
-    "id": "ath_C5PX86HWNR3XC5PX66HWNR31C5",
-    "name": "Israel Adesanya",
-    "sport": "MMA",
-    "country": "Nigeria",
-    "team": "City Kickboxing",
-    "role": "Middleweight",
-    "bio": "Précision et striking de haut niveau."
-  },
-  {
-    "id": "ath_JJGT7QW30GEXJJGT5QW30GE2JJ",
-    "name": "Francis Ngannou",
-    "sport": "MMA",
-    "country": "Cameroun",
-    "team": "MMA Factory",
-    "role": "Heavyweight",
-    "bio": "Puissance de frappe devastatrice."
-  },
-  {
     "id": "ath_K46DDVFYGTG3K46DBVFYGTF8K4",
     "name": "Carlos Alcaraz",
     "sport": "Tennis",
     "image": "images/athletes/carlos_alcaraz.jpg"
-  },
-  {
-    "id": "ath_8E4ZJRXKW16M8E4ZMRXKW17F8E",
-    "name": "Conor McGregor",
-    "sport": "MMA",
-    "image": "images/athletes/conor_mcgregor.jpg"
   },
   {
     "id": "ath_MDMWEMWZAWB3MDMWGMWZAWBYMD",
@@ -622,12 +598,6 @@
     "name": "Fernando Alonso",
     "sport": "Sport auto",
     "image": "images/athletes/fernando_alonso.jpg"
-  },
-  {
-    "id": "ath_XCRSKKCM3DCHXCRSNKCM3DDDXC",
-    "name": "Floyd Mayweather Jr",
-    "sport": "Boxe",
-    "image": "images/athletes/floyd_mayweather_jr.jpg"
   },
   {
     "id": "ath_X9X6HNM98RBMX9X6KNM98RCFX9",
@@ -719,12 +689,6 @@
     "image": "images/athletes/mikaela_shiffrin.jpg"
   },
   {
-    "id": "ath_7W7N9E4RCHHW7W7NBE4RCHJQ7W",
-    "name": "Mike Tyson",
-    "sport": "Boxe",
-    "image": "images/athletes/mike_tyson.jpg"
-  },
-  {
     "id": "ath_FYQHY66M4ZFTFYQHW66M4ZEYFY",
     "name": "Neymar Jr",
     "sport": "Football",
@@ -781,12 +745,6 @@
     "image": "images/athletes/shaquille_oneal.jpg"
   },
   {
-    "id": "ath_7V7QPYY5WZJ47V7QRYY5WZJZ7V",
-    "name": "Shohei Ohtani",
-    "sport": "Baseball",
-    "image": "images/athletes/shohei_ohtani.jpg"
-  },
-  {
     "id": "ath_KDDNYYEXZPWWKDDP0YEXZPXQKD",
     "name": "Simone Biles",
     "sport": "Gymnastique",
@@ -798,12 +756,6 @@
     "sport": "Basketball",
     "teamId": "tm_84N5TZZCDWB284N5RZZCDWA784",
     "image": "images/athletes/stephen_curry.jpg"
-  },
-  {
-    "id": "ath_T06545873PQNT06565873PRGT0",
-    "name": "Tiger Woods",
-    "sport": "Golf",
-    "image": "images/athletes/tiger_woods.jpg"
   },
   {
     "id": "ath_YVS6E1G4V7ABYVS6G1G4V7B7YV",

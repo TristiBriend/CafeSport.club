@@ -63,11 +63,24 @@ Then open the local Vite URL displayed in the terminal.
 ### Cloud sync domains (Firebase)
 
 - Auth via Firebase (`react-app/src/contexts/AuthContext.jsx`)
+  - anonymous cloud session auto for non connected visitors
 - Watchlist cloud (`users/{uid}/watchlist`) + local guest fallback
 - Social sync orchestrator (`react-app/src/services/socialSyncService.js`)
   - domains: `follows`, `comments`, `ratings`, `tags`, `tabs`, `profile`
   - mode guest: localStorage/sessionStorage
-  - mode authenticated: non-destructive local->cloud seed + cloud->local hydration
+  - mode cloud (anonymous/authenticated): non-destructive local->cloud seed + cloud->local hydration
+- Join requests cloud: `joinRequests`
+- Catalog bootstrap Firestore:
+  - button in `DataModel` page to initialize `events`, `athletes`, `teams`, `leagues`, `leagueSeasons`, `lists`
+  - service: `react-app/src/services/catalogFirestoreBootstrapService.js`
+- Admin mode (Firestore):
+  - roles from `adminUsers/{uid}` (`isAdmin: true`, `roles: ["catalog_admin"]`)
+  - admin routes: `/datamodel`, `/uisamples`
+  - admin can delete catalog objects from card menus (`event`, `athlete`, `team`, `league`, `league-season`, `list`) with dependency guard
+  - first admin bootstrap (Firebase Console): create document `adminUsers/{uid}` with fields:
+    - `uid: "<firebase uid>"`
+    - `isAdmin: true`
+    - `roles: ["catalog_admin"]`
 - Domain flags (optional) in `react-app/.env.local`:
   - `VITE_FIREBASE_SYNC_FOLLOWS`
   - `VITE_FIREBASE_SYNC_COMMENTS`

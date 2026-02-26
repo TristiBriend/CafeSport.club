@@ -31,6 +31,11 @@ import {
   setProfileDetailsOverride,
 } from "../services/profileService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  canUploadProfileAvatarToCloud,
+  uploadProfileAvatarFile,
+} from "../services/profileAvatarStorageService";
 
 const RADAR_COLORS = [
   "#ecef46",
@@ -153,6 +158,7 @@ function UserProfileLayout({
   onToggleWatchlist = () => {},
 }) {
   const { revisionByDomain } = useSocialSync();
+  const { currentUser, isAuthenticated } = useAuth();
   const commentsRevision = Number(revisionByDomain?.comments || 0);
   const ratingsRevision = Number(revisionByDomain?.ratings || 0);
   const followsRevision = Number(revisionByDomain?.follows || 0);
@@ -168,6 +174,7 @@ function UserProfileLayout({
   const [detailsVersion, setDetailsVersion] = useState(0);
   const [commentsVersion, setCommentsVersion] = useState(0);
   const [avatarError, setAvatarError] = useState("");
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [detailsDraft, setDetailsDraft] = useState(emptyDetailsDraft);
   const fileInputRef = useRef(null);
@@ -286,7 +293,7 @@ function UserProfileLayout({
     fileInputRef.current?.click();
   }
 
-  function handlePhotoChange(event) {
+  async function handlePhotoChange(event) {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -298,6 +305,23 @@ function UserProfileLayout({
       setAvatarError("Image trop lourde (max 2.5 MB).");
       return;
     }
+    setAvatarError("");
+
+    if (isOwnProfile && isAuthenticated && canUploadProfileAvatarToCloud() && currentUser?.firebaseUid) {
+      setIsUploadingAvatar(true);
+      try {
+        const { url } = await uploadProfileAvatarFile(currentUser.firebaseUid, file);
+        setProfileAvatarOverride(profileUser.id, url);
+        setAvatarVersion((value) => value + 1);
+        setAvatarError("");
+      } catch {
+        setAvatarError("Upload impossible pour le moment. Reessaye dans quelques secondes.");
+      } finally {
+        setIsUploadingAvatar(false);
+      }
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = String(reader.result || "");
@@ -361,12 +385,13 @@ function UserProfileLayout({
                   Modifier mes infos
                 </button>
                 {avatarOverride ? (
-                  <button type="button" className="filter-btn" onClick={handleResetPhoto}>
+                  <button type="button" className="filter-btn" onClick={handleResetPhoto} disabled={isUploadingAvatar}>
                     Retirer photo perso
                   </button>
                 ) : null}
               </div>
             ) : null}
+            {isUploadingAvatar ? <p className="event-meta">Upload de la photo en cours...</p> : null}
             {avatarError ? <p className="event-meta">{avatarError}</p> : null}
             <div className="profile-user-card-wrap">
               <input
@@ -382,8 +407,9 @@ function UserProfileLayout({
                   type="button"
                   className="profile-photo-upload-icon-btn"
                   onClick={handlePickPhoto}
+                  disabled={isUploadingAvatar}
                   aria-label="Changer ma photo"
-                  title="Changer ma photo"
+                  title={isUploadingAvatar ? "Upload en cours..." : "Changer ma photo"}
                 >
                   <CameraIcon />
                 </button>

@@ -29,8 +29,13 @@ import PageBreadcrumbs from "./components/PageBreadcrumbs";
 import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
 import RequireAuth from "./components/RequireAuth";
+import RequireAdmin from "./components/RequireAdmin";
 import { useAuth } from "./contexts/AuthContext";
 import { useSocialSync } from "./contexts/SocialSyncContext";
+import {
+  initCatalogRepository,
+  subscribeCatalogRevision,
+} from "./services/catalogRepositoryService";
 import { readWatchlist, writeWatchlist } from "./services/watchlistStorage";
 import {
   readUserWatchlistIds,
@@ -40,23 +45,41 @@ import {
 } from "./services/watchlistFirestoreService";
 
 function App() {
-  const { authReady, currentUser, isAuthenticated, isFirebaseConfigured } = useAuth();
+  const {
+    authReady,
+    currentUser,
+    hasCloudSession,
+    isAuthenticated,
+    isFirebaseConfigured,
+  } = useAuth();
   const { revisionByDomain } = useSocialSync();
   const [watchlistIds, setWatchlistIds] = useState(() => readWatchlist());
   const firebaseUid = String(currentUser?.firebaseUid || "").trim();
   const socialRevisionStamp = Object.values(revisionByDomain || {})
     .map((value) => Number(value || 0))
     .join("-");
+  const [catalogRevision, setCatalogRevision] = useState(0);
 
   useEffect(() => {
-    if (isAuthenticated && isFirebaseConfigured && firebaseUid) return;
+    if (!authReady) return undefined;
+    initCatalogRepository({
+      enableCloud: hasCloudSession && isFirebaseConfigured,
+    });
+    const unsubscribe = subscribeCatalogRevision((nextRevision) => {
+      setCatalogRevision(Number(nextRevision || 0));
+    });
+    return unsubscribe;
+  }, [authReady, hasCloudSession, isFirebaseConfigured]);
+
+  useEffect(() => {
+    if (hasCloudSession && isFirebaseConfigured && firebaseUid) return;
     writeWatchlist(watchlistIds);
-  }, [firebaseUid, isAuthenticated, isFirebaseConfigured, watchlistIds]);
+  }, [firebaseUid, hasCloudSession, isFirebaseConfigured, watchlistIds]);
 
   useEffect(() => {
     if (!authReady) return undefined;
 
-    if (!isAuthenticated || !isFirebaseConfigured || !firebaseUid) {
+    if (!hasCloudSession || !isFirebaseConfigured || !firebaseUid) {
       setWatchlistIds(readWatchlist());
       return undefined;
     }
@@ -70,7 +93,7 @@ function App() {
     }, () => {});
 
     return unsubscribe;
-  }, [authReady, firebaseUid, isAuthenticated, isFirebaseConfigured]);
+  }, [authReady, firebaseUid, hasCloudSession, isFirebaseConfigured]);
 
   function handleToggleWatchlist(eventId) {
     const safeEventId = String(eventId || "").trim();
@@ -86,7 +109,7 @@ function App() {
       return [...prev, safeEventId];
     });
 
-    if (isAuthenticated && isFirebaseConfigured && firebaseUid) {
+    if (hasCloudSession && isFirebaseConfigured && firebaseUid) {
       setUserWatchlistState(firebaseUid, safeEventId, shouldSave)
         .catch(() => {
           readUserWatchlistIds(firebaseUid)
@@ -102,7 +125,7 @@ function App() {
       <div className="bg-grid" />
       <SiteHeader watchlistCount={watchlistIds.length} />
 
-      <main className="page-wrap app-main-wrap" data-sync-stamp={socialRevisionStamp}>
+      <main className="page-wrap app-main-wrap" data-sync-stamp={`${socialRevisionStamp}-${catalogRevision}`}>
         <PageBreadcrumbs />
         <Routes>
           <Route
@@ -249,8 +272,22 @@ function App() {
             path="/signup"
             element={authReady && isAuthenticated ? <Navigate replace to="/profile" /> : <SignupPage />}
           />
-          <Route path="/datamodel" element={<DataModelPage />} />
-          <Route path="/uisamples" element={<UISamplesPage />} />
+          <Route
+            path="/datamodel"
+            element={(
+              <RequireAdmin>
+                <DataModelPage />
+              </RequireAdmin>
+            )}
+          />
+          <Route
+            path="/uisamples"
+            element={(
+              <RequireAdmin>
+                <UISamplesPage />
+              </RequireAdmin>
+            )}
+          />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </main>

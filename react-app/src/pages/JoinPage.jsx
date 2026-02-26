@@ -1,26 +1,11 @@
 import { useMemo, useState } from "react";
 import { getAthleteSports } from "../services/catalogService";
-
-const JOIN_STORAGE_KEY = "cafesport.club_join_requests_v1";
-
-function readJoinRequests() {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(JOIN_STORAGE_KEY);
-    const parsed = JSON.parse(raw || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeJoinRequests(requests) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(JOIN_STORAGE_KEY, JSON.stringify(requests));
-}
+import { useAuth } from "../contexts/AuthContext";
+import { createJoinRequestCloud } from "../services/joinRequestsFirestoreService";
 
 function JoinPage() {
   const sports = useMemo(() => getAthleteSports(), []);
+  const { hasCloudSession, currentUser, isFirebaseConfigured } = useAuth();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -29,34 +14,44 @@ function JoinPage() {
     note: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    setSubmitError("");
     const name = String(form.name || "").trim();
     const email = String(form.email || "").trim();
     if (!name || !email) return;
+    if (!isFirebaseConfigured || !hasCloudSession || !currentUser?.firebaseUid) {
+      setSubmitError("Session cloud indisponible pour le moment.");
+      return;
+    }
 
-    const requests = readJoinRequests();
-    requests.push({
-      id: `join-${Date.now()}`,
-      ...form,
-      name,
-      email,
-      createdAt: new Date().toISOString(),
-    });
-    writeJoinRequests(requests);
-    setSubmitted(true);
-    setForm((prev) => ({
-      ...prev,
-      name: "",
-      email: "",
-      favorite: "",
-      note: "",
-    }));
+    try {
+      const createdId = await createJoinRequestCloud(currentUser.firebaseUid, {
+        ...form,
+        name,
+        email,
+      });
+      if (!createdId) {
+        setSubmitError("Impossible d envoyer la demande.");
+        return;
+      }
+      setSubmitted(true);
+      setForm((prev) => ({
+        ...prev,
+        name: "",
+        email: "",
+        favorite: "",
+        note: "",
+      }));
+    } catch {
+      setSubmitError("Erreur reseau. Reessaie.");
+    }
   }
 
   return (
@@ -70,7 +65,7 @@ function JoinPage() {
             <p>03. Badges fondateurs et feedback direct</p>
           </div>
           <p className="event-meta">
-            Les demandes sont stockees en local pour l instant (mode migration React).
+            Les demandes sont stockees dans Firebase.
           </p>
         </article>
 
@@ -134,10 +129,11 @@ function JoinPage() {
             Demander l acces
           </button>
           {submitted ? (
-            <p className="event-meta">Demande enregistree localement. Merci.</p>
+            <p className="event-meta">Demande enregistree. Merci.</p>
           ) : (
             <p className="event-meta">On t ecrira pour la beta.</p>
           )}
+          {submitError ? <p className="event-meta">{submitError}</p> : null}
         </form>
       </div>
     </section>

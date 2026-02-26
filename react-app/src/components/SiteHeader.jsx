@@ -38,6 +38,9 @@ function getSearchPlaceholder(pathname) {
 function getImagePath(value) {
   const image = String(value || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 
@@ -51,7 +54,12 @@ function getInitials(name) {
 function SiteHeader({ watchlistCount = 0 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, isAuthenticated, logout } = useAuth();
+  const {
+    currentUser,
+    isAuthenticated,
+    isAdmin,
+    logout,
+  } = useAuth();
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const headerSearchRef = useRef(null);
@@ -230,32 +238,34 @@ function SiteHeader({ watchlistCount = 0 }) {
         </nav>
 
         <div className="header-actions">
-          <details
-            ref={adminMenuRef}
-            className="header-user-menu"
-            onToggle={(event) => {
-              if (!event.currentTarget.open) return;
-              closeHeaderMenus({ except: event.currentTarget });
-            }}
-          >
-            <summary className="ghost-header user-menu-toggle" aria-label="Ouvrir le menu admin">
-              <span className="user-menu-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 7.5h16M4 12h16M4 16.5h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="8" cy="7.5" r="1.75" fill="#111111" />
-                  <circle cx="14" cy="12" r="1.75" fill="#111111" />
-                  <circle cx="10" cy="16.5" r="1.75" fill="#111111" />
-                </svg>
-              </span>
-            </summary>
-            <div className="user-menu-dropdown" role="menu" aria-label="Menu admin" onClick={handleMenuDropdownClick}>
-              {ADMIN_NAV.map((item) => (
-                <NavLink key={item.to} role="menuitem" to={item.to}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </div>
-          </details>
+          {isAdmin ? (
+            <details
+              ref={adminMenuRef}
+              className="header-user-menu"
+              onToggle={(event) => {
+                if (!event.currentTarget.open) return;
+                closeHeaderMenus({ except: event.currentTarget });
+              }}
+            >
+              <summary className="ghost-header user-menu-toggle" aria-label="Ouvrir le menu admin">
+                <span className="user-menu-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7.5h16M4 12h16M4 16.5h16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <circle cx="8" cy="7.5" r="1.75" fill="#111111" />
+                    <circle cx="14" cy="12" r="1.75" fill="#111111" />
+                    <circle cx="10" cy="16.5" r="1.75" fill="#111111" />
+                  </svg>
+                </span>
+              </summary>
+              <div className="user-menu-dropdown" role="menu" aria-label="Menu admin" onClick={handleMenuDropdownClick}>
+                {ADMIN_NAV.map((item) => (
+                  <NavLink key={item.to} role="menuitem" to={item.to}>
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </details>
+          ) : null}
 
           {isAuthenticated ? (
             <details

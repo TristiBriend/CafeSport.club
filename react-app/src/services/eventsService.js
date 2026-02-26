@@ -1,4 +1,4 @@
-import { events as eventsData } from "../data/modelStore";
+import { getCatalogSnapshot } from "./catalogRepositoryService";
 
 export const EVENT_SORT = {
   DATE_DESC: "date-desc",
@@ -33,15 +33,15 @@ function compareByScoreAsc(a, b) {
 }
 
 export function getAllEvents() {
-  return eventsData;
+  return getCatalogSnapshot().events;
 }
 
 export function getSports() {
-  return Array.from(new Set(eventsData.map((event) => event.sport))).sort((a, b) => a.localeCompare(b));
+  return Array.from(new Set(getAllEvents().map((event) => event.sport))).sort((a, b) => a.localeCompare(b));
 }
 
 export function getEventById(eventId) {
-  return eventsData.find((event) => event.id === eventId) || null;
+  return getAllEvents().find((event) => event.id === eventId) || null;
 }
 
 export function filterEvents(list, { sportFilter = "Tous", query = "" } = {}) {
@@ -73,12 +73,12 @@ export function sortEvents(list, sortBy = EVENT_SORT.DATE_DESC) {
 
 export function getWatchlistEvents(watchlistIds = []) {
   const ids = new Set(watchlistIds);
-  return eventsData.filter((event) => ids.has(event.id));
+  return getAllEvents().filter((event) => ids.has(event.id));
 }
 
 export function getRelatedEvents(event, limit = 6) {
   if (!event) return [];
-  const pool = eventsData.filter((item) => item.id !== event.id);
+  const pool = getAllEvents().filter((item) => item.id !== event.id);
   const sameSport = pool.filter((item) => item.sport === event.sport);
   const sameLeague = sameSport.filter((item) => item.league === event.league);
   const primary = sortEvents(sameLeague, EVENT_SORT.SCORE_DESC);

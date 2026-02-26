@@ -4,11 +4,13 @@ import { setCurrentProfileUserId } from "../services/profileService";
 import { firebaseMissingConfig, isFirebaseConfigured } from "../services/firebase";
 import {
   observeAuth,
+  ensureAnonymousSession,
   signInWithEmail,
   signInWithGoogle,
   signOutUser,
   signUpWithEmail,
 } from "../services/firebaseAuthService";
+import { subscribeAdminProfile } from "../services/adminRolesService";
 
 const AuthContext = createContext(null);
 
@@ -51,6 +53,21 @@ function pickCatalogUser(firebaseUser) {
 
 function buildCurrentUser(firebaseUser) {
   if (!firebaseUser) return null;
+  if (firebaseUser.isAnonymous) {
+    return {
+      id: "",
+      firebaseUid: String(firebaseUser.uid || "").trim(),
+      name: "Visiteur",
+      handle: "@visiteur",
+      location: "",
+      bio: "",
+      favoriteSports: [],
+      followers: 0,
+      image: "",
+      email: "",
+      isAnonymous: true,
+    };
+  }
   const catalogUser = pickCatalogUser(firebaseUser);
   if (!catalogUser) {
     const email = String(firebaseUser.email || "").trim();
@@ -82,23 +99,59 @@ export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRoles, setAdminRoles] = useState([]);
+  const [adminReady, setAdminReady] = useState(false);
   const currentUser = useMemo(() => buildCurrentUser(firebaseUser), [firebaseUser]);
-  const isAuthenticated = Boolean(firebaseUser);
+  const hasCloudSession = Boolean(firebaseUser);
+  const isAnonymousSession = Boolean(firebaseUser?.isAnonymous);
+  const isAuthenticated = Boolean(firebaseUser && !firebaseUser?.isAnonymous);
 
   useEffect(() => {
     const unsubscribe = observeAuth((nextUser) => {
       setFirebaseUser(nextUser || null);
       setAuthReady(true);
-      if (nextUser) {
+      if (nextUser && !nextUser.isAnonymous) {
         const mappedUser = buildCurrentUser(nextUser);
         const profileId = String(mappedUser?.id || "").trim();
         if (profileId) {
           setCurrentProfileUserId(profileId);
         }
+      } else if (!nextUser && isFirebaseConfigured) {
+        ensureAnonymousSession().catch(() => {});
       }
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!authReady) return () => {};
+    if (!isAuthenticated || !isFirebaseConfigured) {
+      setIsAdmin(false);
+      setAdminRoles([]);
+      setAdminReady(true);
+      return () => {};
+    }
+
+    const safeUid = String(currentUser?.firebaseUid || "").trim();
+    if (!safeUid) {
+      setIsAdmin(false);
+      setAdminRoles([]);
+      setAdminReady(true);
+      return () => {};
+    }
+
+    setAdminReady(false);
+    return subscribeAdminProfile(safeUid, (profile) => {
+      setIsAdmin(Boolean(profile?.isAdmin));
+      setAdminRoles(Array.isArray(profile?.roles) ? profile.roles : []);
+      setAdminReady(true);
+    }, () => {
+      setIsAdmin(false);
+      setAdminRoles([]);
+      setAdminReady(true);
+    });
+  }, [authReady, currentUser?.firebaseUid, isAuthenticated, isFirebaseConfigured]);
 
   const loginWithGoogle = useCallback(async () => {
     setAuthError("");
@@ -141,6 +194,11 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       isAuthenticated,
+      hasCloudSession,
+      isAnonymousSession,
+      isAdmin,
+      adminRoles,
+      adminReady,
       currentUser,
       authReady,
       authError,
@@ -155,7 +213,13 @@ export function AuthProvider({ children }) {
       authError,
       authReady,
       currentUser,
+      isAdmin,
+      adminRoles,
+      adminReady,
       isAuthenticated,
+      hasCloudSession,
+      isAnonymousSession,
+      isFirebaseConfigured,
       loginWithEmail,
       loginWithGoogle,
       logout,

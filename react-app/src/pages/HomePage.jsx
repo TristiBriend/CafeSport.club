@@ -38,6 +38,9 @@ function getInitials(name) {
 function getEventImage(event) {
   const image = String(event?.image || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 

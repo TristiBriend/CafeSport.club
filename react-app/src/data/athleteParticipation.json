@@ -390,14 +390,6 @@
     ]
   },
   {
-    "eventId": "evt_38JM576PBC5X38JM376PBC5138",
-    "athleteIds": [
-      "ath_JJGT7QW30GEXJJGT5QW30GE2JJ",
-      "ath_C5PX86HWNR3XC5PX66HWNR31C5",
-      "ath_8E4ZJRXKW16M8E4ZMRXKW17F8E"
-    ]
-  },
-  {
     "eventId": "evt_PH1C32ZAEK9TPH1C12ZAEK8ZPH",
     "athleteIds": [
       "ath_8DAHGRY334558DAHJRY334608D",
@@ -488,18 +480,6 @@
     ]
   },
   {
-    "eventId": "evt_DJADRY5W4PK9DJADTY5W4PM5DJ",
-    "athleteIds": [
-      "ath_T06545873PQNT06565873PRGT0"
-    ]
-  },
-  {
-    "eventId": "evt_7N0YCT50QY527N0YAT50QY477N",
-    "athleteIds": [
-      "ath_T06545873PQNT06565873PRGT0"
-    ]
-  },
-  {
     "eventId": "evt_JTHE7M9TB41YJTHE5M9TB413JT",
     "athleteIds": [
       "ath_WG635X9EQAS8WG633X9EQARDWG",
@@ -562,12 +542,6 @@
     ]
   },
   {
-    "eventId": "evt_KBXT96B0KXPNKBXT76B0KXNSKB",
-    "athleteIds": [
-      "ath_XCRSKKCM3DCHXCRSNKCM3DDDXC"
-    ]
-  },
-  {
     "eventId": "evt_GQS1JYKF9B8HGQS1MYKF9B9CGQ",
     "athleteIds": [
       "ath_6BABK0E93QDK6BABN0E93QEE6B"
@@ -604,12 +578,6 @@
     ]
   },
   {
-    "eventId": "evt_07GCYASQ1FC307GD0ASQ1FCY07",
-    "athleteIds": [
-      "ath_7W7N9E4RCHHW7W7NBE4RCHJQ7W"
-    ]
-  },
-  {
     "eventId": "evt_TNNNYRQFVKSVTNNNWRQFVKS0TN",
     "athleteIds": [
       "ath_FX1YTZBV3PG1FX1YRZBV3PF6FX"
@@ -631,12 +599,6 @@
     "eventId": "evt_1J2862J9H2BJ1J2842J9H2AP1J",
     "athleteIds": [
       "ath_WQ1CN57PQNGXWQ1CQ57PQNHRWQ"
-    ]
-  },
-  {
-    "eventId": "evt_397V35GZ417T397V55GZ418P39",
-    "athleteIds": [
-      "ath_7V7QPYY5WZJ47V7QRYY5WZJZ7V"
     ]
   }
 ]

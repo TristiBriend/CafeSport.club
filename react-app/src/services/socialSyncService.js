@@ -84,6 +84,7 @@ let mode = "guest-local";
 let readyByDomain = buildInitialReady();
 let revisionByDomain = buildInitialRevision();
 let currentIdentity = {
+  hasCloudSession: false,
   isAuthenticated: false,
   isFirebaseConfigured,
   firebaseUid: "",
@@ -420,7 +421,9 @@ export function isSocialDomainEnabled(domain) {
 export function getSocialSyncCloudIdentity() {
   const safeUid = normalizeId(currentIdentity.firebaseUid);
   const safeAppUserId = normalizeId(currentIdentity.appUserId);
-  const isCloudMode = mode === "cloud-auth" && Boolean(safeUid) && Boolean(currentIdentity.isFirebaseConfigured);
+  const isCloudMode = (mode === "cloud-auth" || mode === "cloud-anon")
+    && Boolean(safeUid)
+    && Boolean(currentIdentity.isFirebaseConfigured);
   return {
     isCloudMode,
     firebaseUid: safeUid,
@@ -433,6 +436,7 @@ export function notifyDomainDirty(domain) {
 }
 
 export async function initializeSocialSyncSession({
+  hasCloudSession = false,
   isAuthenticated = false,
   firebaseUid = "",
   appUserId = "",
@@ -444,6 +448,7 @@ export async function initializeSocialSyncSession({
   cleanupSubscriptions();
 
   currentIdentity = {
+    hasCloudSession: Boolean(hasCloudSession),
     isAuthenticated: Boolean(isAuthenticated),
     isFirebaseConfigured: Boolean(firebaseConfigured),
     firebaseUid: normalizeId(firebaseUid),
@@ -451,12 +456,14 @@ export async function initializeSocialSyncSession({
   };
 
   const cloudMode = Boolean(
-    currentIdentity.isAuthenticated
+    currentIdentity.hasCloudSession
     && currentIdentity.isFirebaseConfigured
     && currentIdentity.firebaseUid,
   );
 
-  mode = cloudMode ? "cloud-auth" : "guest-local";
+  mode = cloudMode
+    ? (currentIdentity.isAuthenticated ? "cloud-auth" : "cloud-anon")
+    : "guest-local";
 
   readyByDomain = DOMAINS.reduce((acc, domain) => {
     if (!DOMAIN_FLAGS[domain]) {

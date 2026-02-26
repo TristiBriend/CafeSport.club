@@ -67,9 +67,7 @@
     "followers": 1500,
     "location": "Las Vegas",
     "bio": "MMA, finishes et soirées de combat.",
-    "favoriteSports": [
-      "MMA"
-    ],
+    "favoriteSports": [],
     "badge": "Fight night"
   },
   {

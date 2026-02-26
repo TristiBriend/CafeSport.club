@@ -3,12 +3,17 @@ import { Link } from "react-router-dom";
 import { getUserById, resolveListEntries } from "../services/catalogService";
 import { buildAddWatchlistFabButton } from "./WatchlistFabButton";
 import { useSocialSync } from "../contexts/SocialSyncContext";
+import { useAuth } from "../contexts/AuthContext";
 import {
   FOLLOW_TARGET,
   getTargetFollowerCount,
   isTargetFollowed,
   toggleTargetFollow,
 } from "../services/userFollowService";
+import {
+  deleteCatalogObject,
+  getDeleteDependencies,
+} from "../services/adminCatalogModerationService";
 
 function IconMore() {
   return (
@@ -23,6 +28,9 @@ function IconMore() {
 function getImagePath(value) {
   const image = String(value || "").trim();
   if (!image) return "";
+  if (/^(https?:)?\/\//.test(image) || image.startsWith("data:") || image.startsWith("blob:")) {
+    return image;
+  }
   return image.startsWith("/") ? image : `/${image}`;
 }
 
@@ -96,6 +104,7 @@ function buildListFeedPath(listId) {
 }
 
 function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" }) {
+  const { isAdmin } = useAuth();
   const entries = resolveListEntries(list);
   const owner = getUserById(list?.ownerId);
   const previewItems = entries.map(resolvePreviewItem).filter(Boolean);
@@ -117,6 +126,7 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [resolvedFavoriteCount, setResolvedFavoriteCount] = useState(baseFavoriteCount);
+  const [isAdminDeleting, setIsAdminDeleting] = useState(false);
   const moreMenuRef = useRef(null);
   const { revisionByDomain } = useSocialSync();
   const followsRevision = Number(revisionByDomain?.follows || 0);
@@ -176,6 +186,43 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
     if (!canToggleFavorite) return;
     handleToggleFavorite();
     setIsMoreMenuOpen(false);
+  }
+
+  async function handleAdminDeleteFromMenu() {
+    if (!isAdmin || isAdminDeleting) return;
+    const deps = await getDeleteDependencies({ type: "list", id: list?.id });
+    if (deps.blocked) {
+      const detail = deps.dependencies
+        .map((item) => `- ${item.label}: ${item.count}`)
+        .join("\n");
+      window.alert(`Suppression bloquee pour ${listTitle}.\nDependances detectees:\n${detail}`);
+      setIsMoreMenuOpen(false);
+      return;
+    }
+
+    const confirmed = window.confirm(`Supprimer definitivement ${listTitle} de la base ?`);
+    if (!confirmed) return;
+
+    setIsAdminDeleting(true);
+    try {
+      const result = await deleteCatalogObject({
+        type: "list",
+        id: list?.id,
+      });
+      if (!result?.ok && result?.reason === "blocked_by_dependencies") {
+        const detail = (result?.dependencies?.dependencies || [])
+          .map((item) => `- ${item.label}: ${item.count}`)
+          .join("\n");
+        window.alert(`Suppression bloquee.\n${detail}`);
+      } else if (!result?.ok) {
+        window.alert("Suppression impossible pour le moment.");
+      }
+    } catch {
+      window.alert("Erreur pendant la suppression.");
+    } finally {
+      setIsAdminDeleting(false);
+      setIsMoreMenuOpen(false);
+    }
   }
 
   if (!list) return null;
@@ -253,6 +300,17 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
                   >
                     {ownerActionLabel}
                   </Link>
+                ) : null}
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    className="ranking-card-more-action is-danger"
+                    role="menuitem"
+                    onClick={handleAdminDeleteFromMenu}
+                    disabled={isAdminDeleting}
+                  >
+                    {isAdminDeleting ? "Suppression..." : "Supprimer de la base"}
+                  </button>
                 ) : null}
               </div>
             ) : null}
