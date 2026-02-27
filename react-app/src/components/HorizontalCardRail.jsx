@@ -42,9 +42,6 @@ function HorizontalCardRail({
 }) {
   const railRef = useRef(null);
   const trackRef = useRef(null);
-  const wheelVelocityRef = useRef(0);
-  const wheelFrameRef = useRef(0);
-  const wheelSettleTimerRef = useRef(0);
   const [canScroll, setCanScroll] = useState(false);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -81,9 +78,8 @@ function HorizontalCardRail({
   );
 
   useEffect(() => {
-    const rail = railRef.current;
     const track = trackRef.current;
-    if (!rail || !track) return undefined;
+    if (!track) return undefined;
 
     function centerLoopTrackIfNeeded() {
       if (!shouldLoopTrack) return;
@@ -128,85 +124,6 @@ function HorizontalCardRail({
     centerLoopTrackIfNeeded();
     updateScrollState();
     track.addEventListener("scroll", updateScrollState, { passive: true });
-
-    function stopWheelAnimation() {
-      if (wheelFrameRef.current) {
-        window.cancelAnimationFrame(wheelFrameRef.current);
-        wheelFrameRef.current = 0;
-      }
-      wheelVelocityRef.current = 0;
-    }
-
-    function markWheelScrolling() {
-      rail.classList.add("is-wheel-scrolling");
-      if (wheelSettleTimerRef.current) {
-        window.clearTimeout(wheelSettleTimerRef.current);
-      }
-      wheelSettleTimerRef.current = window.setTimeout(() => {
-        rail.classList.remove("is-wheel-scrolling");
-        wheelSettleTimerRef.current = 0;
-      }, 140);
-    }
-
-    function startWheelAnimation() {
-      if (wheelFrameRef.current) return;
-
-      function tick() {
-        let velocity = wheelVelocityRef.current;
-        if (Math.abs(velocity) < 0.1) {
-          stopWheelAnimation();
-          return;
-        }
-
-        if (shouldLoopTrack) {
-          track.scrollLeft += velocity;
-        } else {
-          const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
-          if (maxScrollLeft <= 1) {
-            stopWheelAnimation();
-            return;
-          }
-
-          const nextScrollLeft = Math.max(0, Math.min(maxScrollLeft, track.scrollLeft + velocity));
-          track.scrollLeft = nextScrollLeft;
-
-          if ((nextScrollLeft <= 0 && velocity < 0) || (nextScrollLeft >= maxScrollLeft && velocity > 0)) {
-            velocity = 0;
-          }
-        }
-
-        wheelVelocityRef.current = velocity * 0.94;
-        wheelFrameRef.current = window.requestAnimationFrame(tick);
-      }
-
-      wheelFrameRef.current = window.requestAnimationFrame(tick);
-    }
-
-    function handleWheel(event) {
-      if (!carouselEnabled) return;
-      const deltaX = normalizeWheelDelta(event.deltaX, event.deltaMode);
-      const horizontalThreshold = 2;
-      const hasHorizontalIntent = Math.abs(deltaX) >= horizontalThreshold;
-      if (!hasHorizontalIntent) return;
-
-      const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
-      if (!shouldLoopTrack && maxScrollLeft <= 1) return;
-
-      const canMove = shouldLoopTrack
-        ? items.length > 1
-        : deltaX < 0
-          ? track.scrollLeft > 0
-          : track.scrollLeft < maxScrollLeft;
-
-      if (!canMove) return;
-      event.preventDefault();
-      markWheelScrolling();
-      const clampedInput = Math.max(-48, Math.min(48, deltaX));
-      const nextVelocity = wheelVelocityRef.current + clampedInput * 0.7;
-      wheelVelocityRef.current = Math.max(-90, Math.min(90, nextVelocity));
-      startWheelAnimation();
-    }
-    rail.addEventListener("wheel", handleWheel, { passive: false });
     const observer = new ResizeObserver(updateScrollState);
     observer.observe(track);
     window.addEventListener("resize", updateScrollState);
@@ -217,13 +134,6 @@ function HorizontalCardRail({
 
     return () => {
       track.removeEventListener("scroll", updateScrollState);
-      rail.removeEventListener("wheel", handleWheel);
-      stopWheelAnimation();
-      if (wheelSettleTimerRef.current) {
-        window.clearTimeout(wheelSettleTimerRef.current);
-        wheelSettleTimerRef.current = 0;
-      }
-      rail.classList.remove("is-wheel-scrolling");
       observer.disconnect();
       window.removeEventListener("resize", updateScrollState);
       window.cancelAnimationFrame(rafId);

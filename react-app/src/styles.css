@@ -8364,9 +8364,19 @@ span.tag-textbox {
 /* Discover carousel mode (opt-in via HorizontalCardRail mode="carousel"). */
 .card-rail.is-carousel {
   --card-rail-gap: 14px;
+  --card-rail-peek: 0px;
+  --card-rail-peek-desktop: 44px;
+  --card-rail-peek-tablet: 30px;
+  --card-rail-peek-mobile: 18px;
+  --card-rail-nav-top: 50%;
+  --card-rail-nav-translate-y: -50%;
   position: relative;
   width: 100%;
   isolation: isolate;
+}
+
+.card-rail.is-carousel.is-scrollable.is-peek {
+  --card-rail-peek: var(--card-rail-peek-desktop);
 }
 
 .card-rail.is-carousel .card-rail-track {
@@ -8390,7 +8400,7 @@ span.tag-textbox {
 }
 
 .card-rail.is-carousel .card-rail-item {
-  flex: 0 0 calc((100% - (var(--card-rail-visible-desktop) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-desktop));
+  flex: 0 0 calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-desktop) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-desktop));
   min-width: 0;
   position: relative;
   z-index: 1;
@@ -8409,6 +8419,17 @@ span.tag-textbox {
   z-index: 24;
 }
 
+/* In carousel rows, reveal optional comment card only on zoom/hover. */
+@media (hover: hover) and (pointer: fine) {
+  .card-rail.is-carousel .card-rail-item .event-card-comment-addon {
+    display: none;
+  }
+
+  .card-rail.is-carousel .card-rail-item:is(:hover, :focus-within) .event-card-comment-addon {
+    display: grid;
+  }
+}
+
 /* Prevent hover-scale jitter while the rail is moving with wheel inertia. */
 .card-rail.is-carousel.is-wheel-scrolling .card-rail-item:hover,
 .card-rail.is-carousel.is-wheel-scrolling .card-rail-item:focus-within {
@@ -8418,8 +8439,8 @@ span.tag-textbox {
 
 .card-rail.is-carousel .card-rail-nav {
   position: absolute;
-  top: 50%;
-  transform: translateY(-50%) scale(0.94);
+  top: var(--card-rail-nav-top);
+  transform: translateY(var(--card-rail-nav-translate-y)) scale(0.94);
   width: 42px;
   height: 42px;
   border: 2px solid #111111;
@@ -8431,7 +8452,7 @@ span.tag-textbox {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 30;
+  z-index: 40;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
@@ -8453,13 +8474,19 @@ span.tag-textbox {
 .card-rail.is-carousel.is-scrollable.is-hover-reveal:focus-within .card-rail-nav {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(-50%) scale(1);
+  transform: translateY(var(--card-rail-nav-translate-y)) scale(1);
 }
 
 .card-rail.is-carousel.is-static .card-rail-nav,
 .card-rail.is-carousel .card-rail-nav:disabled {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Keep nav arrows fixed in event rails despite hover zoom/content expansion. */
+.card-rail.is-carousel.is-event {
+  --card-rail-nav-top: 204px;
+  --card-rail-nav-translate-y: 0;
 }
 
 /* Discover hard-lock: rows stay horizontal even with other global layout rules. */
@@ -8483,8 +8510,16 @@ span.tag-textbox {
 }
 
 @media (max-width: 1024px) {
+  .card-rail.is-carousel.is-event {
+    --card-rail-nav-top: 176px;
+  }
+
+  .card-rail.is-carousel.is-scrollable.is-peek {
+    --card-rail-peek: var(--card-rail-peek-tablet);
+  }
+
   .card-rail.is-carousel .card-rail-item {
-    flex-basis: calc((100% - (var(--card-rail-visible-tablet) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-tablet));
+    flex-basis: calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-tablet) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-tablet));
   }
 }
 
@@ -8493,8 +8528,16 @@ span.tag-textbox {
     --card-rail-gap: 12px;
   }
 
+  .card-rail.is-carousel.is-event {
+    --card-rail-nav-top: 142px;
+  }
+
+  .card-rail.is-carousel.is-scrollable.is-peek {
+    --card-rail-peek: var(--card-rail-peek-mobile);
+  }
+
   .card-rail.is-carousel .card-rail-item {
-    flex-basis: calc((100% - (var(--card-rail-visible-mobile) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-mobile));
+    flex-basis: calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-mobile) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-mobile));
   }
 }
 
