@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import PlayerCard from "../components/PlayerCard";
 import {
@@ -40,7 +41,7 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
           <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements athlete attendus" itemType="event">
             {expectedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -50,7 +51,7 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement a venir pour ce player.</p>
@@ -64,7 +65,7 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
           <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements athlete mieux notes" itemType="event">
             {topRatedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -74,7 +75,7 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement note pour ce player.</p>

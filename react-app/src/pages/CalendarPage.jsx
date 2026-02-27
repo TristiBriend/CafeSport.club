@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import { getAllEvents, getSports } from "../services/eventsService";
 import { getRatingsMap, isUpcomingEvent } from "../services/ratingsService";
 
@@ -511,7 +512,7 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 <h2>{formatDayLabel(group.date)}</h2>
                 <span>{group.items.length} events</span>
               </div>
-              <div className="event-grid">
+              <HorizontalCardRail label={`Evenements ${formatDayLabel(group.date)}`} itemType="event">
                 {group.items.map((event) => (
                   <EventCard
                     key={event.id}
@@ -520,7 +521,7 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                     onToggleWatchlist={onToggleWatchlist}
                   />
                 ))}
-              </div>
+              </HorizontalCardRail>
             </section>
           ))}
         </section>
@@ -562,7 +563,7 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 <h2>{group.league}</h2>
                 <span>{group.items.length} events</span>
               </div>
-              <div className="event-grid">
+              <HorizontalCardRail label={`Evenements ${group.league}`} itemType="event">
                 {group.items.map((event) => (
                   <EventCard
                     key={event.id}
@@ -571,7 +572,7 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                     onToggleWatchlist={onToggleWatchlist}
                   />
                 ))}
-              </div>
+              </HorizontalCardRail>
             </section>
           ))}
         </section>

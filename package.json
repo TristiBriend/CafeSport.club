@@ -9,7 +9,8 @@
     "react:install": "npm --prefix react-app install",
     "react:dev": "npm --prefix react-app run dev",
     "react:build": "npm --prefix react-app run build",
-    "react:preview": "npm --prefix react-app run preview"
+    "react:preview": "npm --prefix react-app run preview",
+    "git:push": "bash scripts/git-push.sh"
   },
   "keywords": [],
   "author": "",

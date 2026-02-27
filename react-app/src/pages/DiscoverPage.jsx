@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import SportFilters from "../components/SportFilters";
 import {
   filterEvents,
@@ -71,7 +72,18 @@ function DiscoverPage({
                 <h2>{sport}</h2>
                 <span>{items.length} evenements</span>
               </div>
-              <div className="event-grid">
+              <HorizontalCardRail
+                label={`Evenements ${sport}`}
+                itemType="event"
+                mode="carousel"
+                className="discover-carousel-row"
+                visibleDesktop={4}
+                visibleTablet={2.3}
+                visibleMobile={1.15}
+                scrollStepItems={1}
+                loop
+                showArrows
+              >
                 {items.map((event) => (
                   <EventCard
                     key={event.id}
@@ -80,12 +92,23 @@ function DiscoverPage({
                     onToggleWatchlist={onToggleWatchlist}
                   />
                 ))}
-              </div>
+              </HorizontalCardRail>
             </section>
           ))}
         </div>
       ) : (
-        <div className="event-grid">
+        <HorizontalCardRail
+          label="Evenements filtres"
+          itemType="event"
+          mode="carousel"
+          className="discover-carousel-row"
+          visibleDesktop={4}
+          visibleTablet={2.3}
+          visibleMobile={1.15}
+          scrollStepItems={1}
+          loop
+          showArrows
+        >
           {filtered.map((event) => (
             <EventCard
               key={event.id}
@@ -94,7 +117,7 @@ function DiscoverPage({
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
-        </div>
+        </HorizontalCardRail>
       )}
     </section>
   );

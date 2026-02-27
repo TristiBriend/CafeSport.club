@@ -1,6 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import PlayerCard from "../components/PlayerCard";
 import RankingCard from "../components/RankingCard";
@@ -119,7 +120,7 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements list attendus" itemType="event">
             {expectedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -129,7 +130,7 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement a venir dans cette list.</p>
@@ -143,7 +144,7 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements list mieux notes" itemType="event">
             {topRatedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -153,7 +154,7 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement note dans cette list.</p>

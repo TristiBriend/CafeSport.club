@@ -8360,3 +8360,157 @@ span.tag-textbox {
   color: #9a1d2e;
   font-weight: 700;
 }
+
+/* Discover carousel mode (opt-in via HorizontalCardRail mode="carousel"). */
+.card-rail.is-carousel {
+  --card-rail-gap: 14px;
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+}
+
+.card-rail.is-carousel .card-rail-track {
+  display: flex;
+  align-items: stretch;
+  gap: var(--card-rail-gap);
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0;
+  padding: 28px 2px 34px;
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-rail.is-carousel .card-rail-track::-webkit-scrollbar {
+  display: none;
+}
+
+.card-rail.is-carousel .card-rail-item {
+  flex: 0 0 calc((100% - (var(--card-rail-visible-desktop) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-desktop));
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  scroll-snap-align: start;
+  transform-origin: center;
+  transition: transform 0.22s ease, z-index 0.22s ease;
+}
+
+.card-rail.is-carousel .card-rail-item > * {
+  width: 100%;
+}
+
+.card-rail.is-carousel .card-rail-item:hover,
+.card-rail.is-carousel .card-rail-item:focus-within {
+  transform: scale(1.2);
+  z-index: 24;
+}
+
+/* Prevent hover-scale jitter while the rail is moving with wheel inertia. */
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:hover,
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:focus-within {
+  transform: none;
+  z-index: 1;
+}
+
+.card-rail.is-carousel .card-rail-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%) scale(0.94);
+  width: 42px;
+  height: 42px;
+  border: 2px solid #111111;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111111;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 30;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.card-rail.is-carousel .card-rail-nav.is-prev {
+  left: 6px;
+}
+
+.card-rail.is-carousel .card-rail-nav.is-next {
+  right: 6px;
+}
+
+.card-rail.is-carousel .card-rail-nav:hover {
+  background: #ffffff;
+}
+
+.card-rail.is-carousel.is-scrollable.is-hover-reveal:hover .card-rail-nav,
+.card-rail.is-carousel.is-scrollable.is-hover-reveal:focus-within .card-rail-nav {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+.card-rail.is-carousel.is-static .card-rail-nav,
+.card-rail.is-carousel .card-rail-nav:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Discover hard-lock: rows stay horizontal even with other global layout rules. */
+.discover-page .discover-carousel-row .card-rail-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch;
+}
+
+.discover-page .discover-carousel-row .card-rail-item {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Home + Discover: reduce event card height while keeping 4 cards on desktop rows. */
+@media (min-width: 1025px) {
+  .discover-page .discover-carousel-row .event-card-shell,
+  .home-page .card-rail .event-card-shell {
+    --event-card-aspect-ratio: 1 / 1.2;
+  }
+}
+
+@media (max-width: 1024px) {
+  .card-rail.is-carousel .card-rail-item {
+    flex-basis: calc((100% - (var(--card-rail-visible-tablet) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-tablet));
+  }
+}
+
+@media (max-width: 720px) {
+  .card-rail.is-carousel {
+    --card-rail-gap: 12px;
+  }
+
+  .card-rail.is-carousel .card-rail-item {
+    flex-basis: calc((100% - (var(--card-rail-visible-mobile) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-mobile));
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .card-rail.is-carousel .card-rail-nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-rail.is-carousel .card-rail-track {
+    scroll-behavior: auto;
+  }
+
+  .card-rail.is-carousel .card-rail-item,
+  .card-rail.is-carousel .card-rail-nav {
+    transition: none;
+  }
+}

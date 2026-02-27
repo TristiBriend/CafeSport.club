@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
 import { filterEvents, getWatchlistEvents } from "../services/eventsService";
 import { isUpcomingEvent } from "../services/ratingsService";
@@ -322,7 +323,7 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 <h2>{group.league}</h2>
                 <span>{group.items.length} events</span>
               </div>
-              <div className="event-grid">
+              <HorizontalCardRail label={`Watchlist ${group.league}`} itemType="event">
                 {group.items.map((event) => (
                   <EventCard
                     key={event.id}
@@ -331,7 +332,7 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                     onToggleWatchlist={onToggleWatchlist}
                   />
                 ))}
-              </div>
+              </HorizontalCardRail>
             </section>
           ))}
         </section>

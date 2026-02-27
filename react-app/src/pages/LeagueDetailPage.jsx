@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import LeagueCard from "../components/LeagueCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById } from "../services/leaguesService";
@@ -38,7 +39,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements ligue attendus" itemType="event">
             {expectedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -48,7 +49,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement a venir pour cette ligue.</p>
@@ -62,7 +63,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail label="Evenements ligue mieux notes" itemType="event">
             {topRatedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -72,7 +73,7 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                 showComment={false}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun evenement note pour cette ligue.</p>

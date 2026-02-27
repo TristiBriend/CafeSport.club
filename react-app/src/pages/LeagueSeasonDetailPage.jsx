@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import LeagueSeasonCard from "../components/LeagueSeasonCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById, getLeagueSeasonById } from "../services/leaguesService";
@@ -32,7 +33,7 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
           <h2>Evenements de la saison</h2>
           <span>{season.events.length}</span>
         </div>
-        <div className="event-grid">
+        <HorizontalCardRail label="Evenements de la saison" itemType="event">
           {season.events.map((event) => (
             <EventCard
               key={event.id}
@@ -41,7 +42,7 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
-        </div>
+        </HorizontalCardRail>
       </section>
 
       <ObjectFeedScopePanel

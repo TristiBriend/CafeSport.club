@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
 import EventCard from "./EventCard";
+import HorizontalCardRail from "./HorizontalCardRail";
 import RankingCard from "./RankingCard";
 import UserCard from "./UserCard";
 import { getUserById, getUsers } from "../services/catalogService";
@@ -628,7 +629,7 @@ function UserProfileLayout({
             <span>{watchlistEvents.length}</span>
           </div>
           {watchlistEvents.length ? (
-            <div className="event-grid">
+            <HorizontalCardRail label={copy.watchlistTitle} itemType="event">
               {watchlistEvents.map((event) => (
                 <EventCard
                   key={event.id}
@@ -638,7 +639,7 @@ function UserProfileLayout({
                   showComment={false}
                 />
               ))}
-            </div>
+            </HorizontalCardRail>
           ) : (
             <article className="entity-card">
               <p className="event-meta">Ta watchlist est vide.</p>

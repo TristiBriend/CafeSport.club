@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import RankingCard from "../components/RankingCard";
 import ScoreBadge from "../components/ScoreBadge";
 import {
@@ -189,7 +190,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
   }
 
   return (
-    <>
+    <div className="home-page">
       <section className="hero">
         <div className="hero-copy">
           <p className="eyebrow">Suivre - Noter - Decouvrir</p>
@@ -381,7 +382,17 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           </label>
         </div>
         {bestOfEvents.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail
+            label="Best of des derniers jours"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {bestOfEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -390,7 +401,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
                 onToggleWatchlist={onToggleWatchlist}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <div className="simple-page">
             <p>Aucun evenement note sur cette periode.</p>
@@ -404,7 +415,17 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           <span>{watchlistCount}</span>
         </div>
         {watchlistPreview.length ? (
-          <div className="event-grid">
+          <HorizontalCardRail
+            label="Watchlist events"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {watchlistPreview.map((event) => (
               <EventCard
                 key={event.id}
@@ -413,7 +434,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
                 onToggleWatchlist={onToggleWatchlist}
               />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <div className="simple-page">
             <p>Ta watchlist est vide. Ajoute des evenements depuis Decouvrir.</p>
@@ -426,7 +447,17 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           <h2>Evenements les plus attendus</h2>
           <span>{anticipatedEvents.length}</span>
         </div>
-        <div className="event-grid">
+        <HorizontalCardRail
+          label="Evenements les plus attendus"
+          itemType="event"
+          mode="carousel"
+          visibleDesktop={4}
+          visibleTablet={2.3}
+          visibleMobile={1.15}
+          scrollStepItems={1}
+          loop
+          showArrows
+        >
           {anticipatedEvents.map((event) => (
             <EventCard
               key={event.id}
@@ -435,7 +466,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
-        </div>
+        </HorizontalCardRail>
       </section>
 
       <section className="related-section">
@@ -443,7 +474,17 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           <h2>Meilleurs evenements du mois</h2>
           <span>{bestMonthEvents.length}</span>
         </div>
-        <div className="event-grid">
+        <HorizontalCardRail
+          label="Meilleurs evenements du mois"
+          itemType="event"
+          mode="carousel"
+          visibleDesktop={4}
+          visibleTablet={2.3}
+          visibleMobile={1.15}
+          scrollStepItems={1}
+          loop
+          showArrows
+        >
           {bestMonthEvents.map((event) => (
             <EventCard
               key={event.id}
@@ -452,7 +493,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
-        </div>
+        </HorizontalCardRail>
       </section>
 
       <section className="related-section">
@@ -466,7 +507,7 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           ))}
         </div>
       </section>
-    </>
+    </div>
   );
 }
 

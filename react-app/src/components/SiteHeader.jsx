@@ -211,7 +211,12 @@ function SiteHeader({ watchlistCount = 0 }) {
         <nav className="nav nav-tristi">
           <NavLink to="/feed">Mon Feed</NavLink>
           <NavLink to="/watchlist">Ma Watchlist ({watchlistCount})</NavLink>
-          <a className={location.pathname === "/" ? "nav-pill-link" : ""} href="/#home">Decouvrir</a>
+          <NavLink
+            to="/discover"
+            className={({ isActive }) => (isActive ? "nav-pill-link" : "")}
+          >
+            Decouvrir
+          </NavLink>
           <details
             ref={sportsMenuRef}
             className="nav-dropdown nav-sports-menu"

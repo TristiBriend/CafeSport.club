@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
 import ScoreBadge from "../components/ScoreBadge";
@@ -172,7 +173,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <h2>Evenements similaires</h2>
           <span>{relatedEvents.length} suggestions</span>
         </div>
-        <div className="event-grid">
+        <HorizontalCardRail label="Evenements similaires" itemType="event">
           {relatedEvents.map((item) => (
             <EventCard
               key={item.id}
@@ -181,7 +182,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
               onToggleWatchlist={onToggleWatchlist}
             />
           ))}
-        </div>
+        </HorizontalCardRail>
       </section>
     </section>
   );
