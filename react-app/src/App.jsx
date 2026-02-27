@@ -32,6 +32,7 @@ import RequireAuth from "./components/RequireAuth";
 import RequireAdmin from "./components/RequireAdmin";
 import { useAuth } from "./contexts/AuthContext";
 import { useSocialSync } from "./contexts/SocialSyncContext";
+import { HeaderSearchPickerProvider } from "./contexts/HeaderSearchPickerContext";
 import {
   initCatalogRepository,
   subscribeCatalogRevision,
@@ -123,11 +124,12 @@ function App() {
     <div className="app-shell">
       <div className="bg-gradient" />
       <div className="bg-grid" />
-      <SiteHeader watchlistCount={watchlistIds.length} />
+      <HeaderSearchPickerProvider>
+        <SiteHeader watchlistCount={watchlistIds.length} />
 
-      <main className="page-wrap app-main-wrap" data-sync-stamp={`${socialRevisionStamp}-${catalogRevision}`}>
-        <PageBreadcrumbs />
-        <Routes>
+        <main className="page-wrap app-main-wrap" data-sync-stamp={`${socialRevisionStamp}-${catalogRevision}`}>
+          <PageBreadcrumbs />
+          <Routes>
           <Route
             path="/"
             element={
@@ -289,8 +291,9 @@ function App() {
             )}
           />
           <Route path="*" element={<Navigate replace to="/" />} />
-        </Routes>
-      </main>
+          </Routes>
+        </main>
+      </HeaderSearchPickerProvider>
       <SiteFooter watchlistCount={watchlistIds.length} />
     </div>
   );

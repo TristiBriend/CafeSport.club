@@ -120,7 +120,17 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
-          <HorizontalCardRail label="Evenements list attendus" itemType="event">
+          <HorizontalCardRail
+            label="Evenements list attendus"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {expectedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -144,7 +154,17 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
-          <HorizontalCardRail label="Evenements list mieux notes" itemType="event">
+          <HorizontalCardRail
+            label="Evenements list mieux notes"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {topRatedEvents.map((event) => (
               <EventCard
                 key={event.id}

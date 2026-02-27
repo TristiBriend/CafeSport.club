@@ -11,6 +11,7 @@ import {
   notifyDomainDirty,
   SOCIAL_SYNC_DOMAIN,
 } from "./socialSyncService";
+import { createTagId } from "./idService";
 
 const TAG_CATALOG_KEY = "cafesport.club_tag_catalog_v1";
 const OBJECT_TAGS_KEY = "cafesport.club_object_tags_v2";
@@ -135,7 +136,7 @@ function ensureTagInCatalog(rawLabel) {
   const found = Object.values(catalog).find((entry) => entry.normalized === targetKey);
   if (found) return found.id;
 
-  const tagId = `tag-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const tagId = createTagId();
   catalog[tagId] = {
     id: tagId,
     label: safeLabel,

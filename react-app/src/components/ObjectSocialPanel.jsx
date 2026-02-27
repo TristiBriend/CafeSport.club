@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
 import ObjectTagsWidget from "./ObjectTagsWidget";
+import ScoreSliderField from "./ScoreSliderField";
 import {
   COMMENT_MODE,
   createCommentReply,
@@ -147,6 +148,12 @@ function ObjectSocialPanel({
     setFollowers(getTargetFollowerCount(resolvedFollowType, targetId, followBaseCount));
   }
 
+  function handleChangeComposerRating(nextValue) {
+    const value = Number(nextValue);
+    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+    setComposerRating(safeValue);
+  }
+
   if (!targetType || !targetId) return null;
 
   return (
@@ -237,19 +244,12 @@ function ObjectSocialPanel({
             </label>
 
             {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
-              <label className="select-wrap" htmlFor={`comment-rating-${targetType}-${targetId}`}>
-                <span>Note (0-100)</span>
-                <input
-                  id={`comment-rating-${targetType}-${targetId}`}
-                  className="rating-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={composerRating}
-                  onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}
-                />
-              </label>
+              <ScoreSliderField
+                id={`comment-rating-${targetType}-${targetId}`}
+                label="Note (0-100)"
+                value={composerRating}
+                onChange={handleChangeComposerRating}
+              />
             ) : null}
           </div>
 

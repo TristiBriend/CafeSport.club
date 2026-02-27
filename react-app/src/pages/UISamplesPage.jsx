@@ -9,6 +9,7 @@ import ObjectTagsWidget from "../components/ObjectTagsWidget";
 import PlayerCard from "../components/PlayerCard";
 import RankingCard from "../components/RankingCard";
 import ScoreBadge from "../components/ScoreBadge";
+import ScoreSliderField from "../components/ScoreSliderField";
 import TeamCard from "../components/TeamCard";
 import UserCard from "../components/UserCard";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
@@ -617,6 +618,12 @@ function UISamplesPage() {
     refreshCommentSamples();
   }
 
+  function handleChangeComposerRating(nextValue) {
+    const value = Number(nextValue);
+    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+    setComposerRating(safeValue);
+  }
+
   function handleLikeComment(comment) {
     toggleCommentLike(comment);
     refreshCommentSamples();
@@ -1065,19 +1072,12 @@ function UISamplesPage() {
         <form className="comment-composer" onSubmit={handleCreateComment}>
           <div className="comment-composer-top">
             {composerMode === COMMENT_MODE.REVIEW ? (
-              <label className="select-wrap" htmlFor="ui-comment-rating-input">
-                <span>Note (0-100)</span>
-                <input
-                  id="ui-comment-rating-input"
-                  className="rating-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={composerRating}
-                  onChange={(event) => setComposerRating(Number(event.target.value))}
-                />
-              </label>
+              <ScoreSliderField
+                id="ui-comment-rating-input"
+                label="Note (0-100)"
+                value={composerRating}
+                onChange={handleChangeComposerRating}
+              />
             ) : null}
           </div>
 

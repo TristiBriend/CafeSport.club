@@ -27,6 +27,7 @@ import {
   notifyDomainDirty,
   SOCIAL_SYNC_DOMAIN,
 } from "./socialSyncService";
+import { createCommentId, createReplyId } from "./idService";
 
 const MANUAL_COMMENTS_KEY = "cafesport.club_manual_comments_v1";
 const MANUAL_REPLIES_KEY = "cafesport.club_manual_replies_v1";
@@ -201,7 +202,7 @@ function normalizeComment(raw, fallbackTarget = {}) {
   const eventId = explicitEventId || (targetType === COMMENT_TARGET.EVENT ? targetId : "");
 
   return {
-    id: String(raw.id || `manual-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`),
+    id: String(raw.id || createCommentId()),
     targetType,
     targetId,
     eventId,
@@ -223,7 +224,7 @@ function normalizeReply(raw) {
   const note = String(raw.note || "").trim();
   if (!note) return null;
   return {
-    id: String(raw.id || `reply-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`),
+    id: String(raw.id || createReplyId()),
     userId: String(raw.userId || ""),
     author: String(raw.author || "Utilisateur"),
     note,
@@ -738,7 +739,7 @@ export function createTargetComment(targetType, targetId, {
 
   const now = new Date().toISOString();
   const payload = {
-    id: `manual-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    id: createCommentId(),
     targetType: safeType,
     targetId: safeTargetId,
     eventId: resolvedEventId,
@@ -836,7 +837,7 @@ export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
   const cloudIdentity = getCloudIdentity();
   const resolvedUserId = normalizeTargetId(cloudIdentity?.appUserId) || "usr-manual";
   const newReply = normalizeReply({
-    id: `reply-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    id: createReplyId(),
     userId: resolvedUserId,
     author,
     note: cleanNote,

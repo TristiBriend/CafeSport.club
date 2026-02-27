@@ -1,6 +1,7 @@
 import {
   collection,
   collectionGroup,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
@@ -74,7 +75,7 @@ function getImpressionDoc(uid, commentId) {
 function parseCommentFromDoc(docSnap) {
   const data = docSnap.data() || {};
   if (data.deleted) return null;
-  const id = normalizeId(data.commentId || docSnap.id);
+  const id = normalizeId(docSnap.id);
   const note = String(data.note || "").trim();
   const targetType = normalizeType(data.targetType);
   const targetId = normalizeId(data.targetId);
@@ -100,7 +101,7 @@ function parseReplyFromDoc(docSnap) {
   if (data.deleted) return null;
   const path = String(docSnap.ref.path || "").split("/");
   const commentId = normalizeId(path[1]);
-  const id = normalizeId(data.replyId || docSnap.id || path[3]);
+  const id = normalizeId(docSnap.id || path[3]);
   const note = String(data.note || "").trim();
   if (!commentId || !id || !note) return null;
 
@@ -306,7 +307,7 @@ export async function upsertCommentCloud(comment) {
   if (!ref) return null;
 
   const payload = {
-    commentId: safeCommentId,
+    commentId: deleteField(),
     targetType: normalizeType(comment?.targetType),
     targetId: normalizeId(comment?.targetId),
     eventId: normalizeId(comment?.eventId),
@@ -345,7 +346,7 @@ export async function upsertReplyCloud(commentId, reply) {
   if (!ref) return null;
 
   await setDoc(ref, {
-    replyId: safeReplyId,
+    replyId: deleteField(),
     authorUid: normalizeId(reply?.firebaseUid),
     authorAppUserId: normalizeId(reply?.userId),
     authorName: String(reply?.author || "Utilisateur").trim() || "Utilisateur",

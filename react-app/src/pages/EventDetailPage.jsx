@@ -5,6 +5,7 @@ import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
 import ScoreBadge from "../components/ScoreBadge";
+import ScoreSliderField from "../components/ScoreSliderField";
 import { getEventById, getRelatedEvents } from "../services/eventsService";
 import {
   deleteEventRating,
@@ -23,6 +24,12 @@ function formatDateLabel(event) {
   });
 }
 
+function normalizeScore(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(100, Math.round(numeric)));
+}
+
 function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { eventId } = useParams();
   const event = getEventById(eventId);
@@ -30,7 +37,7 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   useEffect(() => {
     if (!event) return;
-    setUserRating(getEventRating(event.id));
+    setUserRating(normalizeScore(getEventRating(event.id)));
   }, [event?.id]);
 
   if (!event) {
@@ -54,8 +61,9 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const isFutureEvent = isUpcomingEvent(event);
 
   function handleChangeUserRating(nextValue) {
-    const saved = setEventRating(event.id, nextValue);
-    setUserRating(saved);
+    const normalized = normalizeScore(nextValue);
+    const saved = setEventRating(event.id, normalized);
+    setUserRating(normalizeScore(saved));
   }
 
   function handleClearUserRating() {
@@ -132,19 +140,13 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
         {!isFutureEvent ? (
           <div className="event-personal-rating">
-            <label className="select-wrap" htmlFor="event-user-rating">
-              <span>Noter cet evenement (0-100)</span>
-              <input
-                id="event-user-rating"
-                className="rating-input"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value={userRating}
-                onChange={(changeEvent) => handleChangeUserRating(changeEvent.target.value)}
-              />
-            </label>
+            <ScoreSliderField
+              id="event-user-rating"
+              label="Noter cet evenement (0-100)"
+              value={userRating}
+              onChange={handleChangeUserRating}
+              className="event-rating-slider"
+            />
             <button
               className="comment-like-btn"
               onClick={handleClearUserRating}

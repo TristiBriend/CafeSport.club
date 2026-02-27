@@ -99,6 +99,19 @@ function normalizeId(value) {
   return String(value || "").trim();
 }
 
+function sanitizeIdList(input, maxLength = 5) {
+  const values = Array.isArray(input) ? input : [];
+  const seen = new Set();
+  const out = [];
+  values.forEach((entry) => {
+    const safeId = normalizeId(entry);
+    if (!safeId || seen.has(safeId)) return;
+    seen.add(safeId);
+    out.push(safeId);
+  });
+  return out.slice(0, Math.max(1, Number(maxLength) || 5));
+}
+
 function readLocalObject(key) {
   if (typeof window === "undefined") return {};
   try {
@@ -288,10 +301,16 @@ function writeLocalProfilePatch(appUserId, patch = {}) {
     city: String(patch.city || "").trim(),
     bioLong: String(patch.bioLong || "").trim(),
     favoriteTeam: String(patch.favoriteTeam || "").trim(),
+    favoriteTeamIds: sanitizeIdList(patch.favoriteTeamIds, 5),
     favoriteAthlete: String(patch.favoriteAthlete || "").trim(),
+    favoriteAthleteIds: sanitizeIdList(patch.favoriteAthleteIds, 5),
+    topEventIds: sanitizeIdList(patch.topEventIds, 5),
     quote: String(patch.quote || "").trim(),
   };
-  const hasDetail = Object.values(detailsPatch).some((value) => Boolean(value));
+  const hasDetail = Object.values(detailsPatch).some((value) => {
+    if (Array.isArray(value)) return value.length > 0;
+    return Boolean(value);
+  });
   if (hasDetail) {
     detailsMap[safeId] = detailsPatch;
   }

@@ -39,7 +39,17 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
-          <HorizontalCardRail label="Evenements ligue attendus" itemType="event">
+          <HorizontalCardRail
+            label="Evenements ligue attendus"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {expectedEvents.map((event) => (
               <EventCard
                 key={event.id}
@@ -63,7 +73,17 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
-          <HorizontalCardRail label="Evenements ligue mieux notes" itemType="event">
+          <HorizontalCardRail
+            label="Evenements ligue mieux notes"
+            itemType="event"
+            mode="carousel"
+            visibleDesktop={4}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            loop
+            showArrows
+          >
             {topRatedEvents.map((event) => (
               <EventCard
                 key={event.id}

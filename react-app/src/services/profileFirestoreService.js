@@ -5,6 +5,24 @@ function normalizeId(value) {
   return String(value || "").trim();
 }
 
+function sanitizeIdList(input, maxLength = 5) {
+  const values = Array.isArray(input) ? input : [];
+  const seen = new Set();
+  const out = [];
+  values.forEach((entry) => {
+    const safeId = normalizeId(entry);
+    if (!safeId || seen.has(safeId)) return;
+    seen.add(safeId);
+    out.push(safeId);
+  });
+  return out.slice(0, Math.max(1, Number(maxLength) || 5));
+}
+
+function hasValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return Boolean(String(value || "").trim());
+}
+
 function sanitizePatch(raw = {}) {
   const input = raw && typeof raw === "object" ? raw : {};
   return {
@@ -12,7 +30,10 @@ function sanitizePatch(raw = {}) {
     city: String(input.city || "").trim().slice(0, 80),
     bioLong: String(input.bioLong || "").trim().slice(0, 420),
     favoriteTeam: String(input.favoriteTeam || "").trim().slice(0, 120),
+    favoriteTeamIds: sanitizeIdList(input.favoriteTeamIds, 5),
     favoriteAthlete: String(input.favoriteAthlete || "").trim().slice(0, 120),
+    favoriteAthleteIds: sanitizeIdList(input.favoriteAthleteIds, 5),
+    topEventIds: sanitizeIdList(input.topEventIds, 5),
     quote: String(input.quote || "").trim().slice(0, 220),
     avatarUrl: String(input.avatarUrl || "").trim(),
   };
@@ -64,8 +85,8 @@ export async function seedPublicProfileFromLocalUnion(appUserId, ownerUid, local
 
   const patch = {};
   Object.entries(safeLocal).forEach(([key, value]) => {
-    if (String(current?.[key] || "").trim()) return;
-    if (!String(value || "").trim()) return;
+    if (hasValue(current?.[key])) return;
+    if (!hasValue(value)) return;
     patch[key] = value;
   });
 

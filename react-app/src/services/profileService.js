@@ -16,7 +16,10 @@ const PROFILE_DETAIL_KEYS = [
   "city",
   "bioLong",
   "favoriteTeam",
+  "favoriteTeamIds",
   "favoriteAthlete",
+  "favoriteAthleteIds",
+  "topEventIds",
   "quote",
 ];
 
@@ -117,6 +120,19 @@ function clampText(value, maxLength) {
   return String(value || "").trim().slice(0, maxLength);
 }
 
+function sanitizeIdList(input, maxLength = 5) {
+  const values = Array.isArray(input) ? input : [];
+  const seen = new Set();
+  const out = [];
+  values.forEach((entry) => {
+    const safeId = String(entry || "").trim();
+    if (!safeId || seen.has(safeId)) return;
+    seen.add(safeId);
+    out.push(safeId);
+  });
+  return out.slice(0, Math.max(1, Number(maxLength) || 5));
+}
+
 function sanitizeProfileDetails(raw = {}) {
   const input = raw && typeof raw === "object" ? raw : {};
   const ageDigits = String(input.age || "").replace(/[^\d]/g, "").slice(0, 3);
@@ -127,7 +143,10 @@ function sanitizeProfileDetails(raw = {}) {
     city: clampText(input.city, 80),
     bioLong: clampText(input.bioLong, 420),
     favoriteTeam: clampText(input.favoriteTeam, 120),
+    favoriteTeamIds: sanitizeIdList(input.favoriteTeamIds, 5),
     favoriteAthlete: clampText(input.favoriteAthlete, 120),
+    favoriteAthleteIds: sanitizeIdList(input.favoriteAthleteIds, 5),
+    topEventIds: sanitizeIdList(input.topEventIds, 5),
     quote: clampText(input.quote, 220),
   };
 }
@@ -137,7 +156,11 @@ function mergeProfileDetails(base = {}, patch = {}) {
 }
 
 function hasProfileDetailsValue(details) {
-  return PROFILE_DETAIL_KEYS.some((key) => Boolean(String(details?.[key] || "").trim()));
+  return PROFILE_DETAIL_KEYS.some((key) => {
+    const value = details?.[key];
+    if (Array.isArray(value)) return value.length > 0;
+    return Boolean(String(value || "").trim());
+  });
 }
 
 export function getProfileDetailsOverride(userId) {
@@ -175,7 +198,10 @@ export function clearProfileDetailsOverride(userId) {
     city: "",
     bioLong: "",
     favoriteTeam: "",
+    favoriteTeamIds: [],
     favoriteAthlete: "",
+    favoriteAthleteIds: [],
+    topEventIds: [],
     quote: "",
   });
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.PROFILE);

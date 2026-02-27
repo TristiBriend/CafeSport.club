@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
+import { createTagId } from "./idService";
 
 function normalizeId(value) {
   return String(value || "").trim();
@@ -219,7 +220,7 @@ export async function addUserTagToObjectCloud(uid, objectType, objectId, rawLabe
   });
 
   if (!tagId) {
-    tagId = `tag-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    tagId = createTagId();
   }
 
   const tagRef = getTagDoc(safeType, safeObjectId, tagId);

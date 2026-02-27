@@ -6,6 +6,7 @@ import LeagueCard from "./LeagueCard";
 import LeagueSeasonCard from "./LeagueSeasonCard";
 import PlayerCard from "./PlayerCard";
 import RankingCard from "./RankingCard";
+import ScoreSliderField from "./ScoreSliderField";
 import TeamCard from "./TeamCard";
 import UserCard from "./UserCard";
 import {
@@ -400,6 +401,12 @@ function ObjectFeedScopePanel({
     bumpComments();
   }
 
+  function handleChangeComposerRating(nextValue) {
+    const value = Number(nextValue);
+    const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+    setComposerRating(safeValue);
+  }
+
   function setMode(nextMode) {
     if (!Object.values(FEED_MODE).includes(nextMode)) return;
     if (typeof onModeChange === "function") onModeChange(nextMode);
@@ -587,19 +594,12 @@ function ObjectFeedScopePanel({
             </label>
 
             {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
-              <label className="select-wrap" htmlFor={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}>
-                <span>Note (0-100)</span>
-                <input
-                  id={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}
-                  className="rating-input"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={composerRating}
-                  onChange={(changeEvent) => setComposerRating(Number(changeEvent.target.value))}
-                />
-              </label>
+              <ScoreSliderField
+                id={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}
+                label="Note (0-100)"
+                value={composerRating}
+                onChange={handleChangeComposerRating}
+              />
             ) : null}
           </div>
 
