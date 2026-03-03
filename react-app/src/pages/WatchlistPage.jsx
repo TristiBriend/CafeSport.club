@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import CalendarPeriodSelector from "../components/CalendarPeriodSelector";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
@@ -30,24 +31,6 @@ function formatDateKey(dateInput) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-}
-
-function formatMonthLabel(dateInput) {
-  return toDayDate(dateInput).toLocaleDateString("fr-FR", {
-    month: "long",
-  });
-}
-
-function shiftMonth(baseDateInput, delta) {
-  const next = toDayDate(baseDateInput);
-  next.setMonth(next.getMonth() + delta, 1);
-  return next;
-}
-
-function shiftYear(baseDateInput, delta) {
-  const next = toDayDate(baseDateInput);
-  next.setFullYear(next.getFullYear() + delta);
-  return next;
 }
 
 function buildMonthGridDates(baseDateInput) {
@@ -162,8 +145,6 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       });
   }, [monthEvents]);
 
-  const monthLabel = formatMonthLabel(baseDate);
-  const yearLabel = String(baseDate.getFullYear());
   const monthEventWord = monthEvents.length > 1 ? "evenements" : "evenement";
 
   return (
@@ -185,47 +166,11 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         </button>
       </div>
 
-      <div className="calendar-period-controls" aria-label="Selection du mois et de l annee">
-        <div className="calendar-tag-selector" role="group" aria-label="Selection du mois">
-          <button
-            type="button"
-            className="calendar-tag-arrow"
-            aria-label="Mois precedent"
-            onClick={() => setBaseDate((prev) => shiftMonth(prev, -1))}
-          >
-            &lsaquo;
-          </button>
-          <span className="calendar-tag-value">{monthLabel}</span>
-          <button
-            type="button"
-            className="calendar-tag-arrow"
-            aria-label="Mois suivant"
-            onClick={() => setBaseDate((prev) => shiftMonth(prev, 1))}
-          >
-            &rsaquo;
-          </button>
-        </div>
-        <div className="calendar-tag-selector" role="group" aria-label="Selection de l annee">
-          <button
-            type="button"
-            className="calendar-tag-arrow"
-            aria-label="Annee precedente"
-            onClick={() => setBaseDate((prev) => shiftYear(prev, -1))}
-          >
-            &lsaquo;
-          </button>
-          <span className="calendar-tag-value">{yearLabel}</span>
-          <button
-            type="button"
-            className="calendar-tag-arrow"
-            aria-label="Annee suivante"
-            onClick={() => setBaseDate((prev) => shiftYear(prev, 1))}
-          >
-            &rsaquo;
-          </button>
-        </div>
-        <p className="calendar-period-summary">{monthEvents.length} {monthEventWord}</p>
-      </div>
+      <CalendarPeriodSelector
+        baseDate={baseDate}
+        onChange={setBaseDate}
+        summary={`${monthEvents.length} ${monthEventWord}`}
+      />
 
       <div className="watchlist-controls">
         <label className="select-wrap" htmlFor="watchlist-sport-filter">

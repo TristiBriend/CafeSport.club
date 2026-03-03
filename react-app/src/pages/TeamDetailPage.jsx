@@ -45,11 +45,10 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             label="Evenements team attendus"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {expectedEvents.map((event) => (
@@ -79,11 +78,10 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             label="Evenements team mieux notes"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {topRatedEvents.map((event) => (

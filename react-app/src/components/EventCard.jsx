@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import FriendnotesModal from "./FriendnotesModal";
 import ImageCropModal from "./ImageCropModal";
 import ObjectTagsWidget from "./ObjectTagsWidget";
 import ScoreBadge from "./ScoreBadge";
@@ -145,6 +146,7 @@ function EventCard({
   const { isAdmin, currentUser } = useAuth();
   const [commentVersion, setCommentVersion] = useState(0);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isFriendnotesOpen, setIsFriendnotesOpen] = useState(false);
   const [isAdminDeleting, setIsAdminDeleting] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoUploadError, setPhotoUploadError] = useState("");
@@ -299,6 +301,11 @@ function EventCard({
 
   function handleToggleMoreMenu() {
     setIsMoreMenuOpen((value) => !value);
+  }
+
+  function handleOpenFriendnotes() {
+    setIsMoreMenuOpen(false);
+    setIsFriendnotesOpen(true);
   }
 
   function handlePickPhoto() {
@@ -459,6 +466,16 @@ function EventCard({
                   >
                     Voir le feed
                   </Link>
+                  {!isFuture ? (
+                    <button
+                      type="button"
+                      className="event-card-more-action"
+                      role="menuitem"
+                      onClick={handleOpenFriendnotes}
+                    >
+                      Note de mes amis
+                    </button>
+                  ) : null}
                   {teamOne?.id ? (
                     <Link
                       to={`/team/${teamOne.id}`}
@@ -652,6 +669,12 @@ function EventCard({
           />
         </aside>
       ) : null}
+      <FriendnotesModal
+        open={isFriendnotesOpen}
+        eventId={event?.id || null}
+        eventTitle={eventTitle}
+        onClose={() => setIsFriendnotesOpen(false)}
+      />
       <ImageCropModal
         open={isCropOpen}
         file={cropSourceFile}

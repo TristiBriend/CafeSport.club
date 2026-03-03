@@ -386,11 +386,10 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
             label="Best of des derniers jours"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {bestOfEvents.map((event) => (
@@ -419,11 +418,10 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
             label="Watchlist events"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {watchlistPreview.map((event) => (
@@ -451,11 +449,10 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           label="Evenements les plus attendus"
           itemType="event"
           mode="carousel"
-          visibleDesktop={4}
+          visibleDesktop={3.6}
           visibleTablet={2.3}
           visibleMobile={1.15}
           scrollStepItems={1}
-          loop
           showArrows
         >
           {anticipatedEvents.map((event) => (
@@ -478,11 +475,10 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           label="Meilleurs evenements du mois"
           itemType="event"
           mode="carousel"
-          visibleDesktop={4}
+          visibleDesktop={3.6}
           visibleTablet={2.3}
           visibleMobile={1.15}
           scrollStepItems={1}
-          loop
           showArrows
         >
           {bestMonthEvents.map((event) => (

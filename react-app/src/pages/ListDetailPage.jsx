@@ -124,11 +124,10 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             label="Evenements list attendus"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {expectedEvents.map((event) => (
@@ -158,11 +157,10 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             label="Evenements list mieux notes"
             itemType="event"
             mode="carousel"
-            visibleDesktop={4}
+            visibleDesktop={3.6}
             visibleTablet={2.3}
             visibleMobile={1.15}
             scrollStepItems={1}
-            loop
             showArrows
           >
             {topRatedEvents.map((event) => (

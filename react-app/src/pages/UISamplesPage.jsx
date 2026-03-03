@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import CalendarPeriodSelector from "../components/CalendarPeriodSelector";
+import CalendarPeriodRangeSelector from "../components/CalendarPeriodRangeSelector";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
+import FriendnotesPanel from "../components/FriendnotesPanel";
 import LeagueCard from "../components/LeagueCard";
 import LeagueSeasonCard from "../components/LeagueSeasonCard";
 import ObjectSocialPanel from "../components/ObjectSocialPanel";
@@ -39,6 +42,7 @@ import {
 } from "../services/commentsService";
 import { getAllEvents } from "../services/eventsService";
 import { getLeagueById, getLeagues } from "../services/leaguesService";
+import { isUpcomingEvent } from "../services/ratingsService";
 
 const UI_NAV_ITEMS = [
   { href: "#ui-legend", label: "Legende" },
@@ -67,6 +71,27 @@ const COMPONENT_LEGENDS = [
     props: [
       "watchlistCount?: number",
       "Usage: <SiteFooter watchlistCount={watchlistIds.length} />",
+    ],
+  },
+  {
+    name: "CalendarPeriodSelector",
+    props: [
+      "baseDate: Date (required)",
+      "onChange: (nextDate) => void (required)",
+      "summary?: string",
+      "className?: string",
+      "Usage: <CalendarPeriodSelector baseDate={date} onChange={setDate} summary='12 evenements' />",
+    ],
+  },
+  {
+    name: "CalendarPeriodRangeSelector",
+    props: [
+      "inputType?: month|date (rendu visuel mois + annee)",
+      "fromValue/toValue: string (required)",
+      "onFromChange/onToChange: (nextValue) => void",
+      "fromMin/fromMax/toMin/toMax?: string",
+      "className?: string",
+      "Usage: <CalendarPeriodRangeSelector inputType='month' fromValue={from} toValue={to} ... />",
     ],
   },
   {
@@ -221,6 +246,16 @@ const COMPONENT_LEGENDS = [
     ],
   },
   {
+    name: "FriendnotesPanel",
+    props: [
+      "eventId: string (required)",
+      "title?: string",
+      "className?: string",
+      "compact?: boolean",
+      "Usage: <FriendnotesPanel eventId={eventId} title='Note de mes amis' />",
+    ],
+  },
+  {
     name: "SportFilters",
     props: [
       "sports: string[] (required)",
@@ -354,6 +389,13 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     details: [
       "Composant: <EventCard event isInWatchlist onToggleWatchlist size showComment />",
       "Bindings: allEvents.slice(0,8), sampleWatchlistIds",
+    ],
+  },
+  {
+    name: "Cards · Friendnotes",
+    details: [
+      "Composant: <FriendnotesPanel eventId={eventId} title='Note de mes amis' compact />",
+      "Bindings: reviews publiques notees des users suivis sur un event passe",
     ],
   },
   {
@@ -513,11 +555,26 @@ function UISamplesPage() {
   const focusLeagueSeasonCard = focusLeagueCard?.seasons?.[0] || null;
   const focusUser = allUsers[0] || null;
   const focusList = allLists[0] || null;
+  const friendnotesEvent = useMemo(
+    () => allEvents.find((event) => !isUpcomingEvent(event)) || null,
+    [allEvents],
+  );
   const focusLeague = focusEvent ? getLeagueById(focusEvent.competitionId) : null;
   const focusTeams = focusEvent ? getTeamsForEvent(focusEvent.id) : [];
   const [sampleWatchlistIds, setSampleWatchlistIds] = useState(() => (
     allEvents.slice(0, 3).map((event) => event.id)
   ));
+  const [sampleCalendarBaseDate, setSampleCalendarBaseDate] = useState(() => new Date());
+  const [sampleRangeFromDate, setSampleRangeFromDate] = useState(() => {
+    const value = new Date();
+    value.setMonth(value.getMonth() - 1, 1);
+    return value.toISOString().slice(0, 7);
+  });
+  const [sampleRangeToDate, setSampleRangeToDate] = useState(() => {
+    const value = new Date();
+    value.setDate(1);
+    return value.toISOString().slice(0, 7);
+  });
 
   const [commentFocusEventId, setCommentFocusEventId] = useState(focusEvent?.id || "");
   const [commentSamples, setCommentSamples] = useState([]);
@@ -526,7 +583,6 @@ function UISamplesPage() {
   const [composerText, setComposerText] = useState("");
 
   const [activeSocialTargetId, setActiveSocialTargetId] = useState("");
-
   const socialTargets = useMemo(() => {
     const firstLeague = allLeagues[0] || null;
     const firstSeason = firstLeague?.seasons?.[0] || null;
@@ -1015,6 +1071,48 @@ function UISamplesPage() {
         </pre>
 
         <div className="ui-samples-grid">
+          <article className="ui-sample-card">
+            <h3>Watchlist date selector</h3>
+            <CalendarPeriodSelector
+              baseDate={sampleCalendarBaseDate}
+              onChange={setSampleCalendarBaseDate}
+              summary="Demo UISamples"
+            />
+            <pre className="ui-component-code"><code>{"<CalendarPeriodSelector baseDate={date} onChange={setDate} summary='Demo UISamples' />"}</code></pre>
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>Period range selector</h3>
+            <CalendarPeriodRangeSelector
+              inputType="month"
+              fromId="ui-sample-range-from-date"
+              toId="ui-sample-range-to-date"
+              fromLabel="De"
+              toLabel="A"
+              fromValue={sampleRangeFromDate}
+              toValue={sampleRangeToDate}
+              onFromChange={setSampleRangeFromDate}
+              onToChange={setSampleRangeToDate}
+              toMin={sampleRangeFromDate}
+              fromMax={sampleRangeToDate}
+            />
+            <pre className="ui-component-code"><code>{"<CalendarPeriodRangeSelector inputType='month' fromValue={from} toValue={to} onFromChange={setFrom} onToChange={setTo} />"}</code></pre>
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>Friendnotes</h3>
+            {friendnotesEvent ? (
+              <FriendnotesPanel
+                eventId={friendnotesEvent.id}
+                title="Note de mes amis"
+                compact
+              />
+            ) : (
+              <p className="muted">Aucun event passe disponible pour la demo.</p>
+            )}
+            <pre className="ui-component-code"><code>{"<FriendnotesPanel eventId={eventId} title='Note de mes amis' compact />"}</code></pre>
+          </article>
+
           <article className="ui-sample-card">
             <h3>Timeline mini calendar</h3>
             <div className="ui-user-identity-list">

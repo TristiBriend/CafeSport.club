@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import CalendarPeriodRangeSelector from "../components/CalendarPeriodRangeSelector";
 import ScoreBadge from "../components/ScoreBadge";
 import { getRatedPastEvents } from "../services/ratingsService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
@@ -111,30 +112,22 @@ function TierlistPage() {
             </div>
           </div>
 
-          <div className="tierlist-month-inputs">
-            <label className="select-wrap" htmlFor="tierlist-from-month">
-              <span>De</span>
-              <input
-                id="tierlist-from-month"
-                type="month"
-                min={monthBounds.min}
-                max={toMonth || monthBounds.max}
-                value={fromMonth}
-                onChange={(event) => setFromMonth(event.target.value)}
-              />
-            </label>
-            <label className="select-wrap" htmlFor="tierlist-to-month">
-              <span>A</span>
-              <input
-                id="tierlist-to-month"
-                type="month"
-                min={fromMonth || monthBounds.min}
-                max={monthBounds.max}
-                value={toMonth}
-                onChange={(event) => setToMonth(event.target.value)}
-              />
-            </label>
-          </div>
+          <CalendarPeriodRangeSelector
+            inputType="month"
+            className="tierlist-month-inputs"
+            fromId="tierlist-from-month"
+            toId="tierlist-to-month"
+            fromLabel="De"
+            toLabel="A"
+            fromValue={fromMonth}
+            toValue={toMonth}
+            onFromChange={setFromMonth}
+            onToChange={setToMonth}
+            fromMin={monthBounds.min}
+            fromMax={toMonth || monthBounds.max}
+            toMin={fromMonth || monthBounds.min}
+            toMax={monthBounds.max}
+          />
         </div>
       </section>
 

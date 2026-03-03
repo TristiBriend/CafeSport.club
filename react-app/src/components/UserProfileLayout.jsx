@@ -626,7 +626,7 @@ function UserProfileLayout({
               className="profile-photo-input"
               onChange={handlePhotoChange}
             />
-            <UserCard user={profileUser} variant="detail" size="large" showTags={false} />
+            <UserCard user={profileUser} variant="detail" size="medium" showTags={false} />
             {isOwnProfile ? (
               <button
                 type="button"
@@ -1061,11 +1061,20 @@ function UserProfileLayout({
             <span>{friends.length}</span>
           </div>
           {friends.length ? (
-            <div className="entity-grid">
+            <HorizontalCardRail
+              label={copy.friendsTitle}
+              itemType="user"
+              mode="carousel"
+              visibleDesktop={3.6}
+              visibleTablet={2.3}
+              visibleMobile={1.15}
+              scrollStepItems={1}
+              showArrows
+            >
               {friends.map((friend) => (
-                <UserCard key={friend.id} user={friend} size="small" showTags={false} />
+                <UserCard key={friend.id} user={friend} size="miniature" showTags={false} />
               ))}
-            </div>
+            </HorizontalCardRail>
           ) : (
             <article className="entity-card">
               <p className="event-meta">
@@ -1083,11 +1092,20 @@ function UserProfileLayout({
           <span>{followerCount.toLocaleString("fr-FR")}</span>
         </div>
         {followers.length ? (
-          <div className="entity-grid">
+          <HorizontalCardRail
+            label={copy.followersTitle}
+            itemType="user"
+            mode="carousel"
+            visibleDesktop={3.6}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            showArrows
+          >
             {followers.map((user) => (
-              <UserCard key={user.id} user={user} size="small" showTags={false} />
+              <UserCard key={user.id} user={user} size="miniature" showTags={false} />
             ))}
-          </div>
+          </HorizontalCardRail>
         ) : (
           <article className="entity-card">
             <p className="event-meta">Aucun follower recommande.</p>
@@ -1147,13 +1165,24 @@ function UserProfileLayout({
             <span>{watchlistEvents.length}</span>
           </div>
           {watchlistEvents.length ? (
-            <HorizontalCardRail label={copy.watchlistTitle} itemType="event">
+            <HorizontalCardRail
+              label={copy.watchlistTitle}
+              itemType="event"
+              mode="carousel"
+              className="profile-watchlist-row"
+              visibleDesktop={3.6}
+              visibleTablet={2.3}
+              visibleMobile={1.15}
+              scrollStepItems={1}
+              showArrows
+            >
               {watchlistEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
                   isInWatchlist={watchlistIds.includes(event.id)}
                   onToggleWatchlist={onToggleWatchlist}
+                  size="medium"
                   showComment={false}
                 />
               ))}

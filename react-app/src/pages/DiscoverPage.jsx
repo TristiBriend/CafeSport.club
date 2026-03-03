@@ -67,27 +67,24 @@ function DiscoverPage({
       ) : activeSport === "Tous" ? (
         <div className="group-stack">
           {grouped.map(([sport, items]) => (
-            <section key={sport} className="group-block">
-              <div className="group-title">
-                <h2>{sport}</h2>
-                <span>{items.length} evenements</span>
-              </div>
+            <section key={sport} className="discover-sport-group">
+              <h2 className="discover-sport-heading">{sport}</h2>
               <HorizontalCardRail
                 label={`Evenements ${sport}`}
                 itemType="event"
                 mode="carousel"
                 className="discover-carousel-row"
-                visibleDesktop={4}
+                visibleDesktop={3.6}
                 visibleTablet={2.3}
                 visibleMobile={1.15}
                 scrollStepItems={1}
-                loop
                 showArrows
               >
                 {items.map((event) => (
                   <EventCard
                     key={event.id}
                     event={event}
+                    size="medium"
                     isInWatchlist={watchlistIds.includes(event.id)}
                     onToggleWatchlist={onToggleWatchlist}
                   />
@@ -102,17 +99,17 @@ function DiscoverPage({
           itemType="event"
           mode="carousel"
           className="discover-carousel-row"
-          visibleDesktop={4}
+          visibleDesktop={3.6}
           visibleTablet={2.3}
           visibleMobile={1.15}
           scrollStepItems={1}
-          loop
           showArrows
         >
           {filtered.map((event) => (
             <EventCard
               key={event.id}
               event={event}
+              size="medium"
               isInWatchlist={watchlistIds.includes(event.id)}
               onToggleWatchlist={onToggleWatchlist}
             />

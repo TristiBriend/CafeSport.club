@@ -13,13 +13,6 @@ function getTrackGap(track) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function normalizeWheelDelta(delta, deltaMode) {
-  if (!Number.isFinite(delta)) return 0;
-  if (deltaMode === 1) return delta * 16;
-  if (deltaMode === 2) return delta * window.innerHeight;
-  return delta;
-}
-
 function getScrollBehavior() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return "smooth";
@@ -32,15 +25,13 @@ function HorizontalCardRail({
   label = "Cards",
   itemType = "event",
   mode = "default",
-  visibleDesktop = 4,
+  visibleDesktop = 3.6,
   visibleTablet = 3,
   visibleMobile = 1.15,
   showArrows = true,
   scrollStepItems = 1,
-  loop = true,
   className = "",
 }) {
-  const railRef = useRef(null);
   const trackRef = useRef(null);
   const [canScroll, setCanScroll] = useState(false);
   const [atStart, setAtStart] = useState(true);
@@ -51,22 +42,14 @@ function HorizontalCardRail({
     [children],
   );
   const visibleDesktopSlots = Math.max(1, Math.floor(toVisibleCount(visibleDesktop, 4)));
-  const carouselEnabled = isCarouselMode && items.length > visibleDesktopSlots;
-  const shouldLoopTrack = carouselEnabled && loop && items.length > 1;
+  const carouselEnabled = isCarouselMode && items.length >= visibleDesktopSlots;
   const renderedItems = useMemo(() => {
-    const copyIndexes = shouldLoopTrack ? [0, 1, 2] : [1];
-    return copyIndexes.flatMap((copyIndex) =>
-      items.map((item, itemIndex) => (
-        <div
-          key={`rail-${copyIndex}-${itemIndex}`}
-          className="card-rail-item"
-          data-loop-copy={copyIndex === 1 ? "main" : "clone"}
-        >
-          {item}
-        </div>
-      )),
-    );
-  }, [items, shouldLoopTrack]);
+    return items.map((item, itemIndex) => (
+      <div key={`rail-${itemIndex}`} className="card-rail-item">
+        {item}
+      </div>
+    ));
+  }, [items]);
 
   const railStyle = useMemo(
     () => ({
@@ -81,15 +64,6 @@ function HorizontalCardRail({
     const track = trackRef.current;
     if (!track) return undefined;
 
-    function centerLoopTrackIfNeeded() {
-      if (!shouldLoopTrack) return;
-      const oneLoopWidth = track.scrollWidth / 3;
-      if (oneLoopWidth <= 1) return;
-      if (track.scrollLeft < oneLoopWidth * 0.5) {
-        track.scrollLeft = oneLoopWidth;
-      }
-    }
-
     function updateScrollState() {
       if (!carouselEnabled) {
         setCanScroll(false);
@@ -98,39 +72,24 @@ function HorizontalCardRail({
         return;
       }
 
-      if (shouldLoopTrack) {
-        const oneLoopWidth = track.scrollWidth / 3;
-        if (oneLoopWidth > 1) {
-          if (track.scrollLeft <= 1) {
-            track.scrollLeft += oneLoopWidth;
-          } else if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 1) {
-            track.scrollLeft -= oneLoopWidth;
-          }
-        }
-      }
-
       const firstChild = track.firstElementChild;
       const childWidth = firstChild ? firstChild.getBoundingClientRect().width : track.clientWidth;
       const logicalItemsWidth =
         childWidth * items.length + getTrackGap(track) * Math.max(0, items.length - 1);
-      const nextCanScroll = shouldLoopTrack ? items.length > 1 : logicalItemsWidth - track.clientWidth > 2;
+      const nextCanScroll = logicalItemsWidth - track.clientWidth > 2;
       const nextAtStart = track.scrollLeft <= 1;
       const nextAtEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
       setCanScroll(nextCanScroll);
-      setAtStart(shouldLoopTrack ? false : nextCanScroll ? nextAtStart : true);
-      setAtEnd(shouldLoopTrack ? false : nextCanScroll ? nextAtEnd : true);
+      setAtStart(nextCanScroll ? nextAtStart : true);
+      setAtEnd(nextCanScroll ? nextAtEnd : true);
     }
 
-    centerLoopTrackIfNeeded();
     updateScrollState();
     track.addEventListener("scroll", updateScrollState, { passive: true });
     const observer = new ResizeObserver(updateScrollState);
     observer.observe(track);
     window.addEventListener("resize", updateScrollState);
-    const rafId = window.requestAnimationFrame(() => {
-      centerLoopTrackIfNeeded();
-      updateScrollState();
-    });
+    const rafId = window.requestAnimationFrame(updateScrollState);
 
     return () => {
       track.removeEventListener("scroll", updateScrollState);
@@ -138,22 +97,13 @@ function HorizontalCardRail({
       window.removeEventListener("resize", updateScrollState);
       window.cancelAnimationFrame(rafId);
     };
-  }, [carouselEnabled, items.length, shouldLoopTrack]);
+  }, [carouselEnabled, items.length]);
 
   function handleScroll(direction) {
     const track = trackRef.current;
     if (!track || !carouselEnabled) return;
     const maxScrollLeft = Math.max(0, track.scrollWidth - track.clientWidth);
     if (maxScrollLeft <= 1) return;
-
-    if (loop && !shouldLoopTrack && direction > 0 && atEnd) {
-      track.scrollTo({ left: 0, behavior: getScrollBehavior() });
-      return;
-    }
-    if (loop && !shouldLoopTrack && direction < 0 && atStart) {
-      track.scrollTo({ left: maxScrollLeft, behavior: getScrollBehavior() });
-      return;
-    }
 
     const firstChild = track.firstElementChild;
     const childWidth = firstChild ? firstChild.getBoundingClientRect().width : track.clientWidth;
@@ -177,13 +127,13 @@ function HorizontalCardRail({
   const shouldRenderArrows = showArrows && carouselEnabled;
 
   return (
-    <div ref={railRef} className={wrapperClassName} role="region" aria-label={label} style={railStyle}>
+    <div className={wrapperClassName} role="region" aria-label={label} style={railStyle}>
       {shouldRenderArrows ? (
         <button
           className="card-rail-nav is-prev"
           type="button"
           onClick={() => handleScroll(-1)}
-          disabled={!canScroll || (!loop && atStart)}
+          disabled={!canScroll || atStart}
           aria-label={`Defiler ${label} vers la gauche`}
         >
           {"<"}
@@ -197,7 +147,7 @@ function HorizontalCardRail({
           className="card-rail-nav is-next"
           type="button"
           onClick={() => handleScroll(1)}
-          disabled={!canScroll || (!loop && atEnd)}
+          disabled={!canScroll || atEnd}
           aria-label={`Defiler ${label} vers la droite`}
         >
           {">"}

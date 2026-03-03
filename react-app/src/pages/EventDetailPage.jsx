@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
+import FriendnotesPanel from "../components/FriendnotesPanel";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
@@ -170,12 +171,29 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         emptyStateText="Aucun commentaire pour cet evenement."
       />
 
+      {!isFutureEvent ? (
+        <FriendnotesPanel
+          eventId={event.id}
+          title="Note de mes amis"
+          className="event-detail-friendnotes"
+        />
+      ) : null}
+
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements similaires</h2>
           <span>{relatedEvents.length} suggestions</span>
         </div>
-        <HorizontalCardRail label="Evenements similaires" itemType="event">
+        <HorizontalCardRail
+          label="Evenements similaires"
+          itemType="event"
+          mode="carousel"
+          visibleDesktop={3.6}
+          visibleTablet={2.3}
+          visibleMobile={1.15}
+          scrollStepItems={1}
+          showArrows
+        >
           {relatedEvents.map((item) => (
             <EventCard
               key={item.id}
