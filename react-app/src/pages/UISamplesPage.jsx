@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CalendarPeriodSelector from "../components/CalendarPeriodSelector";
 import CalendarPeriodRangeSelector from "../components/CalendarPeriodRangeSelector";
 import CommentCard from "../components/CommentCard";
+import ConfirmDialog from "../components/ConfirmDialog";
 import EventCard from "../components/EventCard";
 import FriendnotesPanel from "../components/FriendnotesPanel";
 import LeagueCard from "../components/LeagueCard";
@@ -10,7 +11,9 @@ import LeagueSeasonCard from "../components/LeagueSeasonCard";
 import ObjectSocialPanel from "../components/ObjectSocialPanel";
 import ObjectTagsWidget from "../components/ObjectTagsWidget";
 import PlayerCard from "../components/PlayerCard";
+import ProfileTopEventsSection from "../components/ProfileTopEventsSection";
 import RankingCard from "../components/RankingCard";
+import RankingEditorDialog from "../components/RankingEditorDialog";
 import ScoreBadge from "../components/ScoreBadge";
 import ScoreSliderField from "../components/ScoreSliderField";
 import TeamCard from "../components/TeamCard";
@@ -118,6 +121,20 @@ const COMPONENT_LEGENDS = [
       "onUpdateComment/onDeleteComment",
       "onUpdateReply/onDeleteReply",
       "Usage: <CommentCard comment={comment} showEventLink={boolean} ... />",
+    ],
+  },
+  {
+    name: "ConfirmDialog",
+    props: [
+      "open: boolean (required)",
+      "title?: string",
+      "message?: string",
+      "confirmLabel?: string",
+      "cancelLabel?: string",
+      "tone?: danger|default",
+      "isBusy?: boolean",
+      "onConfirm/onCancel: callbacks",
+      "Usage: <ConfirmDialog open={open} title='Supprimer ?' tone='danger' ... />",
     ],
   },
   {
@@ -234,6 +251,18 @@ const COMPONENT_LEGENDS = [
       "maxPreview?: number",
       "className?: string",
       "Usage: <RankingCard list={list} />",
+    ],
+  },
+  {
+    name: "RankingEditorDialog",
+    props: [
+      "open: boolean (required)",
+      "mode?: create|fork|edit",
+      "sourceList?: CuratedListModel | null",
+      "initialList?: CuratedListModel | null",
+      "onClose?: () => void",
+      "onSaved?: (savedList) => void",
+      "Usage: <RankingEditorDialog open={open} mode='fork' sourceList={list} />",
     ],
   },
   {
@@ -382,6 +411,20 @@ const DISPLAYED_SAMPLE_LEGENDS = [
     details: [
       "Markup: <Link className='sorare-card'> + overlays",
       "Bindings: focusEvent + ScoreBadge(community-chip) + status/reviews",
+    ],
+  },
+  {
+    name: "Composants reutilisables · Top 5 add UI",
+    details: [
+      "Markup: .profile-top5-inline-list + .profile-top5-search + .profile-top5-search-results",
+      "Bindings: recherche event + ajout/retrait local sur 5 positions max",
+    ],
+  },
+  {
+    name: "Composants reutilisables · Ranking editor",
+    details: [
+      "Composant: <RankingEditorDialog open mode sourceList initialList />",
+      "Bindings: preview interactive via bouton, en reprenant l UI reelle de creation/edition",
     ],
   },
   {
@@ -581,6 +624,14 @@ function UISamplesPage() {
   const [composerMode, setComposerMode] = useState(COMMENT_MODE.COMMENT);
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
+  const [isConfirmPreviewOpen, setIsConfirmPreviewOpen] = useState(false);
+  const [isDangerConfirmPreviewOpen, setIsDangerConfirmPreviewOpen] = useState(false);
+  const [isConfirmPreviewBusy, setIsConfirmPreviewBusy] = useState(false);
+  const [isDangerConfirmPreviewBusy, setIsDangerConfirmPreviewBusy] = useState(false);
+  const [uiTop5Query, setUiTop5Query] = useState("");
+  const [uiTop5Draft, setUiTop5Draft] = useState(() => allEvents.slice(0, 3).map((event) => event.id));
+  const [isRankingEditorPreviewOpen, setIsRankingEditorPreviewOpen] = useState(false);
+  const [rankingEditorPreviewMode, setRankingEditorPreviewMode] = useState("fork");
 
   const [activeSocialTargetId, setActiveSocialTargetId] = useState("");
   const socialTargets = useMemo(() => {
@@ -645,6 +696,38 @@ function UISamplesPage() {
 
   const ratingBins = useMemo(() => buildRatingBins(allEvents), [allEvents]);
   const maxBin = Math.max(...ratingBins, 1);
+  const uiTop5Items = useMemo(
+    () => uiTop5Draft
+      .map((eventId) => allEvents.find((event) => event.id === eventId) || null)
+      .filter(Boolean)
+      .slice(0, 5),
+    [allEvents, uiTop5Draft],
+  );
+  const uiTop5SearchResults = useMemo(() => {
+    const query = String(uiTop5Query || "").trim().toLowerCase();
+    if (!query) return [];
+    const selected = new Set(uiTop5Draft.map((eventId) => String(eventId || "").trim()));
+    return allEvents
+      .filter((event) => {
+        const safeId = String(event?.id || "").trim();
+        if (!safeId || selected.has(safeId)) return false;
+        const haystack = [
+          String(event?.title || ""),
+          String(event?.sport || ""),
+          String(event?.league || ""),
+          String(event?.location || ""),
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      })
+      .slice(0, 6)
+      .map((event) => ({
+        id: event.id,
+        type: "event",
+        typeLabel: "Event",
+        title: event.title,
+        subtitle: [event.league, event.location, event.date].filter(Boolean).join(" · "),
+      }));
+  }, [allEvents, uiTop5Draft, uiTop5Query]);
 
   function refreshCommentSamples() {
     if (!commentFocusEventId) return;
@@ -667,7 +750,6 @@ function UISamplesPage() {
       mode: composerMode,
       note: composerText,
       rating: composerRating,
-      author: "Vous",
     });
     if (!created) return;
     setComposerText("");
@@ -690,10 +772,10 @@ function UISamplesPage() {
     refreshCommentSamples();
   }
 
-  function handleReplyToComment(comment, note) {
+  function handleReplyToComment(comment, note, mentions = []) {
     const created = createCommentReply(comment?.id, {
       note,
-      author: "Vous",
+      mentions,
     });
     if (!created) return null;
     refreshCommentSamples();
@@ -726,6 +808,38 @@ function UISamplesPage() {
     if (!deleted) return false;
     refreshCommentSamples();
     return true;
+  }
+
+  async function handleConfirmPreview() {
+    setIsConfirmPreviewBusy(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    setIsConfirmPreviewBusy(false);
+    setIsConfirmPreviewOpen(false);
+  }
+
+  async function handleConfirmDangerPreview() {
+    setIsDangerConfirmPreviewBusy(true);
+    await new Promise((resolve) => window.setTimeout(resolve, 650));
+    setIsDangerConfirmPreviewBusy(false);
+    setIsDangerConfirmPreviewOpen(false);
+  }
+
+  function handleAddUiTop5Event(result) {
+    const safeId = String(result?.id || "").trim();
+    if (!safeId || uiTop5Draft.includes(safeId) || uiTop5Draft.length >= 5) return;
+    setUiTop5Draft((current) => [...current, safeId]);
+    setUiTop5Query("");
+  }
+
+  function handleRemoveUiTop5Event(eventId) {
+    const safeId = String(eventId || "").trim();
+    if (!safeId) return;
+    setUiTop5Draft((current) => current.filter((id) => id !== safeId));
+  }
+
+  function openRankingEditorPreview(mode = "fork") {
+    setRankingEditorPreviewMode(mode);
+    setIsRankingEditorPreviewOpen(true);
   }
 
   return (
@@ -865,12 +979,13 @@ function UISamplesPage() {
 
         <div className="ui-samples-grid">
           <article className="ui-sample-card">
-            <h3>Formats de texte (8 styles)</h3>
+            <h3>Formats de texte (9 styles)</h3>
             <p className="ui-text-format-sample typo-display">Display: Sofa Critics note chaque evenement.</p>
             <p className="ui-text-format-sample typo-h1">Heading-1: Finale Coupe du monde 2022</p>
             <p className="ui-text-format-sample typo-h2">Heading-2: Demi-finale legendaire</p>
             <p className="ui-text-format-sample typo-body">Body: Compare les avis, puis ajoute ton propre commentaire.</p>
             <p className="ui-text-format-sample typo-body-strong">Body-strong: Cette action change le match.</p>
+            <p className="ui-text-format-sample typo-comment-text">CommentText: avis, reactions et reponses lisibles sans effet gras.</p>
             <p className="ui-text-format-sample typo-meta">Meta: metadata secondaire et contexte.</p>
             <p className="ui-text-format-sample typo-label">Label: Termine</p>
             <p className="ui-text-format-sample typo-caption">Caption: 18 DEC 2022 · LUSAIL</p>
@@ -885,7 +1000,7 @@ function UISamplesPage() {
               <li><strong>Don&apos;t:</strong> fixer des `font-size` arbitraires dans les composants.</li>
               <li><strong>Don&apos;t:</strong> ajouter de nouvelles variantes typo sans token central.</li>
             </ul>
-            <pre className="ui-component-code"><code>{'.typo-display · .typo-h1 · .typo-h2 · .typo-body · .typo-body-strong · .typo-meta · .typo-label · .typo-caption'}</code></pre>
+            <pre className="ui-component-code"><code>{'.typo-display · .typo-h1 · .typo-h2 · .typo-body · .typo-body-strong · .typo-comment-text · .typo-meta · .typo-label · .typo-caption'}</code></pre>
           </article>
 
           <article className="ui-sample-card">
@@ -935,6 +1050,32 @@ function UISamplesPage() {
         </div>
 
         <div className="ui-samples-grid">
+          <article className="ui-sample-card">
+            <h3>ConfirmDialog · default</h3>
+            <p className="muted">Preview d une confirmation non destructive, en portal comme dans l app.</p>
+            <div className="ui-row">
+              <button className="btn btn-ghost" type="button" onClick={() => setIsConfirmPreviewOpen(true)}>
+                Ouvrir confirmation
+              </button>
+            </div>
+            <pre className="ui-component-code">
+              <code>{'<ConfirmDialog open={open} title="Continuer ?" tone="default" />'}</code>
+            </pre>
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>ConfirmDialog · danger</h3>
+            <p className="muted">Version destructive pour suppressions admin et suppression de commentaires.</p>
+            <div className="ui-row">
+              <button className="btn btn-primary" type="button" onClick={() => setIsDangerConfirmPreviewOpen(true)}>
+                Ouvrir suppression
+              </button>
+            </div>
+            <pre className="ui-component-code">
+              <code>{'<ConfirmDialog open={open} title="Supprimer ?" tone="danger" />'}</code>
+            </pre>
+          </article>
+
           <article className="ui-sample-card">
             <h3>Miniatures event</h3>
             <div className="event-mini-grid">
@@ -997,6 +1138,56 @@ function UISamplesPage() {
                 </div>
               </Link>
             ) : null}
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>Top 5 · ajout d element</h3>
+            <p className="muted">Le meme composant que sur la page profil, sans version parallele.</p>
+            <ProfileTopEventsSection
+              title="Mon Top 5 events"
+              events={uiTop5Items}
+              isOwnProfile
+              isEditing
+              topEventsQuery={uiTop5Query}
+              searchResults={uiTop5SearchResults}
+              onSave={() => {}}
+              onCancel={() => {
+                setUiTop5Draft([]);
+                setUiTop5Query("");
+              }}
+              onQueryChange={setUiTop5Query}
+              onQueryKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                if (!uiTop5SearchResults.length) return;
+                event.preventDefault();
+                handleAddUiTop5Event(uiTop5SearchResults[0]);
+              }}
+              onAddResult={handleAddUiTop5Event}
+              onRemove={(eventItem) => handleRemoveUiTop5Event(eventItem?.id)}
+              onDragStart={() => {}}
+              onDragOver={() => {}}
+              onDrop={() => {}}
+              onDragEnd={() => {}}
+            />
+            <pre className="ui-component-code">
+              <code>{"<ProfileTopEventsSection events={events} isOwnProfile isEditing ... />"}</code>
+            </pre>
+          </article>
+
+          <article className="ui-sample-card">
+            <h3>Ranking editor</h3>
+            <p className="muted">Ouverture du modal reel utilise pour creer, forker ou modifier un classement.</p>
+            <div className="ui-row">
+              <button className="btn btn-primary" type="button" onClick={() => openRankingEditorPreview("fork")}>
+                Ouvrir version derivee
+              </button>
+              <button className="btn btn-ghost" type="button" onClick={() => openRankingEditorPreview("create")}>
+                Ouvrir creation vide
+              </button>
+            </div>
+            <pre className="ui-component-code">
+              <code>{"<RankingEditorDialog open={open} mode='fork|create' sourceList={list} />"}</code>
+            </pre>
           </article>
         </div>
       </section>
@@ -1388,6 +1579,35 @@ function UISamplesPage() {
           ))}
         </div>
       </section>
+      <ConfirmDialog
+        open={isConfirmPreviewOpen}
+        title="Continuer avec cette action ?"
+        message="Cette demo simule une confirmation standard reutilisable."
+        confirmLabel="Continuer"
+        cancelLabel="Annuler"
+        isBusy={isConfirmPreviewBusy}
+        onConfirm={handleConfirmPreview}
+        onCancel={() => setIsConfirmPreviewOpen(false)}
+      />
+      <ConfirmDialog
+        open={isDangerConfirmPreviewOpen}
+        title="Supprimer cet element ?"
+        message="Cette demo simule la confirmation destructive utilisee pour les suppressions."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        tone="danger"
+        isBusy={isDangerConfirmPreviewBusy}
+        onConfirm={handleConfirmDangerPreview}
+        onCancel={() => setIsDangerConfirmPreviewOpen(false)}
+      />
+      <RankingEditorDialog
+        open={isRankingEditorPreviewOpen}
+        mode={rankingEditorPreviewMode}
+        sourceList={rankingEditorPreviewMode === "fork" ? focusList : null}
+        initialList={rankingEditorPreviewMode === "edit" ? focusList : null}
+        onClose={() => setIsRankingEditorPreviewOpen(false)}
+        onSaved={() => setIsRankingEditorPreviewOpen(false)}
+      />
     </section>
   );
 }

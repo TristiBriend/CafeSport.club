@@ -1,15 +1,23 @@
+import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
+import ObjectDetailHero from "../components/ObjectDetailHero";
+import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
+import RankingCard from "../components/RankingCard";
 import TeamCard from "../components/TeamCard";
 import {
+  getCuratedLists,
+  getEventsForTeam,
   getTeamById,
+  resolveListEntries,
 } from "../services/catalogService";
 import {
   getExpectedEventsForObject,
   getTopRatedEventsForObject,
 } from "../services/objectEventSectionsService";
+import { buildTeamDetailInfoItems } from "../services/objectDetailInfoService";
 
 function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { teamId } = useParams();
@@ -28,17 +36,67 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   const expectedEvents = getExpectedEventsForObject("team", team.id, 6);
   const topRatedEvents = getTopRatedEventsForObject("team", team.id, 6);
+  const teamInfoItems = buildTeamDetailInfoItems(team);
+  const teamEventIds = useMemo(
+    () => new Set(getEventsForTeam(team.id).map((event) => String(event?.id || "").trim()).filter(Boolean)),
+    [team.id],
+  );
+  const relatedRankings = useMemo(
+    () => getCuratedLists({ sportFilter: "Tous", query: "" })
+      .filter((list) => resolveListEntries(list).some((entry) => {
+        if (entry.type === "event" && entry.event?.id) {
+          return teamEventIds.has(entry.event.id);
+        }
+        return String(entry?.eventId || "").trim() !== "" && teamEventIds.has(String(entry.eventId || "").trim());
+      })),
+    [teamEventIds],
+  );
 
   return (
     <section className="object-detail-page">
-      <div className="object-detail-top-left">
-        <TeamCard team={team} variant="detail" size="large" />
-      </div>
+      <ObjectDetailHero
+        card={<TeamCard team={team} variant="detail" size="large" />}
+        side={(
+          <ObjectDetailInfoCard
+            title="Infos team"
+            items={teamInfoItems}
+          />
+        )}
+      />
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Classements qui contiennent des evenements de cette equipe</h2>
+        </div>
+        {relatedRankings.length ? (
+          <HorizontalCardRail
+            label="Classements lies a cette equipe"
+            itemType="ranking"
+            mode="carousel"
+            visibleDesktop={2.8}
+            visibleTablet={1.9}
+            visibleMobile={1.08}
+            scrollStepItems={1}
+            showArrows
+          >
+            {relatedRankings.map((list) => (
+              <RankingCard
+                key={list.id}
+                list={list}
+                maxPreview={4}
+              />
+            ))}
+          </HorizontalCardRail>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun classement ne reference encore les evenements de cette equipe.</p>
+          </article>
+        )}
+      </section>
 
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les plus attendus</h2>
-          <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
           <HorizontalCardRail
@@ -71,7 +129,6 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les mieux notes</h2>
-          <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
           <HorizontalCardRail
@@ -106,7 +163,6 @@ function TeamDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         targetId={team.id}
         watchlistIds={watchlistIds}
         onToggleWatchlist={onToggleWatchlist}
-        title="Feed relie a la card"
         subtitle="Flux team complet: commentaires, events et objets lies."
       />
     </section>

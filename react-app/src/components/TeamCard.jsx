@@ -1,6 +1,15 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ObjectCardFrame from "./ObjectCardFrame";
+import { buildUserFollowFabButton } from "./UserFollowFabButton";
+import { useSocialSync } from "../contexts/SocialSyncContext";
 import { getAthletesForTeam, getEventsForTeam } from "../services/catalogService";
+import {
+  FOLLOW_TARGET,
+  getTargetFollowerCount,
+  isTargetFollowed,
+  toggleTargetFollow,
+} from "../services/userFollowService";
 
 function getAverageScore(events = []) {
   const source = Array.isArray(events) ? events : [];
@@ -19,9 +28,43 @@ function TeamCard({
 }) {
   if (!team) return null;
 
+  const { revisionByDomain } = useSocialSync();
   const athletes = getAthletesForTeam(team.id);
   const events = getEventsForTeam(team.id);
   const averageScore = getAverageScore(events);
+  const followsRevision = Number(revisionByDomain?.follows || 0);
+  const baseFollowCount = Math.max(120, athletes.length * 40 + events.length * 28);
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [resolvedFollowers, setResolvedFollowers] = useState(baseFollowCount);
+
+  useEffect(() => {
+    const safeTeamId = String(team?.id || "").trim();
+    if (!safeTeamId) {
+      setIsFollowed(false);
+      setResolvedFollowers(baseFollowCount);
+      return;
+    }
+    setIsFollowed(isTargetFollowed(FOLLOW_TARGET.TEAM, safeTeamId));
+    setResolvedFollowers(getTargetFollowerCount(FOLLOW_TARGET.TEAM, safeTeamId, baseFollowCount));
+  }, [baseFollowCount, followsRevision, team?.id]);
+
+  function handleToggleFollow() {
+    const safeTeamId = String(team?.id || "").trim();
+    if (!safeTeamId) return;
+    const next = toggleTargetFollow(FOLLOW_TARGET.TEAM, safeTeamId);
+    setIsFollowed(next);
+    setResolvedFollowers(getTargetFollowerCount(FOLLOW_TARGET.TEAM, safeTeamId, baseFollowCount));
+  }
+
+  const followFab = buildUserFollowFabButton({
+    userId: team.id,
+    isFollowed,
+    followerCount: resolvedFollowers,
+    className: "team-card-follow-fab-wrap",
+    activeLabel: "Ne plus suivre",
+    inactiveLabel: "Suivre",
+    onToggle: handleToggleFollow,
+  });
 
   return (
     <ObjectCardFrame
@@ -38,8 +81,10 @@ function TeamCard({
       variant={variant}
       showTags={showTags}
       showMenu={showMenu}
-      className={className}
-      baseFollowCount={Math.max(120, athletes.length * 40 + events.length * 28)}
+      hideMetricChip
+      headerAction={followFab}
+      className={`is-team-card ${className}`.trim()}
+      baseFollowCount={baseFollowCount}
       menuExtraActions={athletes[0]?.id ? [{ label: `Aller a ${athletes[0].name}`, to: `/athlete/${athletes[0].id}` }] : []}
     >
       <p className="object-card-line object-card-line-title typo-body-strong">

@@ -8,9 +8,12 @@ import ScoreBadge from "../components/ScoreBadge";
 import {
   COMMENT_MODE,
   createCommentReply,
+  deleteComment,
+  deleteCommentReply,
   getAllComments,
   getCommentDateLabel,
   toggleCommentLike,
+  toggleReplyLike,
 } from "../services/commentsService";
 import { getCuratedLists } from "../services/catalogService";
 import { getAllEvents, getWatchlistEvents } from "../services/eventsService";
@@ -182,11 +185,30 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
     refreshComments();
   }
 
-  function handleCreateTopReviewReply(comment, note) {
-    const created = createCommentReply(comment?.id, { note, author: "Vous" });
+  function handleCreateTopReviewReply(comment, note, mentions = []) {
+    const created = createCommentReply(comment?.id, { note, mentions });
     if (!created) return null;
     refreshComments();
     return created;
+  }
+
+  function handleToggleTopReviewReplyLike(_comment, reply) {
+    toggleReplyLike(reply);
+    refreshComments();
+  }
+
+  function handleDeleteTopReviewComment(comment) {
+    const deleted = deleteComment(comment?.id);
+    if (!deleted) return false;
+    refreshComments();
+    return true;
+  }
+
+  function handleDeleteTopReviewReply(comment, reply) {
+    const deleted = deleteCommentReply(comment?.id, reply?.id);
+    if (!deleted) return false;
+    refreshComments();
+    return true;
   }
 
   return (
@@ -314,13 +336,11 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Radar CafeSport.club</h2>
-          <span>Highlights</span>
         </div>
         <div className="home-radar-grid-react">
           <div>
             <div className="group-title">
               <h3>Meilleures critiques</h3>
-              <span>{topReviews.length}</span>
             </div>
             <div className="entity-grid home-inline-scroll-row">
               {topReviews.map((comment) => (
@@ -329,6 +349,9 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
                   comment={comment}
                   onToggleLike={handleToggleTopReviewLike}
                   onCreateReply={handleCreateTopReviewReply}
+                  onToggleReplyLike={handleToggleTopReviewReplyLike}
+                  onDeleteComment={handleDeleteTopReviewComment}
+                  onDeleteReply={handleDeleteTopReviewReply}
                 />
               ))}
             </div>
@@ -336,7 +359,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           <div>
             <div className="group-title">
               <h3>Meilleurs classements</h3>
-              <span>{topLists.length}</span>
             </div>
             <div className="list-grid home-inline-scroll-row">
               {topLists.map((list) => (
@@ -350,7 +372,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Best of des derniers jours</h2>
-          <span>{bestOfEvents.length}</span>
         </div>
         <div className="watchlist-controls">
           <label className="select-wrap" htmlFor="home-bestof-days">
@@ -411,7 +432,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Watchlist</h2>
-          <span>{watchlistCount}</span>
         </div>
         {watchlistPreview.length ? (
           <HorizontalCardRail
@@ -443,7 +463,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les plus attendus</h2>
-          <span>{anticipatedEvents.length}</span>
         </div>
         <HorizontalCardRail
           label="Evenements les plus attendus"
@@ -469,7 +488,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Meilleurs evenements du mois</h2>
-          <span>{bestMonthEvents.length}</span>
         </div>
         <HorizontalCardRail
           label="Meilleurs evenements du mois"
@@ -495,7 +513,6 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
       <section className="related-section">
         <div className="group-title">
           <h2>Classements de la communaute</h2>
-          <span>{curatedLists.length}</span>
         </div>
         <div className="list-grid">
           {curatedLists.map((list) => (

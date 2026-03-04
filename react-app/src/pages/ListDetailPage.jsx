@@ -1,20 +1,29 @@
-import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import PlayerCard from "../components/PlayerCard";
 import RankingCard from "../components/RankingCard";
+import RankingEditorDialog from "../components/RankingEditorDialog";
 import { getListById, resolveListEntries } from "../services/catalogService";
-import { COMMENT_TARGET, getCommentsForTarget } from "../services/commentsService";
+import { getCommentsForTarget } from "../services/commentsService";
+import { useAuth } from "../contexts/AuthContext";
 import {
-  getExpectedEventsForObject,
-  getTopRatedEventsForObject,
-} from "../services/objectEventSectionsService";
+  canEditRankingList,
+  getSiblingRankingLists,
+} from "../services/rankingListsService";
 
 function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { listId } = useParams();
+  const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAuth();
   const list = getListById(listId);
+  const [editorState, setEditorState] = useState({
+    open: false,
+    mode: "create",
+  });
 
   if (!list) {
     return (
@@ -27,155 +36,130 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     );
   }
 
+  const canEditList = canEditRankingList(list, currentUser, currentUser);
   const listEntries = resolveListEntries(list);
-  const expectedEvents = getExpectedEventsForObject("list", list.id, 6);
-  const topRatedEvents = getTopRatedEventsForObject("list", list.id, 6);
+  const siblingLists = getSiblingRankingLists(list, {
+    excludeCurrent: true,
+    excludeSameOwner: true,
+  });
+
+  function handleOpenEditor(mode) {
+    if (!isAuthenticated || !currentUser?.firebaseUid || currentUser?.isAnonymous) {
+      navigate("/login");
+      return;
+    }
+    setEditorState({
+      open: true,
+      mode,
+    });
+  }
+
+  function handleCloseEditor() {
+    setEditorState((current) => ({
+      ...current,
+      open: false,
+    }));
+  }
+
+  function handleEditorSaved(savedList) {
+    const safeListId = String(savedList?.id || "").trim();
+    if (!safeListId) return;
+    if (editorState.mode === "create" || editorState.mode === "fork") {
+      navigate(`/list/${safeListId}`);
+    }
+  }
 
   return (
     <section className="object-detail-page">
-      <div className="object-detail-top-left">
-        <RankingCard list={list} />
+      <div className="list-detail-hero">
+        <div className="object-detail-top-left">
+          <RankingCard list={list} />
+        </div>
+        <div className="list-detail-hero-actions">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleOpenEditor(canEditList ? "edit" : "fork")}
+          >
+            {canEditList ? "Modifier le classement" : "Creer ma version de ce classement"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => handleOpenEditor("create")}
+          >
+            Creer un nouveau classement
+          </button>
+        </div>
       </div>
 
-      <section className="related-section list-ranking-table-section">
+      <section className="list-ranking-table-section">
         <div className="group-title">
           <h2>Classement</h2>
-          <span>{listEntries.length}</span>
         </div>
+
         {listEntries.length ? (
-          <div className="list-ranking-table-wrap">
-            <table className="list-ranking-table">
-              <thead>
-                <tr>
-                  <th scope="col">Position</th>
-                  <th scope="col">Card</th>
-                  <th scope="col">Commentaire</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listEntries.map((entry, index) => {
-                  const note = String(entry?.note || "").trim();
-                  const isEvent = entry?.type === "event" && entry?.event?.id;
-                  const isAthlete = entry?.type === "athlete" && entry?.athlete?.id;
-                  const bestComment = isEvent
-                    ? getCommentsForTarget(COMMENT_TARGET.EVENT, entry.event.id)[0]
-                    : isAthlete
-                      ? getCommentsForTarget(COMMENT_TARGET.ATHLETE, entry.athlete.id)[0]
-                      : null;
-                  return (
-                    <tr key={entry.id}>
-                      <td className="list-ranking-position-cell">{index + 1}</td>
-                      <td className="list-ranking-card-cell">
-                        {isEvent ? (
-                          <EventCard
-                            event={entry.event}
-                            isInWatchlist={watchlistIds.includes(entry.event.id)}
-                            onToggleWatchlist={onToggleWatchlist}
-                            size="miniature"
-                            showComment={false}
-                            showTags={false}
-                          />
-                        ) : null}
-                        {isAthlete ? (
-                          <PlayerCard
-                            athlete={entry.athlete}
-                            size="miniature"
-                            showTags={false}
-                            showMenu={false}
-                          />
-                        ) : null}
-                        {!isEvent && !isAthlete ? (
-                          <article className="list-ranking-unknown-card">
-                            <p className="typo-body-strong">Element inconnu</p>
-                            <p className="event-meta">Entree non resolvable</p>
-                          </article>
-                        ) : null}
-                      </td>
-                      <td className="list-ranking-comment-cell">
-                        {bestComment ? (
-                          <CommentCard
-                            comment={bestComment}
-                            showEventLink={false}
-                          />
-                        ) : (
-                          <p className="event-meta">{note || "Aucun commentaire"}</p>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="list-ranking-feed-wrap">
+            <div className="list-ranking-feed">
+              {listEntries.map((entry, index) => {
+                const targetType = entry.type === "event" || entry.type === "athlete" ? entry.type : "";
+                const targetId = entry.type === "event"
+                  ? entry.event?.id
+                  : entry.type === "athlete"
+                    ? entry.athlete?.id
+                    : "";
+                const bestComment = targetType && targetId
+                  ? getCommentsForTarget(targetType, targetId)[0] || null
+                  : null;
+                return (
+                  <article key={entry.id} className="list-ranking-entry-row">
+                    <div className="list-ranking-entry-rank">#{index + 1}</div>
+                    <div className="list-ranking-entry-card">
+                      {entry.type === "event" && entry.event ? (
+                        <EventCard
+                          event={entry.event}
+                          size="miniature"
+                          showComment={false}
+                          showTags={false}
+                        />
+                      ) : null}
+                      {entry.type === "athlete" && entry.athlete ? (
+                        <PlayerCard
+                          athlete={entry.athlete}
+                          size="miniature"
+                          showTags={false}
+                          showMenu={false}
+                        />
+                      ) : null}
+                      {entry.type === "unknown" || ((entry.type === "event" && !entry.event) || (entry.type === "athlete" && !entry.athlete)) ? (
+                        <div className="list-ranking-unknown-card">
+                          <p className="typo-label">Element indisponible</p>
+                          <p className="typo-meta">La reference source n est plus resolue.</p>
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="list-ranking-entry-comment">
+                      {bestComment ? (
+                        <CommentCard
+                          comment={bestComment}
+                          showEventLink={false}
+                        />
+                      ) : (
+                        <div className="list-ranking-entry-empty-comment">
+                          <p className="typo-comment-text">
+                            {String(entry.note || "").trim() || "Aucun commentaire"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <article className="entity-card">
-            <p className="event-meta">Aucun element dans ce classement.</p>
-          </article>
-        )}
-      </section>
-
-      <section className="related-section">
-        <div className="group-title">
-          <h2>Evenements les plus attendus</h2>
-          <span>{expectedEvents.length}</span>
-        </div>
-        {expectedEvents.length ? (
-          <HorizontalCardRail
-            label="Evenements list attendus"
-            itemType="event"
-            mode="carousel"
-            visibleDesktop={3.6}
-            visibleTablet={2.3}
-            visibleMobile={1.15}
-            scrollStepItems={1}
-            showArrows
-          >
-            {expectedEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                isInWatchlist={watchlistIds.includes(event.id)}
-                onToggleWatchlist={onToggleWatchlist}
-                showComment={false}
-              />
-            ))}
-          </HorizontalCardRail>
-        ) : (
-          <article className="entity-card">
-            <p className="event-meta">Aucun evenement a venir dans cette list.</p>
-          </article>
-        )}
-      </section>
-
-      <section className="related-section">
-        <div className="group-title">
-          <h2>Evenements les mieux notes</h2>
-          <span>{topRatedEvents.length}</span>
-        </div>
-        {topRatedEvents.length ? (
-          <HorizontalCardRail
-            label="Evenements list mieux notes"
-            itemType="event"
-            mode="carousel"
-            visibleDesktop={3.6}
-            visibleTablet={2.3}
-            visibleMobile={1.15}
-            scrollStepItems={1}
-            showArrows
-          >
-            {topRatedEvents.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                isInWatchlist={watchlistIds.includes(event.id)}
-                onToggleWatchlist={onToggleWatchlist}
-                showComment={false}
-              />
-            ))}
-          </HorizontalCardRail>
-        ) : (
-          <article className="entity-card">
-            <p className="event-meta">Aucun evenement note dans cette list.</p>
+            <p className="typo-body">Aucun element dans ce classement.</p>
           </article>
         )}
       </section>
@@ -190,6 +174,37 @@ function ListDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         contentProfile="comments-only"
         showComposer
         emptyStateText="Aucun commentaire pour ce classement."
+      />
+
+      {siblingLists.length ? (
+        <section className="related-section">
+          <div className="group-title">
+            <h2>Autres versions de ce classement</h2>
+          </div>
+          <HorizontalCardRail
+            label="Autres versions du classement"
+            itemType="ranking"
+            mode="carousel"
+            visibleDesktop={3.6}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            showArrows
+          >
+            {siblingLists.map((item) => (
+              <RankingCard key={item.id} list={item} />
+            ))}
+          </HorizontalCardRail>
+        </section>
+      ) : null}
+
+      <RankingEditorDialog
+        open={editorState.open}
+        mode={editorState.mode}
+        sourceList={editorState.mode === "fork" ? list : null}
+        initialList={editorState.mode === "edit" ? list : null}
+        onClose={handleCloseEditor}
+        onSaved={handleEditorSaved}
       />
     </section>
   );

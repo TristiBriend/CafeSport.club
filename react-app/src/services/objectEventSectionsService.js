@@ -8,6 +8,7 @@ import {
 import { COMMENT_TARGET, getAllComments } from "./commentsService";
 import { getEventById } from "./eventsService";
 import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
+import { matchesUserIdentity } from "./profileService";
 
 function toTimestamp(value) {
   const parsed = Date.parse(String(value || ""));
@@ -93,8 +94,7 @@ export function getObjectRelatedEvents(targetType, targetId) {
     const user = getUserById(safeId);
     const comments = getAllComments().filter((comment) => {
       if (comment.userId && comment.userId === safeId) return true;
-      if (user?.name && String(comment.author || "").trim() === user.name) return true;
-      return false;
+      return matchesUserIdentity(comment, user);
     });
     return uniqueEvents(
       comments

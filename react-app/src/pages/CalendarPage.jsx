@@ -510,7 +510,6 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             <section key={formatDateKey(group.date)} className="group-block">
               <div className="group-title">
                 <h2>{formatDayLabel(group.date)}</h2>
-                <span>{group.items.length} events</span>
               </div>
               <HorizontalCardRail label={`Evenements ${formatDayLabel(group.date)}`} itemType="event">
                 {group.items.map((event) => (
@@ -561,7 +560,6 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             <section key={group.league} className="group-block">
               <div className="group-title">
                 <h2>{group.league}</h2>
-                <span>{group.items.length} events</span>
               </div>
               <HorizontalCardRail label={`Evenements ${group.league}`} itemType="event">
                 {group.items.map((event) => (

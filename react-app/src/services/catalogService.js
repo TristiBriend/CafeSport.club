@@ -1,4 +1,15 @@
 import { getCatalogSnapshot } from "./catalogRepositoryService";
+import {
+  formatHandle,
+  getProfileAvatarOverride,
+  getProfileIdentityOverride,
+  resolvePublicIdentity,
+} from "./profileService";
+import { getSocialSyncSnapshot } from "./socialSyncService";
+
+let cachedCatalogUsersSource = null;
+let cachedCatalogUsersProfileRevision = -1;
+let cachedCatalogUsers = [];
 
 function normalizeText(value) {
   return String(value || "").toLowerCase().trim();
@@ -21,6 +32,36 @@ function getSnapshot() {
   return getCatalogSnapshot();
 }
 
+function applyUserOverrides(user) {
+  const safeUser = user && typeof user === "object" ? user : null;
+  const safeUserId = normalizeId(safeUser?.id);
+  if (!safeUserId) return safeUser;
+  const identity = resolvePublicIdentity(safeUserId, { fallbackUser: safeUser });
+  const avatarOverride = getProfileAvatarOverride(safeUserId);
+  return {
+    ...safeUser,
+    name: identity.displayName,
+    handle: identity.handle ? formatHandle(identity.handle) : String(safeUser?.handle || "").trim(),
+    image: avatarOverride || String(safeUser?.image || "").trim(),
+  };
+}
+
+function getOverriddenCatalogUsers() {
+  const snapshot = getSnapshot();
+  const sourceUsers = Array.isArray(snapshot?.users) ? snapshot.users : [];
+  const profileRevision = Number(getSocialSyncSnapshot()?.revisionByDomain?.profile || 0);
+  if (
+    cachedCatalogUsersSource === sourceUsers
+    && cachedCatalogUsersProfileRevision === profileRevision
+  ) {
+    return cachedCatalogUsers;
+  }
+  cachedCatalogUsersSource = sourceUsers;
+  cachedCatalogUsersProfileRevision = profileRevision;
+  cachedCatalogUsers = sourceUsers.map((user) => applyUserOverrides(user));
+  return cachedCatalogUsers;
+}
+
 function getTeamIdsForAthleteInternal(athleteId) {
   const safeAthleteId = normalizeId(athleteId);
   if (!safeAthleteId) return [];
@@ -39,8 +80,7 @@ function getTeamIdsForAthleteInternal(athleteId) {
 
 export function getUsers({ query = "" } = {}) {
   const q = normalizeText(query);
-  const users = getSnapshot().users || [];
-  return users.filter((user) => {
+  return getOverriddenCatalogUsers().filter((user) => {
     if (!q) return true;
     const haystack = normalizeText(`${user.name} ${user.handle} ${user.location}`);
     return haystack.includes(q);
@@ -50,7 +90,34 @@ export function getUsers({ query = "" } = {}) {
 export function getUserById(userId) {
   const safeUserId = normalizeId(userId);
   if (!safeUserId) return null;
-  return getSnapshot().users.find((user) => normalizeId(user?.id) === safeUserId) || null;
+  const found = getOverriddenCatalogUsers().find((user) => normalizeId(user?.id) === safeUserId) || null;
+  if (found) return found;
+
+  const identity = getProfileIdentityOverride(safeUserId);
+  const avatarOverride = getProfileAvatarOverride(safeUserId);
+  if (!identity.displayName && !identity.handle && !avatarOverride) return null;
+  const resolved = resolvePublicIdentity(safeUserId, {
+    fallbackUser: {
+      id: safeUserId,
+      name: "",
+      handle: "",
+      location: "",
+      bio: "",
+      favoriteSports: [],
+      followers: 0,
+      image: avatarOverride,
+    },
+  });
+  return {
+    id: safeUserId,
+    name: resolved.displayName,
+    handle: resolved.handle ? formatHandle(resolved.handle) : "",
+    location: "",
+    bio: "",
+    favoriteSports: [],
+    followers: 0,
+    image: avatarOverride,
+  };
 }
 
 export function getAthletes({ sportFilter = "Tous", query = "" } = {}) {
@@ -228,4 +295,3 @@ export function getActivitiesForUser(userId) {
 export function getAllActivities() {
   return getSnapshot().activitySamples;
 }
-

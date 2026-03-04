@@ -2,8 +2,11 @@ import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import LeagueSeasonCard from "../components/LeagueSeasonCard";
+import ObjectDetailHero from "../components/ObjectDetailHero";
+import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById, getLeagueSeasonById } from "../services/leaguesService";
+import { buildLeagueSeasonDetailInfoItems } from "../services/objectDetailInfoService";
 
 function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { seasonId } = useParams();
@@ -21,17 +24,23 @@ function LeagueSeasonDetailPage({ watchlistIds = [], onToggleWatchlist = () => {
   }
 
   const league = getLeagueById(season.leagueId);
+  const seasonInfoItems = buildLeagueSeasonDetailInfoItems(season);
 
   return (
     <section className="object-detail-page">
-      <div className="object-detail-top-left">
-        <LeagueSeasonCard season={season} variant="detail" size="large" />
-      </div>
+      <ObjectDetailHero
+        card={<LeagueSeasonCard season={season} variant="detail" size="large" />}
+        side={(
+          <ObjectDetailInfoCard
+            title="Infos saison"
+            items={seasonInfoItems}
+          />
+        )}
+      />
 
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements de la saison</h2>
-          <span>{season.events.length}</span>
         </div>
         <HorizontalCardRail label="Evenements de la saison" itemType="event">
           {season.events.map((event) => (

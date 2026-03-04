@@ -13,6 +13,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "./firebase";
+import { normalizeCommentMentions } from "./commentMentionsService";
 
 function normalizeId(value) {
   return String(value || "").trim();
@@ -89,6 +90,7 @@ function parseCommentFromDoc(docSnap) {
     userId: normalizeId(data.authorAppUserId),
     author: String(data.authorName || "Utilisateur").trim() || "Utilisateur",
     note,
+    mentions: normalizeCommentMentions(data.mentions),
     likes: toPositiveInt(data.likes),
     commentType: String(data.commentType || "teaser").trim() || "teaser",
     rating: data.rating == null ? undefined : toPositiveInt(data.rating),
@@ -112,6 +114,7 @@ function parseReplyFromDoc(docSnap) {
       userId: normalizeId(data.authorAppUserId),
       author: String(data.authorName || "Utilisateur").trim() || "Utilisateur",
       note,
+      mentions: normalizeCommentMentions(data.mentions),
       likes: toPositiveInt(data.likes),
       createdAt: toIso(data.createdAt),
     },
@@ -317,6 +320,7 @@ export async function upsertCommentCloud(comment) {
     commentType: String(comment?.commentType || "teaser").trim() || "teaser",
     rating: comment?.rating == null ? null : toPositiveInt(comment.rating),
     note: String(comment?.note || "").trim(),
+    mentions: normalizeCommentMentions(comment?.mentions),
     likes: toPositiveInt(comment?.likes),
     deleted: false,
     createdAt: serverTimestamp(),
@@ -351,6 +355,7 @@ export async function upsertReplyCloud(commentId, reply) {
     authorAppUserId: normalizeId(reply?.userId),
     authorName: String(reply?.author || "Utilisateur").trim() || "Utilisateur",
     note: String(reply?.note || "").trim(),
+    mentions: normalizeCommentMentions(reply?.mentions),
     likes: toPositiveInt(reply?.likes),
     deleted: false,
     createdAt: serverTimestamp(),
@@ -455,4 +460,32 @@ export async function registerCommentImpressionCloud(uid, commentId) {
   });
 
   return toPositiveInt(nextValue);
+}
+
+export async function renameAuthoredCloudContent(appUserId, nextDisplayName) {
+  const safeUserId = normalizeId(appUserId);
+  const safeDisplayName = String(nextDisplayName || "").trim();
+  if (!safeUserId || !safeDisplayName || !db || !isFirebaseConfigured) return false;
+
+  const commentSnap = await getDocs(query(
+    collection(db, "comments"),
+    where("authorAppUserId", "==", safeUserId),
+  ));
+  const replySnap = await getDocs(query(
+    collectionGroup(db, "replies"),
+    where("authorAppUserId", "==", safeUserId),
+  ));
+
+  await Promise.all([
+    ...commentSnap.docs.map((item) => setDoc(item.ref, {
+      authorName: safeDisplayName,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })),
+    ...replySnap.docs.map((item) => setDoc(item.ref, {
+      authorName: safeDisplayName,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })),
+  ]);
+
+  return true;
 }

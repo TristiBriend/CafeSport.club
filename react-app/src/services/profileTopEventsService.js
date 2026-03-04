@@ -1,6 +1,7 @@
 import { getListsForUser, getUserById, resolveListEntries } from "./catalogService";
 import { COMMENT_MODE, getAllComments } from "./commentsService";
 import { getEventById } from "./eventsService";
+import { matchesUserIdentity } from "./profileService";
 
 function toTimestamp(value) {
   const parsed = Date.parse(String(value || ""));
@@ -12,7 +13,7 @@ function matchesUserComment(comment, userId, userName) {
   const safeUserName = String(userName || "").trim();
   if (!comment) return false;
   if (safeUserId && String(comment.userId || "").trim() === safeUserId) return true;
-  return Boolean(safeUserName && String(comment.author || "").trim() === safeUserName);
+  return Boolean(safeUserName && matchesUserIdentity(comment, { id: safeUserId, name: safeUserName }));
 }
 
 function uniqueEvents(list = []) {

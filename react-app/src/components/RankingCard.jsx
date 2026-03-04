@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { getUserById, resolveListEntries } from "../services/catalogService";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { resolveListEntries } from "../services/catalogService";
+import ConfirmDialog from "./ConfirmDialog";
+import RankingEditorDialog from "./RankingEditorDialog";
 import { buildAddWatchlistFabButton } from "./WatchlistFabButton";
 import { useSocialSync } from "../contexts/SocialSyncContext";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,6 +16,11 @@ import {
   deleteCatalogObject,
   getDeleteDependencies,
 } from "../services/adminCatalogModerationService";
+import {
+  canEditRankingList,
+  canForkRankingList,
+  resolveRankingListOwner,
+} from "../services/rankingListsService";
 
 function IconMore() {
   return (
@@ -104,9 +111,10 @@ function buildListFeedPath(listId) {
 }
 
 function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" }) {
-  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const { isAdmin, currentUser, isAuthenticated } = useAuth();
   const entries = resolveListEntries(list);
-  const owner = getUserById(list?.ownerId);
+  const owner = useMemo(() => resolveRankingListOwner(list), [list]);
   const previewItems = entries.map(resolvePreviewItem).filter(Boolean);
   const visibleItems = previewItems.slice(0, maxPreview);
   const remaining = Math.max(0, previewItems.length - visibleItems.length);
@@ -127,10 +135,17 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
   const [isFavorite, setIsFavorite] = useState(false);
   const [resolvedFavoriteCount, setResolvedFavoriteCount] = useState(baseFavoriteCount);
   const [isAdminDeleting, setIsAdminDeleting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [editorState, setEditorState] = useState({
+    open: false,
+    mode: "create",
+  });
   const moreMenuRef = useRef(null);
   const { revisionByDomain } = useSocialSync();
   const followsRevision = Number(revisionByDomain?.follows || 0);
   const canToggleFavorite = Boolean(String(list?.id || "").trim());
+  const canEditList = canEditRankingList(list, currentUser, currentUser);
+  const canForkList = canForkRankingList(list, currentUser);
   const followActionLabel = isFavorite
     ? `Ne plus suivre ${listTitle}`
     : `Suivre ${listTitle}`;
@@ -188,6 +203,29 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
     setIsMoreMenuOpen(false);
   }
 
+  function openEditor(mode) {
+    setEditorState({
+      open: true,
+      mode,
+    });
+    setIsMoreMenuOpen(false);
+  }
+
+  function closeEditor() {
+    setEditorState((current) => ({
+      ...current,
+      open: false,
+    }));
+  }
+
+  function handleEditorSaved(savedList) {
+    const safeListId = String(savedList?.id || "").trim();
+    if (!safeListId) return;
+    if (editorState.mode === "create" || editorState.mode === "fork") {
+      navigate(`/list/${safeListId}`);
+    }
+  }
+
   async function handleAdminDeleteFromMenu() {
     if (!isAdmin || isAdminDeleting) return;
     const deps = await getDeleteDependencies({ type: "list", id: list?.id });
@@ -200,9 +238,12 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
       return;
     }
 
-    const confirmed = window.confirm(`Supprimer definitivement ${listTitle} de la base ?`);
-    if (!confirmed) return;
+    setIsDeleteConfirmOpen(true);
+    setIsMoreMenuOpen(false);
+  }
 
+  async function handleConfirmAdminDelete() {
+    if (!isAdmin || isAdminDeleting) return;
     setIsAdminDeleting(true);
     try {
       const result = await deleteCatalogObject({
@@ -221,14 +262,15 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
       window.alert("Erreur pendant la suppression.");
     } finally {
       setIsAdminDeleting(false);
-      setIsMoreMenuOpen(false);
+      setIsDeleteConfirmOpen(false);
     }
   }
 
   if (!list) return null;
 
   return (
-    <article className={`list-card ranking-card ${isMoreMenuOpen ? "is-more-open" : ""} ${className}`.trim()}>
+    <>
+      <article className={`list-card ranking-card ${isMoreMenuOpen ? "is-more-open" : ""} ${className}`.trim()}>
       <div className="ranking-card-head-outside">
         <div className="ranking-card-head-top">
           <span className="event-corner-chip event-corner-chip-sport ranking-card-sport-chip">
@@ -256,6 +298,36 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
             </button>
             {isMoreMenuOpen ? (
               <div className="ranking-card-more-popover" role="menu" aria-label="Actions classement">
+                {isAuthenticated && canEditList ? (
+                  <button
+                    type="button"
+                    className="ranking-card-more-action"
+                    role="menuitem"
+                    onClick={() => openEditor("edit")}
+                  >
+                    Modifier le classement
+                  </button>
+                ) : null}
+                {isAuthenticated && !canEditList && canForkList ? (
+                  <button
+                    type="button"
+                    className="ranking-card-more-action"
+                    role="menuitem"
+                    onClick={() => openEditor("fork")}
+                  >
+                    Creer ma version de ce classement
+                  </button>
+                ) : null}
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    className="ranking-card-more-action"
+                    role="menuitem"
+                    onClick={() => openEditor("create")}
+                  >
+                    Creer un nouveau classement
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="ranking-card-more-action"
@@ -323,7 +395,7 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
         <div className={`ranking-card-media-overlay ${heroImage ? "" : "is-no-image"}`.trim()}>
           {!heroImage ? <span className="ranking-card-media-fallback">{getInitials(list.title)}</span> : null}
           {visibleItems.length ? (
-            <div className="ranking-card-miniatures" aria-label={`Elements de la liste (${previewItems.length})`}>
+            <div className="ranking-card-miniatures" aria-label={`Elements du classement (${previewItems.length})`}>
               {visibleItems.map((item) => (
                 <Link key={item.key} className="ranking-card-miniature" to={item.to} aria-label={item.label}>
                   <span className="ranking-card-miniature-avatar" aria-hidden="true">
@@ -346,7 +418,7 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
                     {owner.name}
                   </Link>
                 ) : (
-                  "Auteur inconnu"
+                  owner?.name || "Auteur inconnu"
                 )}
               </p>
             ) : null}
@@ -361,7 +433,27 @@ function RankingCard({ list, showOwner = true, maxPreview = 5, className = "" })
           </div>
         </div>
       </div>
-    </article>
+      </article>
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        title="Supprimer ce classement ?"
+        message={`Supprimer definitivement ${listTitle} de la base ? Cette action est irreversible.`}
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        tone="danger"
+        isBusy={isAdminDeleting}
+        onConfirm={handleConfirmAdminDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+      />
+      <RankingEditorDialog
+        open={editorState.open}
+        mode={editorState.mode}
+        sourceList={editorState.mode === "fork" ? list : null}
+        initialList={editorState.mode === "edit" ? list : null}
+        onClose={closeEditor}
+        onSaved={handleEditorSaved}
+      />
+    </>
   );
 }
 

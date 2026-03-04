@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import ConfirmDialog from "./ConfirmDialog";
 import FriendnotesModal from "./FriendnotesModal";
 import ImageCropModal from "./ImageCropModal";
 import ObjectTagsWidget from "./ObjectTagsWidget";
@@ -148,6 +149,7 @@ function EventCard({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isFriendnotesOpen, setIsFriendnotesOpen] = useState(false);
   const [isAdminDeleting, setIsAdminDeleting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoUploadError, setPhotoUploadError] = useState("");
   const [photoOverrideUrl, setPhotoOverrideUrl] = useState("");
@@ -263,8 +265,8 @@ function EventCard({
     refreshComments();
   }
 
-  function handleCreateReply(comment, noteValue) {
-    const created = createCommentReply(comment?.id, { note: noteValue, author: "Vous" });
+  function handleCreateReply(comment, noteValue, mentions = []) {
+    const created = createCommentReply(comment?.id, { note: noteValue, mentions });
     if (!created) return null;
     refreshComments();
     return created;
@@ -371,9 +373,12 @@ function EventCard({
       return;
     }
 
-    const confirmed = window.confirm(`Supprimer definitivement ${eventTitle} de la base ?`);
-    if (!confirmed) return;
+    setIsDeleteConfirmOpen(true);
+    setIsMoreMenuOpen(false);
+  }
 
+  async function handleConfirmAdminDelete() {
+    if (isAdminDeleting) return;
     setIsAdminDeleting(true);
     try {
       const result = await deleteCatalogObject({
@@ -392,7 +397,7 @@ function EventCard({
       window.alert("Erreur pendant la suppression.");
     } finally {
       setIsAdminDeleting(false);
-      setIsMoreMenuOpen(false);
+      setIsDeleteConfirmOpen(false);
     }
   }
 
@@ -409,8 +414,8 @@ function EventCard({
           className="event-corner-meta"
           aria-label={
             isFuture
-              ? `Sport ${event.sport}`
-              : `Sport ${event.sport}, score communaute ${communityPercent}`
+              ? "Evenement a venir"
+              : `Score communaute ${communityPercent}`
           }
         >
           {isFuture ? (
@@ -423,7 +428,6 @@ function EventCard({
             </span>
           )}
           <span className="event-corner-trailing">
-            <span className="event-corner-chip event-corner-chip-sport" title={event.sport}>{event.sport}</span>
             {!isFuture ? <ScoreBadge variant="community-chip" value={communityPercent} scale="percent" /> : null}
             {typeof onToggleWatchlist === "function" ? (
               buildAddWatchlistFabButton({
@@ -558,6 +562,11 @@ function EventCard({
               {photoUploadError ? <p className="catalog-photo-upload-error">{photoUploadError}</p> : null}
               {eventImage ? <img src={eventImage} alt={event.title} /> : null}
               <div className={`event-media-overlay ${isCompact ? "compact" : ""}`}>
+                {String(event?.sport || "").trim() ? (
+                  <span className="event-overlay-sport-chip event-corner-chip event-corner-chip-sport" title={event.sport}>
+                    {event.sport}
+                  </span>
+                ) : null}
                 {visibleAthletes.length ? (
                   <div className="overlay-participants">
                     <div className="event-player-miniatures" aria-label={`Participants (${eventAthletes.length})`}>
@@ -684,6 +693,17 @@ function EventCard({
         isBusy={isUploadingPhoto}
         onCancel={handleCloseCropModal}
         onConfirm={handleConfirmCroppedPhoto}
+      />
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        title="Supprimer cet evenement ?"
+        message={`Supprimer definitivement ${eventTitle} de la base ? Cette action est irreversible.`}
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        tone="danger"
+        isBusy={isAdminDeleting}
+        onConfirm={handleConfirmAdminDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
       />
     </div>
   );

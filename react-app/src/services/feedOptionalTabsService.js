@@ -101,29 +101,31 @@ export function getOptionalFeedTabDefaultLabel(targetType, targetId) {
   const safeId = normalizeTargetId(targetId);
   if (!safeType || !safeId) return "Feed";
 
+  let objectLabel = "";
+
   if (safeType === FEED_TARGET.EVENT) {
-    return getEventById(safeId)?.title || "Evenement";
+    objectLabel = getEventById(safeId)?.title || "Evenement";
   }
-  if (safeType === FEED_TARGET.USER) {
-    return getUserById(safeId)?.name || "Profil";
+  if (!objectLabel && safeType === FEED_TARGET.USER) {
+    objectLabel = getUserById(safeId)?.name || "Profil";
   }
-  if (safeType === FEED_TARGET.LEAGUE) {
-    return getLeagueById(safeId)?.title || "Competition";
+  if (!objectLabel && safeType === FEED_TARGET.LEAGUE) {
+    objectLabel = getLeagueById(safeId)?.title || "Competition";
   }
-  if (safeType === FEED_TARGET.LEAGUE_SEASON) {
-    return getLeagueSeasonById(safeId)?.title || "Saison";
+  if (!objectLabel && safeType === FEED_TARGET.LEAGUE_SEASON) {
+    objectLabel = getLeagueSeasonById(safeId)?.title || "Saison";
   }
-  if (safeType === FEED_TARGET.ATHLETE) {
-    return getAthleteById(safeId)?.name || "Athlete";
+  if (!objectLabel && safeType === FEED_TARGET.ATHLETE) {
+    objectLabel = getAthleteById(safeId)?.name || "Athlete";
   }
-  if (safeType === FEED_TARGET.TEAM) {
+  if (!objectLabel && safeType === FEED_TARGET.TEAM) {
     const team = getTeamById(safeId);
-    return team?.nameFull || team?.name || "Team";
+    objectLabel = team?.nameFull || team?.name || "Team";
   }
-  if (safeType === FEED_TARGET.LIST) {
-    return getListById(safeId)?.title || "List";
+  if (!objectLabel && safeType === FEED_TARGET.LIST) {
+    objectLabel = getListById(safeId)?.title || "List";
   }
-  return "Feed";
+  return objectLabel ? `Feed · ${objectLabel}` : "Feed";
 }
 
 function normalizeOptionalFeedTabEntry(raw) {

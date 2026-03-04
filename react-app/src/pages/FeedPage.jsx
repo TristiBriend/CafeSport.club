@@ -36,6 +36,7 @@ import {
   updateCommentReply,
 } from "../services/commentsService";
 import { getAllEvents, getEventById } from "../services/eventsService";
+import { matchesUserIdentity } from "../services/profileService";
 import {
   buildRawFeedEntries,
   buildStreamMeta,
@@ -235,8 +236,7 @@ function resolveObjectEvents(targetType, targetId, allComments = []) {
       allComments
         .filter((comment) => {
           if (comment.userId && comment.userId === targetId) return true;
-          if (user?.name && comment.author === user.name) return true;
-          return false;
+          return matchesUserIdentity(comment, user);
         })
         .map((comment) => comment.eventId)
         .filter(Boolean),
@@ -303,7 +303,7 @@ function buildFollowedTargetPreview(entry, allComments) {
     const user = getUserById(targetId);
     if (!user) return null;
     const latestCommentTs = allComments
-      .filter((comment) => comment.userId === user.id || comment.author === user.name)
+      .filter((comment) => matchesUserIdentity(comment, user))
       .reduce((max, comment) => Math.max(max, toTimestamp(comment.createdAt)), 0);
     return {
       id: `${targetType}-${targetId}`,
@@ -418,14 +418,21 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const [optionalTabs, setOptionalTabs] = useState(() => loadOptionalFeedTabs());
   const [, setCommentsVersion] = useState(0);
   const request = normalizeFeedRequest(searchParams);
+  const isObjectScope = request.scope === FEED_SCOPE.OBJECT;
 
   useEffect(() => {
     setOptionalTabs(loadOptionalFeedTabs());
   }, [tabsRevision]);
 
-  if (request.scope === FEED_SCOPE.OBJECT) {
+  useEffect(() => {
+    if (!isObjectScope) return;
+    const currentTab = getOptionalFeedTabForTarget(request.targetType, request.targetId);
+    if (!currentTab || currentTab.mode === request.mode) return;
+    setOptionalTabs(setOptionalFeedTabMode(currentTab.id, request.mode));
+  }, [isObjectScope, request.mode, request.targetId, request.targetType]);
+
+  if (isObjectScope) {
     const objectMeta = resolveObjectMeta(request.targetType, request.targetId);
-    const title = objectMeta?.title || "Feed objet";
     const subtitle = `${objectMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`;
     return (
       <section className="feed-page is-editorial">
@@ -434,7 +441,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           targetId={request.targetId}
           watchlistIds={watchlistIds}
           onToggleWatchlist={onToggleWatchlist}
-          title={title}
           subtitle={subtitle}
           mode={request.mode}
           onModeChange={(nextMode) => {
@@ -478,9 +484,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       const leftScore = Number(a.likes || 0) + (followedListIds.has(a.id) ? 500 : 0);
       const rightScore = Number(b.likes || 0) + (followedListIds.has(b.id) ? 500 : 0);
       return rightScore - leftScore;
-    });
-
-  const isObjectScope = false;
+      });
 
   const currentOptionalTabId = isObjectScope
     ? buildOptionalFeedTabId(request.targetType, request.targetId)
@@ -488,13 +492,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const isCurrentObjectPinned = isObjectScope
     ? optionalTabs.some((tab) => tab.id === currentOptionalTabId)
     : false;
-
-  useEffect(() => {
-    if (!isObjectScope) return;
-    const currentTab = getOptionalFeedTabForTarget(request.targetType, request.targetId);
-    if (!currentTab || currentTab.mode === request.mode) return;
-    setOptionalTabs(setOptionalFeedTabMode(currentTab.id, request.mode));
-  }, [isObjectScope, request.mode, request.targetId, request.targetType]);
 
   const sortedComments = allComments
     .slice()
@@ -706,10 +703,10 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     bumpComments();
   }
 
-  function handleCreateReply(comment, note) {
+  function handleCreateReply(comment, note, mentions = []) {
     const created = createCommentReply(comment?.id, {
       note,
-      author: "Vous",
+      mentions,
     });
     if (!created) return null;
     bumpComments();
@@ -765,7 +762,23 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   function renderReplyCard(entry) {
     const reply = entry?.payload?.reply;
+    const parentComment = entry?.payload?.comment;
     if (!reply) return null;
+    if (parentComment) {
+      return (
+        <CommentCard
+          comment={parentComment}
+          onToggleLike={handleToggleLike}
+          onCreateReply={handleCreateReply}
+          onToggleReplyLike={handleToggleReplyLike}
+          onUpdateComment={handleUpdateComment}
+          onDeleteComment={handleDeleteComment}
+          onUpdateReply={handleUpdateReply}
+          onDeleteReply={handleDeleteReply}
+          forceReplyThreadOpen
+        />
+      );
+    }
     const eventId = entry?.payload?.eventId;
     return (
       <article className="comment-card">
@@ -775,7 +788,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             <p className="comment-meta typo-meta">Reponse likee</p>
           </div>
         </header>
-        <p className="comment-note typo-body-strong">{reply.note}</p>
+        <p className="comment-note typo-comment-text">{reply.note}</p>
         <p className="event-meta typo-meta">{reply.totalLikes || 0} likes</p>
         <p className="reply-date typo-meta">{getCommentDateLabel(reply)}</p>
         {eventId ? <Link className="typo-meta" to={`/event/${eventId}`}>Voir evenement</Link> : null}
@@ -855,6 +868,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       return (
         <CommentCard
           comment={entry.payload?.comment}
+          forceReplyThreadOpen={Boolean(entry.payload?.comment?.viewContext?.forceReplyThreadOpen)}
           onToggleLike={handleToggleLike}
           onCreateReply={handleCreateReply}
           onToggleReplyLike={handleToggleReplyLike}
@@ -921,11 +935,10 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
         {optionalTabs.length ? (
           <div className="feed-optional-row-react">
-            <span className="event-meta typo-meta">Complements:</span>
             {optionalTabs.map((tab) => {
               const isActive = isObjectScope && tab.id === currentOptionalTabId;
               return (
-                <span key={tab.id} className={`feed-optional-chip-react ${isActive ? "is-active" : ""}`}>
+                <span key={tab.id} className="feed-optional-chip-react">
                   <Link
                     className={`filter-btn feed-optional-open-react ${isActive ? "is-active" : ""}`}
                     to={buildFeedLink({
@@ -960,7 +973,6 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <section className="related-section">
         <div className="group-title">
           <h2>Flux</h2>
-          <span>{streamEntries.length}</span>
         </div>
 
         {streamEntries.length ? (

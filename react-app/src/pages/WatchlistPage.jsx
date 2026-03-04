@@ -266,7 +266,6 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
             <section key={group.league} className="group-block">
               <div className="group-title">
                 <h2>{group.league}</h2>
-                <span>{group.items.length} events</span>
               </div>
               <HorizontalCardRail label={`Watchlist ${group.league}`} itemType="event">
                 {group.items.map((event) => (

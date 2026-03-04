@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { updateCurrentAuthProfile } from "../services/firebaseAuthService";
+import {
+  isHandleAvailable,
+  normalizeDisplayName,
+  normalizeHandle,
+  setCurrentProfileUserId,
+  setProfileIdentityOverride,
+} from "../services/profileService";
 
 function SignupPage() {
   const navigate = useNavigate();
@@ -14,10 +22,13 @@ function SignupPage() {
     signupWithEmail,
   } = useAuth();
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [handle, setHandle] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const normalizedHandlePreview = normalizeHandle(handle);
 
   if (authReady && isAuthenticated) {
     return <Navigate replace to="/profile" />;
@@ -26,8 +37,18 @@ function SignupPage() {
   async function handleSignupSubmit(event) {
     event.preventDefault();
     const safeEmail = String(email || "").trim();
+    const safeDisplayName = normalizeDisplayName(displayName);
+    const safeHandle = normalizeHandle(handle);
     if (!safeEmail || !password) {
       setLocalError("Email et mot de passe obligatoires.");
+      return;
+    }
+    if (safeDisplayName.length < 3) {
+      setLocalError("Le pseudonyme doit contenir au moins 3 caracteres.");
+      return;
+    }
+    if (safeHandle.length < 3) {
+      setLocalError("Le handle doit contenir au moins 3 caracteres.");
       return;
     }
     if (password.length < 6) {
@@ -41,7 +62,20 @@ function SignupPage() {
     setIsSubmitting(true);
     setLocalError("");
     try {
-      await signupWithEmail(safeEmail, password);
+      const isAvailable = await isHandleAvailable(safeHandle);
+      if (!isAvailable) {
+        setLocalError("Ce handle est deja pris.");
+        return;
+      }
+      const result = await signupWithEmail(safeEmail, password, { displayName: safeDisplayName });
+      const appUserId = String(result?.user?.uid || "").trim();
+      if (appUserId) {
+        setCurrentProfileUserId(appUserId);
+        setProfileIdentityOverride(appUserId, {
+          displayName: safeDisplayName,
+          handle: safeHandle,
+        });
+      }
       navigate("/profile", { replace: true });
     } catch (error) {
       setLocalError(String(error?.message || "Inscription impossible."));
@@ -51,10 +85,34 @@ function SignupPage() {
   }
 
   async function handleGoogleSignup() {
+    const safeDisplayName = normalizeDisplayName(displayName);
+    const safeHandle = normalizeHandle(handle);
+    if (safeDisplayName.length < 3) {
+      setLocalError("Le pseudonyme doit contenir au moins 3 caracteres.");
+      return;
+    }
+    if (safeHandle.length < 3) {
+      setLocalError("Le handle doit contenir au moins 3 caracteres.");
+      return;
+    }
     setIsSubmitting(true);
     setLocalError("");
     try {
-      await loginWithGoogle();
+      const isAvailable = await isHandleAvailable(safeHandle);
+      if (!isAvailable) {
+        setLocalError("Ce handle est deja pris.");
+        return;
+      }
+      const result = await loginWithGoogle();
+      await updateCurrentAuthProfile({ displayName: safeDisplayName });
+      const appUserId = String(result?.user?.uid || "").trim();
+      if (appUserId) {
+        setCurrentProfileUserId(appUserId);
+        setProfileIdentityOverride(appUserId, {
+          displayName: safeDisplayName,
+          handle: safeHandle,
+        });
+      }
       navigate("/profile", { replace: true });
     } catch (error) {
       setLocalError(String(error?.message || "Connexion Google impossible."));
@@ -91,6 +149,31 @@ function SignupPage() {
   return (
     <section className="auth-page-shell">
       <form className="comment-composer auth-form" onSubmit={handleSignupSubmit}>
+        <label className="search-wrap" htmlFor="signup-display-name">
+          <span>Pseudonyme</span>
+          <input
+            id="signup-display-name"
+            type="text"
+            autoComplete="nickname"
+            placeholder="Ton pseudo public"
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+          />
+        </label>
+        <label className="search-wrap" htmlFor="signup-handle">
+          <span>Handle</span>
+          <input
+            id="signup-handle"
+            type="text"
+            autoComplete="username"
+            placeholder="@ton_handle"
+            value={handle}
+            onChange={(event) => setHandle(event.target.value)}
+          />
+          <span className="event-meta">
+            Affiche: {normalizedHandlePreview ? `@${normalizedHandlePreview}` : "@ton_handle"}
+          </span>
+        </label>
         <label className="search-wrap" htmlFor="signup-email">
           <span>Email</span>
           <input

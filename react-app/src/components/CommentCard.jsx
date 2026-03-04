@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import CommentMentionTextarea from "./CommentMentionTextarea";
 import {
   COMMENT_MODE,
   COMMENT_TARGET,
+  deleteComment,
+  deleteCommentReply,
   resolveTargetCommentContext,
   registerCommentImpression,
 } from "../services/commentsService";
@@ -12,7 +15,14 @@ import {
   isUserFollowed,
   toggleUserFollow,
 } from "../services/userFollowService";
+import { getSocialSyncCloudIdentity } from "../services/socialSyncService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
+import {
+  filterCommentMentionsForText,
+  getCommentMentionPath,
+  tokenizeCommentTextWithMentions,
+} from "../services/commentMentionsService";
+import ConfirmDialog from "./ConfirmDialog";
 import ScoreBadge from "./ScoreBadge";
 import RelativeDateLabel from "./RelativeDateLabel";
 
@@ -140,15 +150,56 @@ function buildCommentFeedPath(comment) {
   return `/feed?${params.toString()}`;
 }
 
+function renderCommentNoteContent(text, mentions = [], keyPrefix = "note") {
+  const tokens = tokenizeCommentTextWithMentions(text, mentions);
+  const nodes = [];
+
+  tokens.forEach((token, tokenIndex) => {
+    if (token.type === "mention") {
+      const path = getCommentMentionPath(token.mention);
+      if (path) {
+        nodes.push(
+          <Link
+            key={`${keyPrefix}-mention-${tokenIndex}`}
+            className="comment-mention-link"
+            to={path}
+          >
+            {token.value}
+          </Link>,
+        );
+        return;
+      }
+      nodes.push(token.value);
+      return;
+    }
+
+    const parts = String(token.value || "").split("\n");
+    parts.forEach((part, partIndex) => {
+      if (part) {
+        nodes.push(part);
+      }
+      if (partIndex < parts.length - 1) {
+        nodes.push(<br key={`${keyPrefix}-br-${tokenIndex}-${partIndex}`} />);
+      }
+    });
+  });
+
+  return nodes;
+}
+
 function CommentCard({
   comment,
   onToggleLike,
   onCreateReply,
+  onToggleReplyLike,
+  onDeleteComment,
+  onDeleteReply,
   showEventLink = true,
+  forceReplyThreadOpen = false,
 }) {
+  const cloudIdentity = getSocialSyncCloudIdentity();
   const isReview = comment.commentType === COMMENT_MODE.REVIEW;
   const replies = Array.isArray(comment.replies) ? comment.replies : [];
-  const repliesCount = replies.length;
   const resolvedUser = useMemo(
     () => resolveCommentUser(comment),
     [comment?.userId, comment?.author],
@@ -157,10 +208,14 @@ function CommentCard({
   const avatarImage = getImagePath(resolvedUser?.image);
   const [isFollowed, setIsFollowed] = useState(false);
   const [impressionCount, setImpressionCount] = useState(Number(comment?.totalImpressions || 0));
-  const [isReplyPopupOpen, setIsReplyPopupOpen] = useState(false);
+  const [isReplyThreadOpen, setIsReplyThreadOpen] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyMentions, setReplyMentions] = useState([]);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isReported, setIsReported] = useState(false);
+  const [isCommentDismissed, setIsCommentDismissed] = useState(false);
+  const [dismissedReplyIds, setDismissedReplyIds] = useState([]);
+  const [pendingDeleteTarget, setPendingDeleteTarget] = useState(null);
   const { revisionByDomain } = useSocialSync();
   const followsRevision = Number(revisionByDomain?.follows || 0);
   const moreMenuRef = useRef(null);
@@ -192,6 +247,19 @@ function CommentCard({
   const shouldRenderEventLink = showEventLink && Boolean(resolvedEvent?.id);
   const cleanReplyText = String(replyText || "").trim();
   const canSubmitReply = cleanReplyText.length > 0 && typeof onCreateReply === "function";
+  const canToggleReplyLike = typeof onToggleReplyLike === "function";
+  const visibleReplies = replies.filter((reply) => !dismissedReplyIds.includes(String(reply?.id || "")));
+  const repliesCount = visibleReplies.length;
+  const currentActorId = String(cloudIdentity?.appUserId || "").trim();
+  const canDeleteOwnComment = (
+    String(comment?.userId || "").trim() === "usr-manual"
+    || (currentActorId && String(comment?.userId || "").trim() === currentActorId)
+    || String(comment?.author || "").trim() === "Vous"
+  );
+  const replyThreadId = `comment-replies-${String(comment?.id || "item").trim() || "item"}`;
+  const replyInputId = `comment-reply-${String(comment?.id || "item").trim() || "item"}`;
+  const isReplyThreadForced = Boolean(forceReplyThreadOpen);
+  const isReplyThreadVisible = isReplyThreadForced || isReplyThreadOpen;
 
   useEffect(() => {
     if (!resolvedUser?.id) {
@@ -213,16 +281,13 @@ function CommentCard({
   }, [comment?.id]);
 
   useEffect(() => {
-    if (!isReplyPopupOpen) return undefined;
-    function handleEscape(event) {
-      if (event.key === "Escape") {
-        setIsReplyPopupOpen(false);
-        setIsMoreMenuOpen(false);
-      }
-    }
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [isReplyPopupOpen]);
+    setIsCommentDismissed(false);
+    setDismissedReplyIds([]);
+    setIsReplyThreadOpen(false);
+    setReplyText("");
+    setReplyMentions([]);
+    setPendingDeleteTarget(null);
+  }, [comment?.id]);
 
   useEffect(() => {
     if (!isMoreMenuOpen) return undefined;
@@ -250,21 +315,19 @@ function CommentCard({
     setIsFollowed(next);
   }
 
-  function handleOpenReplyPopup() {
-    setIsReplyPopupOpen(true);
-  }
-
-  function handleCloseReplyPopup() {
-    setIsReplyPopupOpen(false);
-    setReplyText("");
+  function handleToggleReplyThread() {
+    if (isReplyThreadForced) return;
+    setIsReplyThreadOpen((value) => !value);
   }
 
   function handleSubmitReply(event) {
     event.preventDefault();
     if (!canSubmitReply) return;
-    const created = onCreateReply(comment, cleanReplyText);
+    const created = onCreateReply(comment, cleanReplyText, filterCommentMentionsForText(replyText, replyMentions));
     if (!created) return;
-    handleCloseReplyPopup();
+    setReplyText("");
+    setReplyMentions([]);
+    setIsReplyThreadOpen(true);
   }
 
   function handleToggleMoreMenu() {
@@ -280,6 +343,46 @@ function CommentCard({
     setIsReported(true);
     setIsMoreMenuOpen(false);
   }
+
+  function handleRequestDeleteComment() {
+    setPendingDeleteTarget({ kind: "comment" });
+  }
+
+  function handleRequestDeleteReply(reply) {
+    const safeReplyId = String(reply?.id || "").trim();
+    if (!safeReplyId) return;
+    setPendingDeleteTarget({ kind: "reply", replyId: safeReplyId });
+  }
+
+  function handleConfirmDelete() {
+    if (!pendingDeleteTarget) return;
+    if (pendingDeleteTarget.kind === "comment") {
+      const deleted = typeof onDeleteComment === "function"
+        ? onDeleteComment(comment)
+        : deleteComment(comment?.id);
+      if (!deleted) return;
+      setIsCommentDismissed(true);
+      setIsMoreMenuOpen(false);
+      setPendingDeleteTarget(null);
+      return;
+    }
+    if (pendingDeleteTarget.kind !== "reply") return;
+    const safeReplyId = String(pendingDeleteTarget.replyId || "").trim();
+    if (!safeReplyId) return;
+    const reply = visibleReplies.find((entry) => String(entry?.id || "").trim() === safeReplyId);
+    if (!reply) {
+      setPendingDeleteTarget(null);
+      return;
+    }
+    const deleted = typeof onDeleteReply === "function"
+      ? onDeleteReply(comment, reply)
+      : deleteCommentReply(comment?.id, safeReplyId);
+    if (!deleted) return;
+    setDismissedReplyIds((prev) => [...prev, safeReplyId]);
+    setPendingDeleteTarget(null);
+  }
+
+  if (isCommentDismissed) return null;
 
   return (
     <div className={`comment-card-shell ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}>
@@ -318,65 +421,79 @@ function CommentCard({
               </div>
             </div>
           </div>
-          <div className="comment-card-more-menu" ref={moreMenuRef}>
-            <button
-              className="comment-card-more-btn"
-              type="button"
-              aria-label="Options du commentaire"
-              aria-haspopup="menu"
-              aria-expanded={isMoreMenuOpen}
-              onClick={handleToggleMoreMenu}
-            >
-              <IconMore />
-            </button>
-            {isMoreMenuOpen ? (
-              <div className="comment-card-more-popover" role="menu" aria-label="Actions du commentaire">
-                <button
-                  type="button"
-                  className="comment-card-more-action"
-                  role="menuitem"
-                  onClick={handleToggleFollowFromMenu}
-                  disabled={!resolvedUser?.id}
-                >
-                  {followActionLabel}
-                </button>
-                <Link
-                  className="comment-card-more-action"
-                  role="menuitem"
-                  to={feedPath}
-                  onClick={() => setIsMoreMenuOpen(false)}
-                >
-                  Ouvrir le commentaire dans le feed
-                </Link>
-                {targetPath ? (
+          <div className="comment-card-toolbox">
+            {canDeleteOwnComment ? (
+              <button
+                className="comment-delete-btn"
+                type="button"
+                aria-label="Supprimer mon commentaire"
+                onClick={handleRequestDeleteComment}
+              >
+                ×
+              </button>
+            ) : null}
+            <div className="comment-card-more-menu" ref={moreMenuRef}>
+              <button
+                className="comment-card-more-btn"
+                type="button"
+                aria-label="Options du commentaire"
+                aria-haspopup="menu"
+                aria-expanded={isMoreMenuOpen}
+                onClick={handleToggleMoreMenu}
+              >
+                <IconMore />
+              </button>
+              {isMoreMenuOpen ? (
+                <div className="comment-card-more-popover" role="menu" aria-label="Actions du commentaire">
+                  <button
+                    type="button"
+                    className="comment-card-more-action"
+                    role="menuitem"
+                    onClick={handleToggleFollowFromMenu}
+                    disabled={!resolvedUser?.id}
+                  >
+                    {followActionLabel}
+                  </button>
                   <Link
                     className="comment-card-more-action"
                     role="menuitem"
-                    to={targetPath}
+                    to={feedPath}
                     onClick={() => setIsMoreMenuOpen(false)}
                   >
-                    {targetActionLabel}
+                    Ouvrir le commentaire dans le feed
                   </Link>
-                ) : (
-                  <button type="button" className="comment-card-more-action" role="menuitem" disabled>
-                    {targetActionLabel}
+                  {targetPath ? (
+                    <Link
+                      className="comment-card-more-action"
+                      role="menuitem"
+                      to={targetPath}
+                      onClick={() => setIsMoreMenuOpen(false)}
+                    >
+                      {targetActionLabel}
+                    </Link>
+                  ) : (
+                    <button type="button" className="comment-card-more-action" role="menuitem" disabled>
+                      {targetActionLabel}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={`comment-card-more-action ${isReported ? "is-reported" : "is-danger"}`.trim()}
+                    role="menuitem"
+                    onClick={handleReportComment}
+                    disabled={isReported}
+                  >
+                    {isReported ? "Commentaire signale" : "Signaler le commentaire"}
                   </button>
-                )}
-                <button
-                  type="button"
-                  className={`comment-card-more-action ${isReported ? "is-reported" : "is-danger"}`.trim()}
-                  role="menuitem"
-                  onClick={handleReportComment}
-                  disabled={isReported}
-                >
-                  {isReported ? "Commentaire signale" : "Signaler le commentaire"}
-                </button>
-              </div>
-            ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 
-        <p className="comment-note typo-body-strong">{comment.note}</p>
+        <p className="comment-note typo-comment-text">
+          {renderCommentNoteContent(comment.note, comment.mentions, `comment-${comment?.id || "item"}`)}
+        </p>
 
         <div className="comment-card-stats typo-meta" aria-label="Actions du commentaire">
           <button
@@ -396,66 +513,138 @@ function CommentCard({
             <span>{impressionCount}</span>
           </span>
 
-          <button
-            className="comment-card-stat comment-card-stat-button comment-card-stat-reply"
-            onClick={handleOpenReplyPopup}
-            aria-label={`Commenter (${repliesCount} reponses)`}
-            type="button"
-          >
-            <IconReply />
-            <span>{repliesCount}</span>
-          </button>
+          {isReplyThreadForced ? (
+            <span
+              className="comment-card-stat comment-card-stat-reply is-active"
+              aria-label={`${repliesCount} reponses`}
+            >
+              <IconReply />
+              <span>{repliesCount}</span>
+            </span>
+          ) : (
+            <button
+              className={`comment-card-stat comment-card-stat-button comment-card-stat-reply ${isReplyThreadOpen ? "is-active" : ""}`.trim()}
+              onClick={handleToggleReplyThread}
+              aria-label={`Commenter (${repliesCount} reponses)`}
+              aria-expanded={isReplyThreadOpen}
+              aria-controls={replyThreadId}
+              type="button"
+            >
+              <IconReply />
+              <span>{repliesCount}</span>
+            </button>
+          )}
         </div>
 
-        {isReplyPopupOpen ? (
-          <div
-            className="comment-reply-popover-backdrop"
-            role="presentation"
-            onClick={handleCloseReplyPopup}
-          >
-            <section
-              className="comment-reply-popover-card"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Repondre au commentaire"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <header className="comment-reply-popover-head">
-                <strong>Repondre</strong>
-                <button
-                  className="comment-reply-popover-close"
-                  type="button"
-                  aria-label="Fermer"
-                  onClick={handleCloseReplyPopup}
-                >
-                  ×
-                </button>
-              </header>
-              <form className="comment-reply-popover-form" onSubmit={handleSubmitReply}>
-                <label className="search-wrap" htmlFor={`comment-reply-${comment.id}`}>
-                  <span>Ton commentaire</span>
-                  <textarea
-                    id={`comment-reply-${comment.id}`}
-                    rows="4"
-                    maxLength={400}
-                    placeholder="Ecris une reponse..."
-                    value={replyText}
-                    onChange={(event) => setReplyText(event.target.value)}
-                  />
-                </label>
-                <div className="comment-reply-popover-actions">
-                  <button className="ghost small" type="button" onClick={handleCloseReplyPopup}>
-                    Annuler
-                  </button>
-                  <button className="cta small" type="submit" disabled={!canSubmitReply}>
-                    Publier
-                  </button>
-                </div>
-              </form>
-            </section>
-          </div>
+        {isReplyThreadVisible ? (
+          <section className="comment-reply-thread" id={replyThreadId} aria-label={`Reponses a ${authorLabel}`}>
+            {repliesCount ? (
+              <div className="comment-reply-thread-list">
+                {visibleReplies.map((reply, replyIndex) => (
+                  (() => {
+                    const resolvedReplyUser = resolveCommentUser(reply);
+                    const replyPath = resolvedReplyUser?.id ? `/user/${resolvedReplyUser.id}` : "/users";
+                    const replyAvatarImage = getImagePath(resolvedReplyUser?.image);
+                    const replyAuthor = String(reply?.author || "Utilisateur").trim();
+                    const canDeleteOwnReply = (
+                      String(reply?.userId || "").trim() === "usr-manual"
+                      || (currentActorId && String(reply?.userId || "").trim() === currentActorId)
+                      || replyAuthor === "Vous"
+                    );
+                    return (
+                      <article
+                        key={reply?.id || `reply-${replyIndex}`}
+                        className="comment-reply-thread-item"
+                      >
+                        {canDeleteOwnReply ? (
+                          <button
+                            type="button"
+                            className="comment-delete-btn comment-reply-delete-btn"
+                            aria-label="Supprimer ma reponse"
+                            onClick={() => handleRequestDeleteReply(reply)}
+                          >
+                            ×
+                          </button>
+                        ) : null}
+                        <div className="comment-card-author-meta">
+                          <div className="comment-card-user-row">
+                            <Link className="comment-card-author-identity" to={replyPath}>
+                              <span className="mini-avatar user-identity-avatar comment-card-author-avatar">
+                                {replyAvatarImage ? (
+                                  <img src={replyAvatarImage} alt={replyAuthor} loading="lazy" />
+                                ) : (
+                                  getInitials(replyAuthor)
+                                )}
+                              </span>
+                              <span className="comment-author comment-card-author-link typo-meta">{replyAuthor}</span>
+                            </Link>
+                            <RelativeDateLabel value={reply?.createdAt} className="comment-card-author-time typo-meta" />
+                          </div>
+                        </div>
+                        <p className="comment-note typo-comment-text">
+                          {renderCommentNoteContent(reply?.note || "", reply?.mentions, `reply-${reply?.id || replyIndex}`)}
+                        </p>
+                        <div className="comment-reply-thread-actions">
+                          {canToggleReplyLike ? (
+                            <button
+                              type="button"
+                              className={`comment-reply-thread-like comment-card-stat-button ${reply?.isLiked ? "is-active" : ""}`.trim()}
+                              onClick={() => onToggleReplyLike(comment, reply)}
+                              aria-label={reply?.isLiked ? "Retirer le like de la reponse" : "Liker la reponse"}
+                            >
+                              <IconHeart />
+                              <span>{reply?.totalLikes || 0}</span>
+                            </button>
+                          ) : (
+                            <span className="comment-reply-thread-like comment-reply-thread-like-count" aria-label={`${reply?.totalLikes || 0} likes`}>
+                              <IconHeart />
+                              <span>{reply?.totalLikes || 0}</span>
+                            </span>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })()
+                ))}
+              </div>
+            ) : null}
+            <form className="comment-reply-thread-composer" onSubmit={handleSubmitReply}>
+              <CommentMentionTextarea
+                id={replyInputId}
+                label="Ecris une reponse"
+                value={replyText}
+                onChange={setReplyText}
+                placeholder="Ecris une reponse..."
+                rows={3}
+                maxLength={400}
+                mentions={replyMentions}
+                onMentionsChange={setReplyMentions}
+                fieldClassName="comment-reply-thread-field"
+                labelClassName="comment-reply-thread-label-wrap"
+                textareaClassName="comment-reply-input"
+                suggestionsClassName="is-reply-thread"
+              />
+              <button
+                className="btn btn-primary comment-reply-submit"
+                type="submit"
+                disabled={!canSubmitReply}
+              >
+                Repondre
+              </button>
+            </form>
+          </section>
         ) : null}
       </article>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteTarget)}
+        title={pendingDeleteTarget?.kind === "reply" ? "Supprimer cette reponse ?" : "Supprimer ce commentaire ?"}
+        message="Cette action est irreversible."
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        tone="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDeleteTarget(null)}
+      />
     </div>
   );
 }

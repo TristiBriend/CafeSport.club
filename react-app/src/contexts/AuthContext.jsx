@@ -1,6 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getUsers } from "../services/catalogService";
-import { setCurrentProfileUserId } from "../services/profileService";
+import {
+  getCurrentProfileUserId,
+  getProfileIdentityOverride,
+  resolvePublicIdentity,
+  setCurrentProfileUserId,
+} from "../services/profileService";
 import { firebaseMissingConfig, isFirebaseConfigured } from "../services/firebase";
 import {
   observeAuth,
@@ -11,6 +16,7 @@ import {
   signUpWithEmail,
 } from "../services/firebaseAuthService";
 import { subscribeAdminProfile } from "../services/adminRolesService";
+import { getSocialSyncSnapshot, subscribeSocialSync } from "../services/socialSyncService";
 
 const AuthContext = createContext(null);
 
@@ -33,7 +39,7 @@ function getSafeErrorMessage(error) {
 function pickCatalogUser(firebaseUser) {
   const users = getUsers({ query: "" });
   if (!users.length) return null;
-  if (!firebaseUser) return users[0];
+  if (!firebaseUser) return null;
 
   const displayName = normalizeText(firebaseUser.displayName);
   const emailPrefix = normalizeText(String(firebaseUser.email || "").split("@")[0]);
@@ -48,15 +54,16 @@ function pickCatalogUser(firebaseUser) {
       || (emailPrefix && safeUserName.includes(emailPrefix));
   });
   if (partialByName) return partialByName;
-  return users[0];
+  return null;
 }
 
 function buildCurrentUser(firebaseUser) {
   if (!firebaseUser) return null;
+  const safeUid = String(firebaseUser.uid || "").trim();
   if (firebaseUser.isAnonymous) {
     return {
       id: "",
-      firebaseUid: String(firebaseUser.uid || "").trim(),
+      firebaseUid: safeUid,
       name: "Visiteur",
       handle: "@visiteur",
       location: "",
@@ -68,30 +75,46 @@ function buildCurrentUser(firebaseUser) {
       isAnonymous: true,
     };
   }
+  const email = String(firebaseUser.email || "").trim();
+  const explicitProfileId = getCurrentProfileUserId();
+  const ownIdentity = getProfileIdentityOverride(safeUid);
   const catalogUser = pickCatalogUser(firebaseUser);
-  if (!catalogUser) {
-    const email = String(firebaseUser.email || "").trim();
-    const fallbackName = String(firebaseUser.displayName || "").trim() || (email ? email.split("@")[0] : "Utilisateur");
-    return {
-      id: String(firebaseUser.uid || "").trim(),
-      firebaseUid: String(firebaseUser.uid || "").trim(),
-      name: fallbackName,
-      handle: email ? `@${email.split("@")[0]}` : "@user",
+  const shouldUseOwnId = Boolean(
+    safeUid
+    && (
+      explicitProfileId === safeUid
+      || ownIdentity.displayName
+      || ownIdentity.handle
+    )
+  );
+  const appUserId = String(shouldUseOwnId ? safeUid : (catalogUser?.id || safeUid)).trim();
+  const fallbackUser = catalogUser
+    ? catalogUser
+    : {
+      id: appUserId,
+      name: "",
+      handle: "",
       location: "",
       bio: "",
       favoriteSports: [],
       followers: 0,
-      image: String(firebaseUser.photoURL || "").trim(),
+      image: "",
       email,
     };
-  }
+  const identity = resolvePublicIdentity(appUserId, {
+    firebaseUser,
+    fallbackUser,
+    fallbackEmail: email,
+  });
 
   return {
-    ...catalogUser,
-    firebaseUid: String(firebaseUser.uid || "").trim(),
-    name: String(firebaseUser.displayName || "").trim() || catalogUser.name,
-    image: String(firebaseUser.photoURL || "").trim() || String(catalogUser.image || "").trim(),
-    email: String(firebaseUser.email || "").trim(),
+    ...fallbackUser,
+    id: appUserId,
+    firebaseUid: safeUid,
+    name: identity.displayName,
+    handle: identity.handleFormatted || "@user",
+    image: String(firebaseUser.photoURL || "").trim() || String(fallbackUser.image || "").trim(),
+    email,
   };
 }
 
@@ -102,10 +125,20 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminRoles, setAdminRoles] = useState([]);
   const [adminReady, setAdminReady] = useState(false);
-  const currentUser = useMemo(() => buildCurrentUser(firebaseUser), [firebaseUser]);
+  const [profileRevision, setProfileRevision] = useState(
+    () => Number(getSocialSyncSnapshot()?.revisionByDomain?.profile || 0),
+  );
+  const currentUser = useMemo(() => buildCurrentUser(firebaseUser), [firebaseUser, profileRevision]);
   const hasCloudSession = Boolean(firebaseUser);
   const isAnonymousSession = Boolean(firebaseUser?.isAnonymous);
   const isAuthenticated = Boolean(firebaseUser && !firebaseUser?.isAnonymous);
+
+  useEffect(() => {
+    const unsubscribe = subscribeSocialSync((snapshot) => {
+      setProfileRevision(Number(snapshot?.revisionByDomain?.profile || 0));
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const unsubscribe = observeAuth((nextUser) => {
@@ -175,10 +208,10 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  const signupWithEmail = useCallback(async (email, password) => {
+  const signupWithEmail = useCallback(async (email, password, options = {}) => {
     setAuthError("");
     try {
-      return await signUpWithEmail(email, password);
+      return await signUpWithEmail(email, password, options);
     } catch (error) {
       const message = getSafeErrorMessage(error);
       setAuthError(message);

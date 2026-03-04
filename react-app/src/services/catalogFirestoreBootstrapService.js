@@ -206,8 +206,11 @@ function buildListsRows() {
         description: String(list?.description || "").trim(),
         sport: String(list?.sport || "").trim(),
         ownerId: normalizeId(list?.ownerId),
+        ownerUid: null,
         likes: Math.max(0, Math.round(toFiniteNumber(list?.likes, 0))),
         count: Math.max(0, Math.round(toFiniteNumber(list?.count, entries.length))),
+        sourceListId: null,
+        sourceRootListId: id,
         entries,
       });
     })
@@ -256,4 +259,3 @@ export async function seedCatalogCollectionsToFirestore({ merge = true } = {}) {
     summary,
   };
 }
-

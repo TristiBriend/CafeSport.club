@@ -235,6 +235,7 @@ function buildFavoritesEntries(mode, datasets) {
       payload: isReply
         ? {
           reply: item,
+          comment: entry?.parentComment || null,
           eventId: entry?.eventId || "",
         }
         : {
@@ -314,6 +315,7 @@ function buildActivityEntries(mode, datasets) {
       payload: isReply
         ? {
           reply: item,
+          comment: entry?.parentComment || null,
           eventId: entry?.eventId || "",
         }
         : {

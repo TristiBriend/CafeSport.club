@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import ConfirmDialog from "./ConfirmDialog";
 import ImageCropModal from "./ImageCropModal";
 import ObjectTagsWidget from "./ObjectTagsWidget";
 import ScoreBadge from "./ScoreBadge";
@@ -118,6 +119,10 @@ function ObjectCardFrame({
   variant = "listing",
   showTags = true,
   showMenu = true,
+  hideMetricChip = false,
+  hideSportChip = false,
+  headerAction = null,
+  hideDetailFooterMeta = false,
   className = "",
   baseFollowCount = 0,
   menuExtraActions = [],
@@ -151,6 +156,7 @@ function ObjectCardFrame({
   const [isFollowed, setIsFollowed] = useState(false);
   const [resolvedFollowers, setResolvedFollowers] = useState(Number(baseFollowCount || 0));
   const [isAdminDeleting, setIsAdminDeleting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const moreMenuRef = useRef(null);
   const photoInputRef = useRef(null);
   const mediaRef = useRef(null);
@@ -163,6 +169,10 @@ function ObjectCardFrame({
       && canUploadCatalogImageToCloud()
       && normalizeId(objectId),
   );
+  const showMetricChip = !hideMetricChip;
+  const showSportChip = Boolean(sportLabel) && !hideSportChip;
+  const showHeaderAction = Boolean(headerAction);
+  const hasHeaderMeta = showMetricChip || showHeaderAction || showMenu;
 
   useEffect(() => {
     const safeType = String(objectType || "").trim();
@@ -297,9 +307,14 @@ function ObjectCardFrame({
       return;
     }
 
-    const confirmed = window.confirm(`Supprimer definitivement ${String(title || "cet objet").trim()} de la base ?`);
-    if (!confirmed) return;
+    setIsDeleteConfirmOpen(true);
+    setIsMoreMenuOpen(false);
+  }
 
+  async function handleConfirmAdminDelete() {
+    const safeType = String(objectType || "").trim();
+    const safeId = String(objectId || "").trim();
+    if (!isAdmin || !canAdminDeleteCatalogType(safeType) || !safeId || isAdminDeleting) return;
     setIsAdminDeleting(true);
     try {
       const result = await deleteCatalogObject({ type: safeType, id: safeId });
@@ -315,7 +330,7 @@ function ObjectCardFrame({
       window.alert("Erreur pendant la suppression.");
     } finally {
       setIsAdminDeleting(false);
-      setIsMoreMenuOpen(false);
+      setIsDeleteConfirmOpen(false);
     }
   }
 
@@ -331,108 +346,111 @@ function ObjectCardFrame({
       <article
         className={`object-card ${variant === "detail" ? "is-detail" : "is-listing"} ${isMoreMenuOpen ? "is-more-open" : ""} ${className}`.trim()}
       >
-        <div className="event-corner-meta" aria-label={`${sportLabel}, score ${metricPercent}`}>
-          <span className="event-corner-leading">
-            <ScoreBadge variant="community-chip" value={metricPercent} scale="percent" />
-          </span>
-          <span className="event-corner-trailing">
-            {sportLabel ? (
-              <span className="event-corner-chip event-corner-chip-sport" title={sportLabel}>
-                {sportLabel}
+        {hasHeaderMeta ? (
+          <div
+            className="event-corner-meta"
+            aria-label={showMetricChip ? `score ${metricPercent}` : undefined}
+          >
+            {showMetricChip ? (
+              <span className="event-corner-leading">
+                <ScoreBadge variant="community-chip" value={metricPercent} scale="percent" />
               </span>
             ) : null}
-            {showMenu ? (
-              <div className="object-card-more-menu" ref={moreMenuRef}>
-                <button
-                  type="button"
-                  className="object-card-more-btn"
-                  aria-label="Options de la carte"
-                  aria-haspopup="menu"
-                  aria-expanded={isMoreMenuOpen}
-                  onClick={handleToggleMenu}
-                >
-                  <IconMore />
-                </button>
-                {isMoreMenuOpen ? (
-                  <div className="object-card-more-popover" role="menu" aria-label="Actions">
-                    <button type="button" className="object-card-more-action" role="menuitem" onClick={handleToggleFollow}>
-                      {followLabel}
-                    </button>
-                    <Link
-                      to={feedPath}
-                      className="object-card-more-action"
-                      role="menuitem"
-                      onClick={() => setIsMoreMenuOpen(false)}
-                    >
-                      Ouvrir le feed
-                    </Link>
-                    {primaryPath ? (
+            <span className="event-corner-trailing">
+              {showHeaderAction ? headerAction : null}
+              {showMenu ? (
+                <div className="object-card-more-menu" ref={moreMenuRef}>
+                  <button
+                    type="button"
+                    className="object-card-more-btn"
+                    aria-label="Options de la carte"
+                    aria-haspopup="menu"
+                    aria-expanded={isMoreMenuOpen}
+                    onClick={handleToggleMenu}
+                  >
+                    <IconMore />
+                  </button>
+                  {isMoreMenuOpen ? (
+                    <div className="object-card-more-popover" role="menu" aria-label="Actions">
+                      <button type="button" className="object-card-more-action" role="menuitem" onClick={handleToggleFollow}>
+                        {followLabel}
+                      </button>
                       <Link
-                        to={primaryPath}
+                        to={feedPath}
                         className="object-card-more-action"
                         role="menuitem"
                         onClick={() => setIsMoreMenuOpen(false)}
                       >
-                        {primaryActionLabel}
+                        Ouvrir le feed
                       </Link>
-                    ) : null}
-                    {sportPath && sportActionLabel ? (
-                      <Link
-                        to={sportPath}
-                        className="object-card-more-action"
-                        role="menuitem"
-                        onClick={() => setIsMoreMenuOpen(false)}
-                      >
-                        {sportActionLabel}
-                      </Link>
-                    ) : null}
-                    {Array.isArray(menuExtraActions)
-                      ? menuExtraActions.map((action) => {
-                        const key = `${action?.label || ""}-${action?.to || ""}`;
-                        if (action?.to) {
+                      {primaryPath ? (
+                        <Link
+                          to={primaryPath}
+                          className="object-card-more-action"
+                          role="menuitem"
+                          onClick={() => setIsMoreMenuOpen(false)}
+                        >
+                          {primaryActionLabel}
+                        </Link>
+                      ) : null}
+                      {sportPath && sportActionLabel ? (
+                        <Link
+                          to={sportPath}
+                          className="object-card-more-action"
+                          role="menuitem"
+                          onClick={() => setIsMoreMenuOpen(false)}
+                        >
+                          {sportActionLabel}
+                        </Link>
+                      ) : null}
+                      {Array.isArray(menuExtraActions)
+                        ? menuExtraActions.map((action) => {
+                          const key = `${action?.label || ""}-${action?.to || ""}`;
+                          if (action?.to) {
+                            return (
+                              <Link
+                                key={key}
+                                to={action.to}
+                                className="object-card-more-action"
+                                role="menuitem"
+                                onClick={() => setIsMoreMenuOpen(false)}
+                              >
+                                {action.label}
+                              </Link>
+                            );
+                          }
                           return (
-                            <Link
+                            <button
                               key={key}
-                              to={action.to}
+                              type="button"
                               className="object-card-more-action"
                               role="menuitem"
+                              disabled={Boolean(action?.disabled)}
                               onClick={() => setIsMoreMenuOpen(false)}
                             >
-                              {action.label}
-                            </Link>
+                              {action?.label || "Action"}
+                            </button>
                           );
-                        }
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            className="object-card-more-action"
-                            role="menuitem"
-                            disabled={Boolean(action?.disabled)}
-                            onClick={() => setIsMoreMenuOpen(false)}
-                          >
-                            {action?.label || "Action"}
-                          </button>
-                        );
-                      })
-                      : null}
-                    {isAdmin && canAdminDeleteCatalogType(objectType) ? (
-                      <button
-                        type="button"
-                        className="object-card-more-action is-danger"
-                        role="menuitem"
-                        onClick={handleAdminDelete}
-                        disabled={isAdminDeleting}
-                      >
-                        {isAdminDeleting ? "Suppression..." : "Supprimer de la base"}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </span>
-        </div>
+                        })
+                        : null}
+                      {isAdmin && canAdminDeleteCatalogType(objectType) ? (
+                        <button
+                          type="button"
+                          className="object-card-more-action is-danger"
+                          role="menuitem"
+                          onClick={handleAdminDelete}
+                          disabled={isAdminDeleting}
+                        >
+                          {isAdminDeleting ? "Suppression..." : "Supprimer de la base"}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
 
         <div className="object-card-body">
           <div className="object-card-media" ref={mediaRef}>
@@ -458,6 +476,11 @@ function ObjectCardFrame({
             {photoUploadError ? <p className="catalog-photo-upload-error">{photoUploadError}</p> : null}
             {imagePath ? <img src={imagePath} alt={String(title || "").trim() || "Object"} loading="lazy" /> : null}
             <div className={`object-card-media-overlay ${imagePath ? "" : "is-no-image"}`.trim()}>
+              {showSportChip ? (
+                <span className="object-card-overlay-sport-chip event-corner-chip event-corner-chip-sport" title={sportLabel}>
+                  {sportLabel}
+                </span>
+              ) : null}
               {!imagePath ? <span className="object-card-media-fallback">{fallbackInitials}</span> : null}
               <div className="object-card-description">{children}</div>
               {showTags ? (
@@ -469,7 +492,7 @@ function ObjectCardFrame({
           </div>
         </div>
 
-        {variant === "detail" ? (
+        {variant === "detail" && !hideDetailFooterMeta ? (
           <p className="object-card-followers event-meta">
             {Math.max(0, Number(resolvedFollowers || 0)).toLocaleString("fr-FR")} followers
           </p>
@@ -484,6 +507,17 @@ function ObjectCardFrame({
         isBusy={isUploadingPhoto}
         onCancel={handleCloseCropModal}
         onConfirm={handleConfirmCroppedPhoto}
+      />
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        title="Supprimer cet objet ?"
+        message={`Supprimer definitivement ${String(title || "cet objet").trim()} de la base ? Cette action est irreversible.`}
+        confirmLabel="Supprimer"
+        cancelLabel="Annuler"
+        tone="danger"
+        isBusy={isAdminDeleting}
+        onConfirm={handleConfirmAdminDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
       />
     </div>
   );

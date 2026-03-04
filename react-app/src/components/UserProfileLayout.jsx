@@ -3,13 +3,18 @@ import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
 import EventCard from "./EventCard";
 import HorizontalCardRail from "./HorizontalCardRail";
+import ProfileTopEventsSection from "./ProfileTopEventsSection";
 import UserCard from "./UserCard";
 import { getAthleteById, getTeamById, getUserById, getUsers } from "../services/catalogService";
 import {
   createCommentReply,
+  deleteComment,
+  deleteCommentReply,
   getAllComments,
   getCommentDateLabel,
   getLikedComments,
+  renameAuthoredContentForUser,
+  toggleReplyLike,
   toggleCommentLike,
 } from "../services/commentsService";
 import { getEventById, getWatchlistEvents } from "../services/eventsService";
@@ -27,7 +32,15 @@ import {
   getCurrentProfileUserId,
   getProfileAvatarOverride,
   getProfileDetailsOverride,
+  getProfileIdentityOverride,
+  isHandleAvailable,
+  migrateProfileOverridesToUserId,
+  matchesUserIdentity,
+  normalizeDisplayName,
+  normalizeHandle,
+  setCurrentProfileUserId,
   setProfileAvatarOverride,
+  setProfileIdentityOverride,
   setProfileDetailsOverride,
 } from "../services/profileService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
@@ -36,6 +49,7 @@ import {
   canUploadProfileAvatarToCloud,
   uploadProfileAvatarFile,
 } from "../services/profileAvatarStorageService";
+import { updateCurrentAuthProfile } from "../services/firebaseAuthService";
 
 const RADAR_COLORS = [
   "#ecef46",
@@ -57,13 +71,9 @@ function toTimestamp(value) {
 
 function resolveAuthoredComments(allComments, user) {
   const safeUserId = String(user?.id || "").trim();
-  const safeUserName = String(user?.name || "").trim();
-  if (!safeUserId && !safeUserName) return [];
+  if (!safeUserId && !String(user?.name || "").trim()) return [];
   return allComments
-    .filter((comment) => {
-      if (safeUserId && String(comment?.userId || "").trim() === safeUserId) return true;
-      return safeUserName && String(comment?.author || "").trim() === safeUserName;
-    })
+    .filter((comment) => matchesUserIdentity(comment, user))
     .sort((left, right) => toTimestamp(right?.createdAt) - toTimestamp(left?.createdAt));
 }
 
@@ -172,6 +182,8 @@ function mergeProfileDetails(user, override = {}) {
 
 function emptyDetailsDraft() {
   return {
+    displayName: "",
+    handle: "",
     age: "",
     city: "",
     bioLong: "",
@@ -209,12 +221,21 @@ function UserProfileLayout({
   const resolvedUserId = String(
     userId || (isOwnProfile ? getCurrentProfileUserId(defaultUserId) : ""),
   ).trim();
-  const baseUser = getUserById(resolvedUserId) || (isOwnProfile ? getUserById(defaultUserId) : null);
+  const ownFallbackUser = isOwnProfile && currentUser && String(currentUser?.id || "").trim() === resolvedUserId
+    ? currentUser
+    : null;
+  const baseUser = getUserById(resolvedUserId) || ownFallbackUser || (isOwnProfile ? getUserById(defaultUserId) : null);
+  const profileStorageUserId = String(
+    isOwnProfile
+      ? (currentUser?.firebaseUid || resolvedUserId || baseUser?.id || "")
+      : (baseUser?.id || resolvedUserId || ""),
+  ).trim();
 
   const [avatarVersion, setAvatarVersion] = useState(0);
   const [detailsVersion, setDetailsVersion] = useState(0);
   const [commentsVersion, setCommentsVersion] = useState(0);
   const [avatarError, setAvatarError] = useState("");
+  const [detailsError, setDetailsError] = useState("");
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [isEditingTopEvents, setIsEditingTopEvents] = useState(false);
@@ -229,18 +250,36 @@ function UserProfileLayout({
   const ageInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  useEffect(() => {
+    if (!isOwnProfile || !currentUser?.firebaseUid) return;
+    const migrationTargets = new Set([
+      String(resolvedUserId || "").trim(),
+      String(baseUser?.id || "").trim(),
+      String(currentUser?.id || "").trim(),
+    ]);
+    migrationTargets.forEach((candidateId) => {
+      if (!candidateId || candidateId === currentUser.firebaseUid) return;
+      migrateProfileOverridesToUserId(candidateId, currentUser.firebaseUid);
+    });
+    setCurrentProfileUserId(currentUser.firebaseUid);
+  }, [baseUser?.id, currentUser?.firebaseUid, currentUser?.id, isOwnProfile, resolvedUserId]);
+
   const avatarOverride = useMemo(
-    () => getProfileAvatarOverride(baseUser?.id),
-    [avatarVersion, baseUser?.id, profileRevision],
+    () => getProfileAvatarOverride(profileStorageUserId),
+    [avatarVersion, profileRevision, profileStorageUserId],
+  );
+  const identityOverride = useMemo(
+    () => getProfileIdentityOverride(profileStorageUserId),
+    [profileRevision, profileStorageUserId],
   );
   const profileUser = baseUser
-    ? { ...baseUser, image: avatarOverride || baseUser.image }
+    ? {
+      ...baseUser,
+      name: identityOverride.displayName || baseUser.name,
+      handle: identityOverride.handle ? `@${identityOverride.handle}` : baseUser.handle,
+      image: avatarOverride || baseUser.image,
+    }
     : null;
-
-  const actorUser = useMemo(() => {
-    const currentActorId = getCurrentProfileUserId(defaultUserId);
-    return getUserById(currentActorId) || getUserById(defaultUserId) || profileUser;
-  }, [defaultUserId, profileUser]);
 
   const allComments = useMemo(
     () => getAllComments(),
@@ -294,8 +333,8 @@ function UserProfileLayout({
     [commentsRevision, commentsVersion, profileUser],
   );
   const detailsOverride = useMemo(
-    () => getProfileDetailsOverride(profileUser?.id),
-    [detailsVersion, profileRevision, profileUser?.id],
+    () => getProfileDetailsOverride(profileStorageUserId),
+    [detailsVersion, profileRevision, profileStorageUserId],
   );
   const profileDetails = useMemo(
     () => mergeProfileDetails(profileUser, detailsOverride),
@@ -343,6 +382,15 @@ function UserProfileLayout({
       .filter((result) => !currentSelection.has(String(result?.id || "").trim()));
   }, [topEventsDraft, topEventsQuery]);
 
+  useEffect(() => {
+    if (!isEditingDetails) return undefined;
+    const frameId = window.requestAnimationFrame(() => {
+      ageInputRef.current?.focus();
+      ageInputRef.current?.select?.();
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isEditingDetails]);
+
   if (!profileUser) {
     return (
       <section className="simple-page">
@@ -360,15 +408,6 @@ function UserProfileLayout({
   });
   const followerCount = getUserFollowerCount(profileUser.id, Number(profileUser.followers || 0));
 
-  useEffect(() => {
-    if (!isEditingDetails) return undefined;
-    const frameId = window.requestAnimationFrame(() => {
-      ageInputRef.current?.focus();
-      ageInputRef.current?.select?.();
-    });
-    return () => window.cancelAnimationFrame(frameId);
-  }, [isEditingDetails]);
-
   function bumpComments() {
     setCommentsVersion((value) => value + 1);
   }
@@ -378,15 +417,30 @@ function UserProfileLayout({
     bumpComments();
   }
 
-  function handleCreateReply(comment, note) {
-    const created = createCommentReply(comment?.id, {
-      note,
-      author: actorUser?.name || "Vous",
-      userId: actorUser?.id || "usr-manual",
-    });
+  function handleCreateReply(comment, note, mentions = []) {
+    const created = createCommentReply(comment?.id, { note, mentions });
     if (!created) return null;
     bumpComments();
     return created;
+  }
+
+  function handleToggleReplyLike(_comment, reply) {
+    toggleReplyLike(reply);
+    bumpComments();
+  }
+
+  function handleDeleteCommentEntry(comment) {
+    const deleted = deleteComment(comment?.id);
+    if (!deleted) return false;
+    bumpComments();
+    return true;
+  }
+
+  function handleDeleteReplyEntry(comment, reply) {
+    const deleted = deleteCommentReply(comment?.id, reply?.id);
+    if (!deleted) return false;
+    bumpComments();
+    return true;
   }
 
   function handlePickPhoto() {
@@ -411,7 +465,7 @@ function UserProfileLayout({
       setIsUploadingAvatar(true);
       try {
         const { url } = await uploadProfileAvatarFile(currentUser.firebaseUid, file);
-        setProfileAvatarOverride(profileUser.id, url);
+        setProfileAvatarOverride(profileStorageUserId, url);
         setAvatarVersion((value) => value + 1);
         setAvatarError("");
       } catch {
@@ -429,7 +483,7 @@ function UserProfileLayout({
         setAvatarError("Impossible de lire cette image.");
         return;
       }
-      setProfileAvatarOverride(profileUser.id, result);
+      setProfileAvatarOverride(profileStorageUserId, result);
       setAvatarVersion((value) => value + 1);
       setAvatarError("");
     };
@@ -438,6 +492,8 @@ function UserProfileLayout({
 
   function openDetailsEditor() {
     setDetailsDraft({
+      displayName: profileUser?.name || "",
+      handle: String(profileUser?.handle || "").replace(/^@/, ""),
       age: profileDetails.age,
       city: profileDetails.city,
       bioLong: profileDetails.bioLong,
@@ -447,6 +503,7 @@ function UserProfileLayout({
       favoriteAthleteIds: Array.isArray(profileDetails.favoriteAthleteIds) ? profileDetails.favoriteAthleteIds.slice(0, 5) : [],
       quote: profileDetails.quote,
     });
+    setDetailsError("");
     setFavoriteTeamQuery("");
     setFavoriteAthleteQuery("");
     setIsEditingDetails(true);
@@ -455,6 +512,7 @@ function UserProfileLayout({
   function handleCancelEditDetails() {
     setIsEditingDetails(false);
     setDetailsDraft(emptyDetailsDraft());
+    setDetailsError("");
     setFavoriteTeamQuery("");
     setFavoriteAthleteQuery("");
   }
@@ -522,16 +580,8 @@ function UserProfileLayout({
     });
   }
 
-  function handleUseAutoTopEvents() {
-    setTopEventsDraft([]);
-    setTopEventsQuery("");
-    setTopEventsNotice("Mode automatique actif. Enregistre pour appliquer.");
-    setDraggingTopEventId("");
-    setDragOverTopEventId("");
-  }
-
   function handleSaveTopEvents() {
-    setProfileDetailsOverride(profileUser.id, {
+    setProfileDetailsOverride(profileStorageUserId, {
       topEventIds: topEventsDraft,
     });
     setDetailsVersion((value) => value + 1);
@@ -543,23 +593,64 @@ function UserProfileLayout({
     setDragOverTopEventId("");
   }
 
-  function handleSaveDetails(event) {
+  async function handleSaveDetails(event) {
     if (event?.preventDefault) event.preventDefault();
+    const safeDisplayName = normalizeDisplayName(detailsDraft.displayName);
+    const safeHandle = normalizeHandle(detailsDraft.handle);
+    if (safeDisplayName.length < 3) {
+      setDetailsError("Le pseudonyme doit contenir au moins 3 caracteres.");
+      return;
+    }
+    if (safeHandle.length < 3) {
+      setDetailsError("Le handle doit contenir au moins 3 caracteres.");
+      return;
+    }
+    const handleFree = await isHandleAvailable(safeHandle, {
+      excludeUserId: profileUser.id,
+      excludeUserIds: [profileStorageUserId, resolvedUserId, baseUser?.id],
+    });
+    if (!handleFree) {
+      setDetailsError("Ce handle est deja pris.");
+      return;
+    }
     const firstTeam = resolveFavoriteItems(detailsDraft.favoriteTeamIds, "team")[0] || null;
     const firstAthlete = resolveFavoriteItems(detailsDraft.favoriteAthleteIds, "athlete")[0] || null;
-    setProfileDetailsOverride(profileUser.id, {
+    setProfileIdentityOverride(profileStorageUserId, {
+      displayName: safeDisplayName,
+      handle: safeHandle,
+    });
+    if (isOwnProfile && isAuthenticated) {
+      setCurrentProfileUserId(profileStorageUserId);
+      try {
+        await updateCurrentAuthProfile({ displayName: safeDisplayName });
+      } catch {
+        // Keep local profile override even if auth profile sync fails.
+      }
+    }
+    const authoredOwnerIds = [...new Set([
+      String(profileUser?.id || "").trim(),
+      profileStorageUserId,
+    ].filter(Boolean))];
+    for (const ownerId of authoredOwnerIds) {
+      await renameAuthoredContentForUser(ownerId, safeDisplayName);
+    }
+    setProfileDetailsOverride(profileStorageUserId, {
       ...detailsDraft,
       favoriteTeam: firstTeam?.label || "",
       favoriteAthlete: firstAthlete?.label || "",
+      displayName: undefined,
+      handle: undefined,
     });
     setDetailsVersion((value) => value + 1);
     setIsEditingDetails(false);
+    setDetailsError("");
     setFavoriteTeamQuery("");
     setFavoriteAthleteQuery("");
   }
 
   function handleDetailsDraftChange(event) {
     const { name, value } = event.target;
+    setDetailsError("");
     setDetailsDraft((prev) => ({
       ...prev,
       [name]: value,
@@ -647,7 +738,6 @@ function UserProfileLayout({
             <div className="group-title">
               <h2>{copy.infoTitle}</h2>
               <div className="group-title-meta">
-                <span>{profileDetails.city || "Profil"}</span>
                 {isOwnProfile ? (
                   isEditingDetails ? (
                     <>
@@ -666,15 +756,53 @@ function UserProfileLayout({
                 ) : null}
               </div>
             </div>
+            {detailsError ? <p className="event-meta">{detailsError}</p> : null}
             <article className="entity-card profile-info-card">
               <div className="profile-info-grid">
                 <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
-                  <strong>Age</strong>
+                  <strong>Pseudonyme</strong>
                   <div className="profile-info-value">
                     {isOwnProfile && isEditingDetails ? (
                       <input
                         ref={ageInputRef}
                         className={`profile-info-inline-input ${isEditingDetails ? "is-entry-focus" : ""}`.trim()}
+                        name="displayName"
+                        type="text"
+                        value={detailsDraft.displayName}
+                        onChange={handleDetailsDraftChange}
+                      />
+                    ) : (
+                      <span>{profileUser.name || "Utilisateur"}</span>
+                    )}
+                  </div>
+                </div>
+                <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
+                  <strong>Handle</strong>
+                  <div className="profile-info-value">
+                    {isOwnProfile && isEditingDetails ? (
+                      <>
+                        <input
+                          className="profile-info-inline-input"
+                          name="handle"
+                          type="text"
+                          value={detailsDraft.handle}
+                          onChange={handleDetailsDraftChange}
+                        />
+                        <span className="event-meta">
+                          Affiche: {normalizeHandle(detailsDraft.handle) ? `@${normalizeHandle(detailsDraft.handle)}` : "@ton_handle"}
+                        </span>
+                      </>
+                    ) : (
+                      <span>{profileUser.handle || "@user"}</span>
+                    )}
+                  </div>
+                </div>
+                <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
+                  <strong>Age</strong>
+                  <div className="profile-info-value">
+                    {isOwnProfile && isEditingDetails ? (
+                      <input
+                        className="profile-info-inline-input"
                         name="age"
                         type="text"
                         value={detailsDraft.age}
@@ -882,175 +1010,63 @@ function UserProfileLayout({
             </article>
           </section>
 
-          <section className="related-section profile-top5-section profile-top-aside">
-            <div className="group-title">
-              <h2>{copy.topEventsTitle}</h2>
-              <div className="group-title-meta">
-                <span>{visibleTopEvents.length || 0}</span>
-                {isOwnProfile ? (
-                  isEditingTopEvents ? (
-                    <>
-                      <button type="button" className="filter-btn" onClick={handleUseAutoTopEvents}>
-                        Mode auto
-                      </button>
-                      <button type="button" className="filter-btn is-active" onClick={handleSaveTopEvents}>
-                        Enregistrer
-                      </button>
-                      <button type="button" className="filter-btn" onClick={handleCancelTopEventsEdit}>
-                        Annuler
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="filter-btn" onClick={openTopEventsEditor}>
-                      Modifier mon Top 5
-                    </button>
-                  )
-                ) : null}
-              </div>
-            </div>
-            {visibleTopEvents.length ? (
-              <article className="entity-card profile-top5-inline-card">
-                <ol className="profile-top5-inline-list">
-                  {visibleTopEvents.slice(0, 5).map((event, index) => {
-                    const sport = String(event?.sport || "").trim();
-                    const date = String(event?.date || "").trim();
-                    const location = String(event?.location || "").trim();
-                    const metaParts = [sport, date, location].filter(Boolean);
-                    return (
-                      <li
-                        key={event.id || `profile-top-${index + 1}`}
-                        className={`profile-top5-inline-item ${isEditingTopEvents ? "is-editing" : ""} ${dragOverTopEventId === event.id ? "is-drag-target" : ""}`.trim()}
-                        draggable={isEditingTopEvents}
-                        onDragStart={(dragEvent) => {
-                          if (!isEditingTopEvents) return;
-                          const safeId = String(event?.id || "").trim();
-                          if (!safeId) return;
-                          setDraggingTopEventId(safeId);
-                          setDragOverTopEventId(safeId);
-                          dragEvent.dataTransfer.effectAllowed = "move";
-                          dragEvent.dataTransfer.setData("text/plain", safeId);
-                        }}
-                        onDragOver={(dragEvent) => {
-                          if (!isEditingTopEvents || !draggingTopEventId) return;
-                          dragEvent.preventDefault();
-                          const safeId = String(event?.id || "").trim();
-                          if (!safeId) return;
-                          dragEvent.dataTransfer.dropEffect = "move";
-                          if (dragOverTopEventId !== safeId) setDragOverTopEventId(safeId);
-                        }}
-                        onDrop={(dragEvent) => {
-                          if (!isEditingTopEvents) return;
-                          dragEvent.preventDefault();
-                          const droppedId = String(dragEvent.dataTransfer.getData("text/plain") || draggingTopEventId).trim();
-                          const targetId = String(event?.id || "").trim();
-                          handleMoveTopEvent(droppedId, targetId);
-                          setDraggingTopEventId("");
-                          setDragOverTopEventId("");
-                        }}
-                        onDragEnd={() => {
-                          setDraggingTopEventId("");
-                          setDragOverTopEventId("");
-                        }}
-                      >
-                        <span className="profile-top5-rank">#{index + 1}</span>
-                        <div className="profile-top5-line">
-                          {isEditingTopEvents ? (
-                            <span className="profile-top5-link profile-top5-link-static">
-                              {event.title || "Evenement"}
-                            </span>
-                          ) : (
-                            <Link className="profile-top5-link" to={`/event/${event.id}`}>
-                              {event.title || "Evenement"}
-                            </Link>
-                          )}
-                          {metaParts.length ? (
-                            <span className="profile-top5-meta">{metaParts.join(" · ")}</span>
-                          ) : (
-                            <span className="profile-top5-meta">Infos non disponibles</span>
-                          )}
-                        </div>
-                        {isEditingTopEvents ? (
-                          <div className="profile-top5-item-controls">
-                            <span className="profile-top5-drag-handle" aria-hidden="true" title="Glisser pour reclasser">
-                              ⋮⋮
-                            </span>
-                            <button
-                              type="button"
-                              className="profile-top5-remove-btn"
-                              onClick={() => handleRemoveTopEvent(event.id)}
-                              aria-label={`Retirer ${event.title || "cet event"}`}
-                            >
-                              x
-                            </button>
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ol>
-              </article>
-            ) : (
-              <article className="entity-card">
-                <p className="event-meta">
-                  {isEditingTopEvents
-                    ? "Aucune selection manuelle pour le moment."
-                    : "Aucun top event disponible pour ce profil."}
-                </p>
-              </article>
-            )}
-            {isOwnProfile && isEditingTopEvents ? (
-              <article className="entity-card profile-top5-editor">
-                <div className="profile-top5-editor-head">
-                  <strong>Edition manuelle</strong>
-                  <span className="event-meta">{topEventsDraft.length}/5 · glisse pour reclasser</span>
-                </div>
-                {!topEventsDraftItems.length ? (
-                  <p className="event-meta">Aucune selection manuelle. Enregistrer vide = retour au mode automatique.</p>
-                ) : null}
-                <label className="profile-top5-search">
-                  <span className="event-meta">Rechercher un event</span>
-                  <input
-                    type="search"
-                    placeholder="Ajouter un event au Top 5..."
-                    value={topEventsQuery}
-                    onChange={(event) => {
-                      setTopEventsQuery(event.target.value);
-                      if (topEventsNotice) setTopEventsNotice("");
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return;
-                      if (!topEventSearchResults.length) return;
-                      event.preventDefault();
-                      handleAddTopEvent(topEventSearchResults[0]);
-                    }}
-                  />
-                </label>
-                {topEventsNotice ? <p className="profile-top5-editor-notice">{topEventsNotice}</p> : null}
-                {topEventsQuery ? (
-                  topEventSearchResults.length ? (
-                    <div className="profile-top5-search-results">
-                      {topEventSearchResults.map((result) => (
-                        <button
-                          key={`${result.type}-${result.id}`}
-                          type="button"
-                          className="global-search-result-item profile-top5-search-result"
-                          onClick={() => handleAddTopEvent(result)}
-                        >
-                          <span className="global-search-type">{result.typeLabel}</span>
-                          <div>
-                            <strong>{result.title}</strong>
-                            <p>{result.subtitle}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="global-search-empty">Aucun event pour <strong>{topEventsQuery}</strong></div>
-                  )
-                ) : null}
-              </article>
-            ) : null}
-          </section>
+          <ProfileTopEventsSection
+            title={copy.topEventsTitle}
+            events={visibleTopEvents}
+            isOwnProfile={isOwnProfile}
+            isEditing={isEditingTopEvents}
+            topEventsQuery={topEventsQuery}
+            topEventsNotice={topEventsNotice}
+            searchResults={topEventSearchResults}
+            draggingTopEventId={draggingTopEventId}
+            dragOverTopEventId={dragOverTopEventId}
+            emptyDisplayText="Aucun top event disponible pour ce profil."
+            onSave={handleSaveTopEvents}
+            onCancel={handleCancelTopEventsEdit}
+            onStartEdit={openTopEventsEditor}
+            onQueryChange={(nextValue) => {
+              setTopEventsQuery(nextValue);
+              if (topEventsNotice) setTopEventsNotice("");
+            }}
+            onQueryKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              if (!topEventSearchResults.length) return;
+              event.preventDefault();
+              handleAddTopEvent(topEventSearchResults[0]);
+            }}
+            onAddResult={handleAddTopEvent}
+            onRemove={(eventItem) => handleRemoveTopEvent(eventItem?.id)}
+            onDragStart={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents) return;
+              const safeId = String(eventItem?.id || "").trim();
+              if (!safeId) return;
+              setDraggingTopEventId(safeId);
+              setDragOverTopEventId(safeId);
+              dragEvent.dataTransfer.effectAllowed = "move";
+              dragEvent.dataTransfer.setData("text/plain", safeId);
+            }}
+            onDragOver={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents || !draggingTopEventId) return;
+              dragEvent.preventDefault();
+              const safeId = String(eventItem?.id || "").trim();
+              if (!safeId) return;
+              dragEvent.dataTransfer.dropEffect = "move";
+              if (dragOverTopEventId !== safeId) setDragOverTopEventId(safeId);
+            }}
+            onDrop={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents) return;
+              dragEvent.preventDefault();
+              const droppedId = String(dragEvent.dataTransfer.getData("text/plain") || draggingTopEventId).trim();
+              const targetId = String(eventItem?.id || "").trim();
+              handleMoveTopEvent(droppedId, targetId);
+              setDraggingTopEventId("");
+              setDragOverTopEventId("");
+            }}
+            onDragEnd={() => {
+              setDraggingTopEventId("");
+              setDragOverTopEventId("");
+            }}
+          />
         </div>
       </section>
 
@@ -1058,7 +1074,6 @@ function UserProfileLayout({
         <section className="related-section">
           <div className="group-title">
             <h2>{copy.friendsTitle}</h2>
-            <span>{friends.length}</span>
           </div>
           {friends.length ? (
             <HorizontalCardRail
@@ -1089,7 +1104,6 @@ function UserProfileLayout({
       <section className="related-section">
         <div className="group-title">
           <h2>{copy.followersTitle}</h2>
-          <span>{followerCount.toLocaleString("fr-FR")}</span>
         </div>
         {followers.length ? (
           <HorizontalCardRail
@@ -1117,7 +1131,6 @@ function UserProfileLayout({
         <section className="related-section">
           <div className="group-title">
             <h2>{copy.likesTitle}</h2>
-            <span>{likedEntries.length}</span>
           </div>
           {likedEntries.length ? (
             <div className="profile-like-list">
@@ -1129,6 +1142,9 @@ function UserProfileLayout({
                       comment={entry.item}
                       onToggleLike={handleToggleLike}
                       onCreateReply={handleCreateReply}
+                      onToggleReplyLike={handleToggleReplyLike}
+                      onDeleteComment={handleDeleteCommentEntry}
+                      onDeleteReply={handleDeleteReplyEntry}
                     />
                   );
                 }
@@ -1162,7 +1178,6 @@ function UserProfileLayout({
         <section className="related-section">
           <div className="group-title">
             <h2>{copy.watchlistTitle}</h2>
-            <span>{watchlistEvents.length}</span>
           </div>
           {watchlistEvents.length ? (
             <HorizontalCardRail
@@ -1198,7 +1213,6 @@ function UserProfileLayout({
       <section className="related-section">
         <div className="group-title">
           <h2>{copy.commentsTitle}</h2>
-          <span>{authoredComments.length}</span>
         </div>
         {authoredComments.length ? (
           <div className="profile-comments-list">
@@ -1208,6 +1222,9 @@ function UserProfileLayout({
                 comment={comment}
                 onToggleLike={handleToggleLike}
                 onCreateReply={handleCreateReply}
+                onToggleReplyLike={handleToggleReplyLike}
+                onDeleteComment={handleDeleteCommentEntry}
+                onDeleteReply={handleDeleteReplyEntry}
               />
             ))}
           </div>
@@ -1222,7 +1239,6 @@ function UserProfileLayout({
         <section className="related-section">
           <div className="group-title">
             <h2>{copy.ideasTitle}</h2>
-            <span>Roadmap</span>
           </div>
           <article className="entity-card">
             <ul className="profile-ideas-list">

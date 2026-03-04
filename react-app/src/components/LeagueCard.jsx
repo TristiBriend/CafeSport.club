@@ -1,5 +1,14 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import ObjectCardFrame from "./ObjectCardFrame";
+import { buildUserFollowFabButton } from "./UserFollowFabButton";
+import { useSocialSync } from "../contexts/SocialSyncContext";
+import {
+  FOLLOW_TARGET,
+  getTargetFollowerCount,
+  isTargetFollowed,
+  toggleTargetFollow,
+} from "../services/userFollowService";
 
 function LeagueCard({
   league,
@@ -11,7 +20,41 @@ function LeagueCard({
 }) {
   if (!league) return null;
 
+  const { revisionByDomain } = useSocialSync();
   const firstSeason = Array.isArray(league.seasons) ? league.seasons[0] : null;
+  const followsRevision = Number(revisionByDomain?.follows || 0);
+  const baseFollowCount = Math.max(180, Number(league.count || 0) * 26);
+  const [isFollowed, setIsFollowed] = useState(false);
+  const [resolvedFollowers, setResolvedFollowers] = useState(baseFollowCount);
+
+  useEffect(() => {
+    const safeLeagueId = String(league?.id || "").trim();
+    if (!safeLeagueId) {
+      setIsFollowed(false);
+      setResolvedFollowers(baseFollowCount);
+      return;
+    }
+    setIsFollowed(isTargetFollowed(FOLLOW_TARGET.LEAGUE, safeLeagueId));
+    setResolvedFollowers(getTargetFollowerCount(FOLLOW_TARGET.LEAGUE, safeLeagueId, baseFollowCount));
+  }, [baseFollowCount, followsRevision, league?.id]);
+
+  function handleToggleFollow() {
+    const safeLeagueId = String(league?.id || "").trim();
+    if (!safeLeagueId) return;
+    const next = toggleTargetFollow(FOLLOW_TARGET.LEAGUE, safeLeagueId);
+    setIsFollowed(next);
+    setResolvedFollowers(getTargetFollowerCount(FOLLOW_TARGET.LEAGUE, safeLeagueId, baseFollowCount));
+  }
+
+  const followFab = buildUserFollowFabButton({
+    userId: league.id,
+    isFollowed,
+    followerCount: resolvedFollowers,
+    className: "league-card-follow-fab-wrap",
+    activeLabel: "Ne plus suivre",
+    inactiveLabel: "Suivre",
+    onToggle: handleToggleFollow,
+  });
 
   return (
     <ObjectCardFrame
@@ -28,8 +71,10 @@ function LeagueCard({
       variant={variant}
       showTags={showTags}
       showMenu={showMenu}
-      className={className}
-      baseFollowCount={Math.max(180, Number(league.count || 0) * 26)}
+      hideMetricChip
+      headerAction={followFab}
+      className={`is-league-card ${className}`.trim()}
+      baseFollowCount={baseFollowCount}
       menuExtraActions={firstSeason?.id ? [{ label: `Aller a ${firstSeason.title}`, to: `/league-season/${firstSeason.id}` }] : []}
     >
       <p className="object-card-line object-card-line-title typo-body-strong">

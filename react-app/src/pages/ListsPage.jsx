@@ -1,13 +1,19 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import RankingEditorDialog from "../components/RankingEditorDialog";
 import RankingCard from "../components/RankingCard";
+import { useAuth } from "../contexts/AuthContext";
 import {
   getCuratedLists,
   getListSports,
 } from "../services/catalogService";
 
 function ListsPage() {
+  const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAuth();
   const [sportFilter, setSportFilter] = useState("Tous");
   const [query, setQuery] = useState("");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const sports = useMemo(() => getListSports(), []);
   const lists = useMemo(
@@ -15,8 +21,28 @@ function ListsPage() {
     [query, sportFilter],
   );
 
+  function handleOpenCreate() {
+    if (!isAuthenticated || !currentUser?.firebaseUid || currentUser?.isAnonymous) {
+      navigate("/login");
+      return;
+    }
+    setIsCreateOpen(true);
+  }
+
+  function handleSavedList(savedList) {
+    const safeListId = String(savedList?.id || "").trim();
+    if (!safeListId) return;
+    navigate(`/list/${safeListId}`);
+  }
+
   return (
     <section>
+      <div className="list-page-actions">
+        <button className="btn btn-primary" type="button" onClick={handleOpenCreate}>
+          Creer un nouveau classement
+        </button>
+      </div>
+
       <label className="search-wrap" htmlFor="list-search">
         <span>Recherche</span>
         <input
@@ -48,6 +74,15 @@ function ListsPage() {
           <RankingCard key={list.id} list={list} />
         ))}
       </div>
+
+      <RankingEditorDialog
+        open={isCreateOpen}
+        mode="create"
+        sourceList={null}
+        initialList={null}
+        onClose={() => setIsCreateOpen(false)}
+        onSaved={handleSavedList}
+      />
     </section>
   );
 }

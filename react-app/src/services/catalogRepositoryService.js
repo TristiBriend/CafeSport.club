@@ -43,7 +43,7 @@ function buildLocalSnapshot() {
       startDate: String(row?.startDate || "").trim(),
       endDate: String(row?.endDate || "").trim(),
     })),
-    lists: [...localLists],
+    lists: normalizeCloudLists(localLists),
     users: [...localUsers],
     activitySamples: [...activitySamples],
     source: "local",
@@ -74,6 +74,11 @@ function normalizeCloudTeams(rows = []) {
 function normalizeCloudLists(rows = []) {
   return sanitizeCatalogRows(rows).map((row) => ({
     ...row,
+    ownerUid: normalizeId(row?.ownerUid),
+    sourceListId: normalizeId(row?.sourceListId),
+    sourceRootListId: normalizeId(row?.sourceRootListId || row?.id),
+    createdAt: String(row?.createdAt || "").trim(),
+    updatedAt: String(row?.updatedAt || "").trim(),
     entries: toArray(row?.entries).map((entry) => ({
       eventId: normalizeId(entry?.eventId),
       athleteId: normalizeId(entry?.athleteId),
@@ -259,6 +264,32 @@ export function removeCatalogObjectFromSnapshot(objectType, objectId) {
   }
 
   if (!touched) return false;
+  setSnapshot(next);
+  return true;
+}
+
+export function upsertCatalogListInSnapshot(listDoc) {
+  const safeId = normalizeId(listDoc?.id);
+  if (!safeId) return false;
+
+  const normalized = normalizeCloudLists([listDoc])[0];
+  if (!normalized) return false;
+
+  const next = {
+    ...snapshot,
+    lists: [...snapshot.lists],
+  };
+
+  const existingIndex = next.lists.findIndex((list) => normalizeId(list?.id) === safeId);
+  if (existingIndex >= 0) {
+    next.lists.splice(existingIndex, 1, {
+      ...next.lists[existingIndex],
+      ...normalized,
+    });
+  } else {
+    next.lists.unshift(normalized);
+  }
+
   setSnapshot(next);
   return true;
 }

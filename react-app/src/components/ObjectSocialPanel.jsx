@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import CommentMentionTextarea from "./CommentMentionTextarea";
 import ObjectTagsWidget from "./ObjectTagsWidget";
 import ScoreSliderField from "./ScoreSliderField";
 import {
@@ -17,6 +18,7 @@ import {
   updateComment,
   updateCommentReply,
 } from "../services/commentsService";
+import { filterCommentMentionsForText } from "../services/commentMentionsService";
 import {
   getTargetFollowerCount,
   isTargetFollowed,
@@ -43,6 +45,7 @@ function ObjectSocialPanel({
   const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
+  const [composerMentions, setComposerMentions] = useState([]);
   const [isFollowed, setIsFollowed] = useState(false);
   const [followers, setFollowers] = useState(0);
   const { revisionByDomain } = useSocialSync();
@@ -56,6 +59,7 @@ function ObjectSocialPanel({
     setActiveMode(COMMENT_MODE.ALL);
     setComposerMode(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
     setComposerText("");
+    setComposerMentions([]);
     setComposerRating(80);
     if (showFollow && resolvedFollowType) {
       setIsFollowed(isTargetFollowed(resolvedFollowType, targetId));
@@ -86,10 +90,11 @@ function ObjectSocialPanel({
       mode,
       note: composerText,
       rating: composerRating,
-      author: "Vous",
+      mentions: filterCommentMentionsForText(composerText, composerMentions),
     });
     if (!created) return;
     setComposerText("");
+    setComposerMentions([]);
     refreshComments();
   }
 
@@ -103,10 +108,10 @@ function ObjectSocialPanel({
     refreshComments();
   }
 
-  function handleReplyToComment(comment, note) {
+  function handleReplyToComment(comment, note, mentions = []) {
     const created = createCommentReply(comment?.id, {
       note,
-      author: "Vous",
+      mentions,
     });
     if (!created) return null;
     refreshComments();
@@ -199,7 +204,6 @@ function ObjectSocialPanel({
       <section className="comments-section">
         <div className="group-title">
           <h2>{title}</h2>
-          <span>{visibleComments.length} elements</span>
         </div>
 
         <div className="comment-filter-row" role="tablist" aria-label="Filtrer les commentaires">
@@ -253,17 +257,18 @@ function ObjectSocialPanel({
             ) : null}
           </div>
 
-          <label className="search-wrap" htmlFor={`comment-text-${targetType}-${targetId}`}>
-            <span>Ton message</span>
-            <textarea
-              id={`comment-text-${targetType}-${targetId}`}
-              rows="3"
-              maxLength={600}
-              placeholder={composerPlaceholder}
-              value={composerText}
-              onChange={(changeEvent) => setComposerText(changeEvent.target.value)}
-            />
-          </label>
+          <CommentMentionTextarea
+            id={`comment-text-${targetType}-${targetId}`}
+            label="Ton message"
+            rows={3}
+            maxLength={600}
+            placeholder={composerPlaceholder}
+            value={composerText}
+            mentions={composerMentions}
+            onChange={setComposerText}
+            onMentionsChange={setComposerMentions}
+            fieldClassName="search-wrap"
+          />
 
           <button className="btn btn-primary" type="submit">
             Publier
@@ -276,6 +281,7 @@ function ObjectSocialPanel({
               <CommentCard
                 key={comment.id}
                 comment={comment}
+                forceReplyThreadOpen={Boolean(comment?.viewContext?.forceReplyThreadOpen)}
                 onToggleLike={handleLikeComment}
                 onCreateReply={handleReplyToComment}
                 onToggleReplyLike={handleLikeReply}

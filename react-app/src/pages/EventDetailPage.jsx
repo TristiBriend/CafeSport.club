@@ -1,29 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import FriendnotesPanel from "../components/FriendnotesPanel";
 import HorizontalCardRail from "../components/HorizontalCardRail";
+import ObjectDetailHero from "../components/ObjectDetailHero";
+import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
-import ObjectTagsWidget from "../components/ObjectTagsWidget";
-import ScoreBadge from "../components/ScoreBadge";
+import RankingCard from "../components/RankingCard";
 import ScoreSliderField from "../components/ScoreSliderField";
 import { getEventById, getRelatedEvents } from "../services/eventsService";
+import { getCuratedLists, resolveListEntries } from "../services/catalogService";
+import { buildEventDetailInfoItems } from "../services/objectDetailInfoService";
 import {
   deleteEventRating,
   getEventRating,
   isUpcomingEvent,
   setEventRating,
 } from "../services/ratingsService";
-
-function formatDateLabel(event) {
-  const date = Date.parse(event?.dateISO || "");
-  if (!Number.isFinite(date)) return event?.date || "Date non renseignee";
-  return new Date(date).toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
-}
 
 function normalizeScore(value) {
   const numeric = Number(value);
@@ -34,7 +27,21 @@ function normalizeScore(value) {
 function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { eventId } = useParams();
   const event = getEventById(eventId);
+  const safeEventId = String(event?.id || "").trim();
   const [userRating, setUserRating] = useState(0);
+  const relatedRankings = useMemo(
+    () => {
+      if (!safeEventId) return [];
+      return getCuratedLists({ sportFilter: "Tous", query: "" })
+        .filter((list) => resolveListEntries(list).some((entry) => {
+          if (entry.type === "event" && entry.event?.id) {
+            return entry.event.id === safeEventId;
+          }
+          return String(entry?.eventId || "").trim() === safeEventId;
+        }));
+    },
+    [safeEventId],
+  );
 
   useEffect(() => {
     if (!event) return;
@@ -55,11 +62,8 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   const isInWatchlist = watchlistIds.includes(event.id);
   const relatedEvents = getRelatedEvents(event, 6);
-  const reviews = Number.isFinite(Number(event.reviews))
-    ? Number(event.reviews).toLocaleString("fr-FR")
-    : "0";
-  const status = String(event.status || "").trim() || "A venir";
   const isFutureEvent = isUpcomingEvent(event);
+  const eventInfoItems = buildEventDetailInfoItems(event);
 
   function handleChangeUserRating(nextValue) {
     const normalized = normalizeScore(nextValue);
@@ -74,90 +78,79 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   return (
     <section className="event-detail-page">
-      <article className="event-detail-card">
-        <div className="event-detail-head">
-          <span className="event-chip">{event.sport}</span>
-          <span className="event-status">{status}</span>
-        </div>
+      <ObjectDetailHero
+        card={(
+          <EventCard
+            event={event}
+            isInWatchlist={isInWatchlist}
+            onToggleWatchlist={onToggleWatchlist}
+            size="large"
+            showComment={false}
+          />
+        )}
+        side={(
+          <ObjectDetailInfoCard
+            title="Infos evenement"
+            items={eventInfoItems}
+          />
+        )}
+      />
 
-        <h1>{event.title}</h1>
-        <p className="event-detail-subtitle">{event.league}</p>
-
-        <div className="event-detail-grid">
-          <div>
-            <span className="detail-label">Date</span>
-            <strong>{formatDateLabel(event)}</strong>
+      {!isFutureEvent ? (
+        <section className="related-section">
+          <div className="group-title">
+            <h2>Ma note</h2>
           </div>
-          <div>
-            <span className="detail-label">Lieu</span>
-            <strong>{event.location || "N/A"}</strong>
-          </div>
-          <div>
-            <span className="detail-label">Note communaute</span>
-            <strong>
-              <ScoreBadge variant="community-chip" value={event.communityScore} scale="percent" />
-            </strong>
-          </div>
-          <div>
-            <span className="detail-label">Avis</span>
-            <strong>{reviews}</strong>
-          </div>
-          {!isFutureEvent ? (
-            <div>
-              <span className="detail-label">Ma note</span>
-              <strong>
-                <ScoreBadge variant="user-chip" value={userRating} scale="percent" />
-              </strong>
+          <article className="entity-card">
+            <div className="event-personal-rating">
+              <ScoreSliderField
+                id="event-user-rating"
+                label="Noter cet evenement (0-100)"
+                value={userRating}
+                onChange={handleChangeUserRating}
+                className="event-rating-slider"
+              />
+              <button
+                className="comment-like-btn"
+                onClick={handleClearUserRating}
+                type="button"
+              >
+                Reinitialiser
+              </button>
             </div>
-          ) : null}
+          </article>
+        </section>
+      ) : null}
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Classements qui contiennent cet evenement</h2>
         </div>
-
-        {event.result ? <p className="event-result">Resultat: {event.result}</p> : null}
-
-        <ObjectTagsWidget
-          objectType="event"
-          objectId={event.id}
-          title="Tags de l'evenement"
-        />
-
-        <div className="event-detail-actions">
-          <button
-            className={`watch-btn detail-watch-btn ${isInWatchlist ? "is-active" : ""}`}
-            onClick={() => onToggleWatchlist(event.id)}
-            type="button"
+        {relatedRankings.length ? (
+          <HorizontalCardRail
+            label="Classements lies"
+            itemType="ranking"
+            mode="carousel"
+            visibleDesktop={2.8}
+            visibleTablet={1.9}
+            visibleMobile={1.08}
+            scrollStepItems={1}
+            showArrows
           >
-            {isInWatchlist ? "Retirer de la watchlist" : "Ajouter a la watchlist"}
-          </button>
-          <Link className="btn btn-ghost" to="/watchlist">
-            Ouvrir ma watchlist
-          </Link>
-          <Link
-            className="btn btn-ghost"
-            to={`/feed?scope=object&targetType=event&targetId=${encodeURIComponent(event.id)}&mode=recent`}
-          >
-            Ouvrir le feed event
-          </Link>
-        </div>
-
-        {!isFutureEvent ? (
-          <div className="event-personal-rating">
-            <ScoreSliderField
-              id="event-user-rating"
-              label="Noter cet evenement (0-100)"
-              value={userRating}
-              onChange={handleChangeUserRating}
-              className="event-rating-slider"
-            />
-            <button
-              className="comment-like-btn"
-              onClick={handleClearUserRating}
-              type="button"
-            >
-              Reinitialiser
-            </button>
-          </div>
-        ) : null}
-      </article>
+            {relatedRankings.map((list) => (
+              <RankingCard
+                key={list.id}
+                list={list}
+                maxPreview={4}
+              />
+            ))}
+          </HorizontalCardRail>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun classement ne reference encore cet evenement.</p>
+          </article>
+        )}
+      </section>
 
       <ObjectFeedScopePanel
         targetType="event"
@@ -182,7 +175,6 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements similaires</h2>
-          <span>{relatedEvents.length} suggestions</span>
         </div>
         <HorizontalCardRail
           label="Evenements similaires"

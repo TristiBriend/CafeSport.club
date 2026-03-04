@@ -1,15 +1,22 @@
+import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
+import ObjectDetailHero from "../components/ObjectDetailHero";
+import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import PlayerCard from "../components/PlayerCard";
+import RankingCard from "../components/RankingCard";
 import {
+  getCuratedLists,
   getAthleteById,
+  resolveListEntries,
 } from "../services/catalogService";
 import {
   getExpectedEventsForObject,
   getTopRatedEventsForObject,
 } from "../services/objectEventSectionsService";
+import { buildAthleteDetailInfoItems } from "../services/objectDetailInfoService";
 
 function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { athleteId } = useParams();
@@ -28,17 +35,60 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
 
   const expectedEvents = getExpectedEventsForObject("athlete", athlete.id, 6);
   const topRatedEvents = getTopRatedEventsForObject("athlete", athlete.id, 6);
+  const athleteInfoItems = buildAthleteDetailInfoItems(athlete);
+  const relatedRankings = useMemo(
+    () => getCuratedLists({ sportFilter: "Tous", query: "" })
+      .filter((list) => resolveListEntries(list).some((entry) => (
+        entry.type === "athlete" && entry.athlete?.id === athlete.id
+      ))),
+    [athlete.id],
+  );
 
   return (
     <section className="object-detail-page">
-      <div className="object-detail-top-left">
-        <PlayerCard athlete={athlete} variant="detail" size="large" />
-      </div>
+      <ObjectDetailHero
+        card={<PlayerCard athlete={athlete} variant="detail" size="large" />}
+        side={(
+          <ObjectDetailInfoCard
+            title="Infos athlete"
+            items={athleteInfoItems}
+          />
+        )}
+      />
+
+      <section className="related-section">
+        <div className="group-title">
+          <h2>Classements qui contiennent cet athlete</h2>
+        </div>
+        {relatedRankings.length ? (
+          <HorizontalCardRail
+            label="Classements lies a cet athlete"
+            itemType="ranking"
+            mode="carousel"
+            visibleDesktop={2.8}
+            visibleTablet={1.9}
+            visibleMobile={1.08}
+            scrollStepItems={1}
+            showArrows
+          >
+            {relatedRankings.map((list) => (
+              <RankingCard
+                key={list.id}
+                list={list}
+                maxPreview={4}
+              />
+            ))}
+          </HorizontalCardRail>
+        ) : (
+          <article className="entity-card">
+            <p className="event-meta">Aucun classement ne reference encore cet athlete.</p>
+          </article>
+        )}
+      </section>
 
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les plus attendus</h2>
-          <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
           <HorizontalCardRail
@@ -71,7 +121,6 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les mieux notes</h2>
-          <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
           <HorizontalCardRail
@@ -106,7 +155,6 @@ function AthleteDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) 
         targetId={athlete.id}
         watchlistIds={watchlistIds}
         onToggleWatchlist={onToggleWatchlist}
-        title="Feed relie a la card"
         subtitle="Flux athlete complet: commentaires, events et objets lies."
       />
     </section>

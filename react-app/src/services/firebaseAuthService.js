@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 import { auth, googleProvider, isFirebaseConfigured, firebaseMissingConfig } from "./firebase";
 
@@ -38,9 +39,14 @@ export async function signInWithEmail(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-export async function signUpWithEmail(email, password) {
+export async function signUpWithEmail(email, password, { displayName = "" } = {}) {
   assertFirebaseConfigured();
-  return createUserWithEmailAndPassword(auth, email, password);
+  const result = await createUserWithEmailAndPassword(auth, email, password);
+  const safeDisplayName = String(displayName || "").trim();
+  if (safeDisplayName && result?.user) {
+    await updateProfile(result.user, { displayName: safeDisplayName });
+  }
+  return result;
 }
 
 export async function signOutUser() {
@@ -53,4 +59,11 @@ export async function ensureAnonymousSession() {
   if (auth.currentUser) return auth.currentUser;
   const result = await signInAnonymously(auth);
   return result?.user || null;
+}
+
+export async function updateCurrentAuthProfile({ displayName = "" } = {}) {
+  if (!isFirebaseConfigured || !auth?.currentUser) return null;
+  const safeDisplayName = String(displayName || "").trim();
+  await updateProfile(auth.currentUser, { displayName: safeDisplayName || null });
+  return auth.currentUser;
 }

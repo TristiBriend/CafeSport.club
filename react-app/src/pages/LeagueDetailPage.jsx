@@ -2,12 +2,15 @@ import { Link, useParams } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import LeagueCard from "../components/LeagueCard";
+import ObjectDetailHero from "../components/ObjectDetailHero";
+import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import { getLeagueById } from "../services/leaguesService";
 import {
   getExpectedEventsForObject,
   getTopRatedEventsForObject,
 } from "../services/objectEventSectionsService";
+import { buildLeagueDetailInfoItems } from "../services/objectDetailInfoService";
 
 function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const { leagueId } = useParams();
@@ -26,17 +29,23 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
 
   const expectedEvents = getExpectedEventsForObject("league", league.id, 6);
   const topRatedEvents = getTopRatedEventsForObject("league", league.id, 6);
+  const leagueInfoItems = buildLeagueDetailInfoItems(league);
 
   return (
     <section className="object-detail-page">
-      <div className="object-detail-top-left">
-        <LeagueCard league={league} variant="detail" size="large" />
-      </div>
+      <ObjectDetailHero
+        card={<LeagueCard league={league} variant="detail" size="large" />}
+        side={(
+          <ObjectDetailInfoCard
+            title="Infos ligue"
+            items={leagueInfoItems}
+          />
+        )}
+      />
 
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les plus attendus</h2>
-          <span>{expectedEvents.length}</span>
         </div>
         {expectedEvents.length ? (
           <HorizontalCardRail
@@ -69,7 +78,6 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       <section className="related-section">
         <div className="group-title">
           <h2>Evenements les mieux notes</h2>
-          <span>{topRatedEvents.length}</span>
         </div>
         {topRatedEvents.length ? (
           <HorizontalCardRail
@@ -104,7 +112,6 @@ function LeagueDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
         targetId={league.id}
         watchlistIds={watchlistIds}
         onToggleWatchlist={onToggleWatchlist}
-        title="Feed relie a la card"
         subtitle="Flux ligue complet: commentaires, events et objets lies."
       />
     </section>

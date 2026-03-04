@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import CommentMentionTextarea from "./CommentMentionTextarea";
 import EventCard from "./EventCard";
 import LeagueCard from "./LeagueCard";
 import LeagueSeasonCard from "./LeagueSeasonCard";
@@ -43,8 +44,15 @@ import {
   composeBalancedFeedStream,
   groupCardRows,
 } from "../services/feedStreamComposer";
+import {
+  FEED_OPTIONAL_TABS_MAX,
+  getOptionalFeedTabForTarget,
+  upsertOptionalFeedTab,
+} from "../services/feedOptionalTabsService";
+import { filterCommentMentionsForText } from "../services/commentMentionsService";
 import { getEventById } from "../services/eventsService";
 import { getLeagueById, getLeagueSeasonById } from "../services/leaguesService";
+import { matchesUserIdentity } from "../services/profileService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
 
 const FEED_MODE = {
@@ -159,8 +167,7 @@ function resolveObjectEvents(targetType, targetId, allComments = []) {
       allComments
         .filter((comment) => {
           if (comment.userId && comment.userId === targetId) return true;
-          if (user?.name && comment.author === user.name) return true;
-          return false;
+          return matchesUserIdentity(comment, user);
         })
         .map((comment) => comment.eventId)
         .filter(Boolean),
@@ -249,8 +256,10 @@ function ObjectFeedScopePanel({
   const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
+  const [composerMentions, setComposerMentions] = useState([]);
   const { revisionByDomain } = useSocialSync();
   const commentsRevision = Number(revisionByDomain?.comments || 0);
+  const tabsRevision = Number(revisionByDomain?.tabs || 0);
   const activeMode = isControlledMode ? mode : internalMode;
   const watchlistSet = useMemo(() => new Set(watchlistIds), [watchlistIds]);
   const allComments = useMemo(
@@ -262,6 +271,24 @@ function ObjectFeedScopePanel({
     () => (hasTarget ? resolveObjectMeta(safeTargetType, safeTargetId) : null),
     [hasTarget, safeTargetId, safeTargetType],
   );
+  const explicitTitle = String(title || "").trim();
+  const resolvedFeedLabel = useMemo(
+    () => `Feed · ${objectMeta?.subtitle || "Objet"}`,
+    [objectMeta?.subtitle],
+  );
+  const resolvedTitle = explicitTitle || resolvedFeedLabel;
+  const allowFeedPinning = hasTarget && (
+    !isCommentsOnlyProfile
+    || safeTargetType === COMMENT_TARGET.EVENT
+  );
+  const currentOptionalTab = useMemo(() => {
+    if (!allowFeedPinning) return null;
+    return getOptionalFeedTabForTarget(safeTargetType, safeTargetId);
+  }, [allowFeedPinning, safeTargetId, safeTargetType, tabsRevision]);
+  const canAddToMyFeeds = allowFeedPinning;
+  const addToMyFeedsTitle = currentOptionalTab
+    ? "Deja dans mes feeds (clic pour mettre a jour)"
+    : "Ajouter a mes feeds";
 
   const objectComments = useMemo(() => {
     if (!hasTarget) return [];
@@ -349,10 +376,10 @@ function ObjectFeedScopePanel({
     bumpComments();
   }
 
-  function handleCreateReply(comment, note) {
+  function handleCreateReply(comment, note, mentions = []) {
     const created = createCommentReply(comment?.id, {
       note,
-      author: "Vous",
+      mentions,
     });
     if (!created) return null;
     bumpComments();
@@ -393,11 +420,12 @@ function ObjectFeedScopePanel({
       mode: canReviewTarget ? composerMode : COMMENT_MODE.COMMENT,
       note: composerText,
       rating: composerRating,
-      author: "Vous",
       eventId: safeTargetType === COMMENT_TARGET.EVENT ? safeTargetId : "",
+      mentions: filterCommentMentionsForText(composerText, composerMentions),
     });
     if (!created) return;
     setComposerText("");
+    setComposerMentions([]);
     bumpComments();
   }
 
@@ -405,6 +433,19 @@ function ObjectFeedScopePanel({
     const value = Number(nextValue);
     const safeValue = Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
     setComposerRating(safeValue);
+  }
+
+  function handleAddToMyFeeds() {
+    if (!canAddToMyFeeds) return;
+    const result = upsertOptionalFeedTab({
+      targetType: safeTargetType,
+      targetId: safeTargetId,
+      mode: activeMode,
+      label: resolvedFeedLabel,
+    });
+    if (result.error === "limit_reached") {
+      window.alert(`Maximum ${FEED_OPTIONAL_TABS_MAX} feeds complementaires.`);
+    }
   }
 
   function setMode(nextMode) {
@@ -434,7 +475,23 @@ function ObjectFeedScopePanel({
 
   function renderReplyCard(entry) {
     const reply = entry?.payload?.reply;
+    const parentComment = entry?.payload?.comment;
     if (!reply) return null;
+    if (parentComment) {
+      return (
+        <CommentCard
+          comment={parentComment}
+          onToggleLike={handleToggleLike}
+          onCreateReply={handleCreateReply}
+          onToggleReplyLike={handleToggleReplyLike}
+          onUpdateComment={handleUpdateComment}
+          onDeleteComment={handleDeleteComment}
+          onUpdateReply={handleUpdateReply}
+          onDeleteReply={handleDeleteReply}
+          forceReplyThreadOpen
+        />
+      );
+    }
     const eventId = entry?.payload?.eventId;
     return (
       <article className="comment-card">
@@ -444,7 +501,7 @@ function ObjectFeedScopePanel({
             <p className="comment-meta typo-meta">Reponse likee</p>
           </div>
         </header>
-        <p className="comment-note typo-body-strong">{reply.note}</p>
+        <p className="comment-note typo-comment-text">{reply.note}</p>
         <p className="event-meta typo-meta">{reply.totalLikes || 0} likes</p>
         <p className="reply-date typo-meta">{getCommentDateLabel(reply)}</p>
         {eventId ? <Link className="typo-meta" to={`/event/${eventId}`}>Voir evenement</Link> : null}
@@ -517,6 +574,7 @@ function ObjectFeedScopePanel({
       return (
         <CommentCard
           comment={entry.payload?.comment}
+          forceReplyThreadOpen={Boolean(entry.payload?.comment?.viewContext?.forceReplyThreadOpen)}
           onToggleLike={handleToggleLike}
           onCreateReply={handleCreateReply}
           onToggleReplyLike={handleToggleReplyLike}
@@ -547,12 +605,25 @@ function ObjectFeedScopePanel({
   return (
     <section className="related-section object-feed-scope-panel">
       <div className="section-head">
-        <div>
-          <h2>{title || objectMeta?.title || "Feed relié a la card"}</h2>
+        <div className="object-feed-scope-head-copy">
+          <h2>{resolvedTitle}</h2>
           <p className="muted">
             {subtitle || `${objectMeta?.subtitle || "Objet"} · ${activeMode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`}
           </p>
         </div>
+        {canAddToMyFeeds ? (
+          <div className="object-feed-scope-actions">
+            <button
+              type="button"
+              className={`object-feed-scope-add-btn ${currentOptionalTab ? "is-added" : ""}`.trim()}
+              onClick={handleAddToMyFeeds}
+              aria-label="Ajouter a mes feeds"
+              title={addToMyFeedsTitle}
+            >
+              +
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="filter-row">
@@ -603,17 +674,18 @@ function ObjectFeedScopePanel({
             ) : null}
           </div>
 
-          <label className="search-wrap" htmlFor={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}>
-            <span>Ton message</span>
-            <textarea
-              id={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}
-              rows="3"
-              maxLength={600}
-              placeholder="Ajouter un commentaire..."
-              value={composerText}
-              onChange={(changeEvent) => setComposerText(changeEvent.target.value)}
-            />
-          </label>
+          <CommentMentionTextarea
+            id={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}
+            label="Ton message"
+            rows={3}
+            maxLength={600}
+            placeholder="Ajouter un commentaire..."
+            value={composerText}
+            mentions={composerMentions}
+            onChange={setComposerText}
+            onMentionsChange={setComposerMentions}
+            fieldClassName="search-wrap"
+          />
 
           <button className="btn btn-primary" type="submit">
             Publier
@@ -623,7 +695,6 @@ function ObjectFeedScopePanel({
 
       <div className="group-title">
         <h2>Flux</h2>
-        <span>{streamEntries.length}</span>
       </div>
 
       {streamEntries.length ? (

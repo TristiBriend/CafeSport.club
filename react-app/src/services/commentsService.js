@@ -4,6 +4,7 @@ import baseCommentSamples from "../data/baseCommentSamples.json";
 import {
   deleteCommentCloud,
   deleteReplyCloud,
+  renameAuthoredCloudContent,
   registerCommentImpressionCloud,
   setCommentLikeStateCloud,
   setReplyLikeStateCloud,
@@ -23,11 +24,25 @@ import { getLeagueById, getLeagueSeasonById } from "./leaguesService";
 import { getAllEvents, getEventById } from "./eventsService";
 import {
   getSocialSyncCloudIdentity,
+  getSocialSyncSnapshot,
   isSocialDomainEnabled,
   notifyDomainDirty,
   SOCIAL_SYNC_DOMAIN,
 } from "./socialSyncService";
 import { createCommentId, createReplyId } from "./idService";
+import {
+  getCurrentProfileUserId,
+  matchesUserIdentity,
+  resolvePublicIdentity,
+} from "./profileService";
+import {
+  doesCommentMatchEventViaMentions,
+  doesCommentOrReplyMentionTarget,
+  doesMentionListIncludeTarget,
+  getReplyIdsMatchingEventViaMentions,
+  getReplyIdsMatchingTarget,
+  normalizeCommentMentions,
+} from "./commentMentionsService";
 
 const MANUAL_COMMENTS_KEY = "cafesport.club_manual_comments_v1";
 const MANUAL_REPLIES_KEY = "cafesport.club_manual_replies_v1";
@@ -114,6 +129,43 @@ function normalizeTargetType(targetType) {
 
 function normalizeTargetId(targetId) {
   return String(targetId || "").trim();
+}
+
+function resolveAuthoredDisplayName(userId, explicitAuthor = "", fallbackLabel = "Utilisateur") {
+  const safeUserId = normalizeTargetId(userId);
+  const author = String(explicitAuthor || "").trim();
+  if (author && author !== "Vous" && author !== "Utilisateur") {
+    return author;
+  }
+  if (!safeUserId) {
+    return author || fallbackLabel;
+  }
+  if (safeUserId) {
+    const fallbackUser = getUserById(safeUserId);
+    const identity = resolvePublicIdentity(safeUserId, { fallbackUser });
+    if (identity?.displayName && (!author || author === "Vous" || author === "Utilisateur")) {
+      return identity.displayName;
+    }
+    if (identity?.displayName && author === identity.displayName) {
+      return identity.displayName;
+    }
+    if (!author) {
+      return identity?.displayName || fallbackLabel;
+    }
+  }
+  return author || fallbackLabel;
+}
+
+function resolveCurrentCommentIdentity(userId = "", author = "") {
+  const cloudIdentity = getCloudIdentity();
+  const preferredUserId = normalizeTargetId(userId)
+    || normalizeTargetId(getCurrentProfileUserId())
+    || normalizeTargetId(cloudIdentity?.appUserId)
+    || "usr-manual";
+  return {
+    userId: preferredUserId,
+    author: resolveAuthoredDisplayName(preferredUserId, author, "Vous"),
+  };
 }
 
 function isUpcomingEvent(event) {
@@ -207,11 +259,12 @@ function normalizeComment(raw, fallbackTarget = {}) {
     targetId,
     eventId,
     userId: String(raw.userId || ""),
-    author: String(raw.author || "Vous"),
+    author: resolveAuthoredDisplayName(raw.userId, raw.author, "Vous"),
     note,
     likes: Math.max(0, Number(raw.likes || 0)),
     commentType: mode,
     rating: mode === COMMENT_MODE.REVIEW ? clampRating(raw.rating) : undefined,
+    mentions: normalizeCommentMentions(raw.mentions),
     createdAt: raw.createdAt || raw.dateTime || new Date().toISOString(),
     replies: Array.isArray(raw.replies)
       ? raw.replies.map((reply) => normalizeReply(reply)).filter(Boolean)
@@ -226,8 +279,9 @@ function normalizeReply(raw) {
   return {
     id: String(raw.id || createReplyId()),
     userId: String(raw.userId || ""),
-    author: String(raw.author || "Utilisateur"),
+    author: resolveAuthoredDisplayName(raw.userId, raw.author, "Utilisateur"),
     note,
+    mentions: normalizeCommentMentions(raw.mentions),
     likes: Math.max(0, Number(raw.likes || 0)),
     createdAt: raw.createdAt || raw.dateTime || new Date().toISOString(),
   };
@@ -444,6 +498,63 @@ function dedupeComments(list) {
   return Array.from(map.values());
 }
 
+function normalizeMatchedReplyIds(list) {
+  const ids = new Set(
+    (Array.isArray(list) ? list : [])
+      .map((replyId) => String(replyId || "").trim())
+      .filter(Boolean),
+  );
+  return Array.from(ids);
+}
+
+function applyCommentViewContext(comment, matchedReplyIds = []) {
+  if (!comment?.id) return comment;
+  const safeMatchedReplyIds = normalizeMatchedReplyIds(matchedReplyIds);
+  const { viewContext: _ignoredViewContext, ...baseComment } = comment;
+  if (!safeMatchedReplyIds.length) {
+    return baseComment;
+  }
+  return {
+    ...baseComment,
+    viewContext: {
+      forceReplyThreadOpen: true,
+      matchedReplyIds: safeMatchedReplyIds,
+    },
+  };
+}
+
+function mergeCommentsWithViewContext(entries = []) {
+  const map = new Map();
+
+  (Array.isArray(entries) ? entries : []).forEach((entry) => {
+    const comment = entry?.comment || entry;
+    const commentId = String(comment?.id || "").trim();
+    if (!commentId) return;
+
+    const nextMatchedReplyIds = normalizeMatchedReplyIds(entry?.matchedReplyIds);
+    if (!map.has(commentId)) {
+      map.set(commentId, {
+        comment,
+        matchedReplyIds: nextMatchedReplyIds,
+      });
+      return;
+    }
+
+    const existing = map.get(commentId);
+    map.set(commentId, {
+      comment: existing?.comment || comment,
+      matchedReplyIds: normalizeMatchedReplyIds([
+        ...(existing?.matchedReplyIds || []),
+        ...nextMatchedReplyIds,
+      ]),
+    });
+  });
+
+  return Array.from(map.values()).map((entry) => (
+    applyCommentViewContext(entry.comment, entry.matchedReplyIds)
+  ));
+}
+
 function getManualCommentsNormalized() {
   return sanitizeManualCommentsStorage()
     .map((item) => normalizeComment(item))
@@ -579,21 +690,31 @@ function getSeedComments() {
 }
 
 const seededComments = getSeedComments();
+let preparedCommentsCacheRevision = -1;
+let preparedCommentsCache = [];
 
 function getPreparedComments() {
-  return dedupeComments([
+  const commentsRevision = Number(getSocialSyncSnapshot()?.revisionByDomain?.comments || 0);
+  if (preparedCommentsCacheRevision === commentsRevision) {
+    return preparedCommentsCache;
+  }
+  preparedCommentsCache = dedupeComments([
     ...seededComments,
     ...getManualCommentsNormalized(),
   ])
     .map(withMergedReplies)
     .map(withComputedLikes);
+  preparedCommentsCacheRevision = commentsRevision;
+  return preparedCommentsCache;
 }
 
 function commentMatchesTarget(comment, targetType, targetId) {
   const safeType = normalizeTargetType(targetType);
   const safeId = normalizeTargetId(targetId);
   if (!safeType || !safeId || !comment) return false;
-  return comment.targetType === safeType && comment.targetId === safeId;
+  if (comment.targetType === safeType && comment.targetId === safeId) return true;
+  if (safeType !== COMMENT_TARGET.ATHLETE && safeType !== COMMENT_TARGET.TEAM) return false;
+  return doesMentionListIncludeTarget(comment.mentions, safeType, safeId);
 }
 
 function getRelatedEventIdsForTarget(targetType, targetId) {
@@ -636,8 +757,7 @@ function getRelatedEventIdsForTarget(targetType, targetId) {
     const user = getUserById(safeId);
     const authored = getPreparedComments().filter((comment) => {
       if (comment.userId && comment.userId === safeId) return true;
-      if (user?.name && comment.author === user.name) return true;
-      return false;
+      return matchesUserIdentity(comment, user);
     });
     return new Set(
       authored
@@ -652,12 +772,20 @@ function getRelatedEventIdsForTarget(targetType, targetId) {
 export function getEventComments(eventId) {
   const safeEventId = normalizeTargetId(eventId);
   if (!safeEventId) return [];
-  const list = getPreparedComments().filter((comment) => {
+  const list = getPreparedComments().flatMap((comment) => {
     const directTarget = comment.targetType === COMMENT_TARGET.EVENT && comment.targetId === safeEventId;
     const linkedEvent = comment.eventId === safeEventId;
-    return directTarget || linkedEvent;
+    const mentionedEvent = doesCommentMatchEventViaMentions(comment, safeEventId);
+    const matchedReplyIds = getReplyIdsMatchingEventViaMentions(comment, safeEventId);
+    if (!directTarget && !linkedEvent && !mentionedEvent && !matchedReplyIds.length) {
+      return [];
+    }
+    return [{
+      comment,
+      matchedReplyIds,
+    }];
   });
-  return sortComments(dedupeComments(list));
+  return sortComments(mergeCommentsWithViewContext(list));
 }
 
 export function getCommentsForTarget(targetType, targetId) {
@@ -670,30 +798,40 @@ export function getCommentsForTarget(targetType, targetId) {
   }
 
   const allComments = getPreparedComments();
-  const direct = allComments.filter((comment) => commentMatchesTarget(comment, safeType, safeId));
-
   const relatedEventIds = getRelatedEventIdsForTarget(safeType, safeId);
-  const byRelatedEvents = relatedEventIds.size
-    ? allComments.filter((comment) => (
-      comment.targetType === COMMENT_TARGET.EVENT && relatedEventIds.has(comment.targetId)
-    ))
-    : [];
+  const targetUser = safeType === COMMENT_TARGET.USER ? getUserById(safeId) : null;
+  const list = allComments.flatMap((comment) => {
+    const matchedReplyIds = getReplyIdsMatchingTarget(comment, safeType, safeId);
+    const direct = commentMatchesTarget(comment, safeType, safeId);
+    const byRelatedEvents = relatedEventIds.size
+      && comment.targetType === COMMENT_TARGET.EVENT
+      && relatedEventIds.has(comment.targetId);
+    const byMention = (
+      safeType === COMMENT_TARGET.ATHLETE || safeType === COMMENT_TARGET.TEAM
+    ) && doesCommentOrReplyMentionTarget(comment, safeType, safeId);
 
-  let userAuthored = [];
-  if (safeType === COMMENT_TARGET.USER) {
-    const user = getUserById(safeId);
-    userAuthored = allComments.filter((comment) => {
-      if (comment.userId && comment.userId === safeId) return true;
-      if (user?.name && comment.author === user.name) return true;
-      return false;
-    });
-  }
+    let userAuthored = false;
+    if (safeType === COMMENT_TARGET.USER) {
+      userAuthored = matchedReplyIds.length > 0;
+      if (!userAuthored) {
+        userAuthored = Boolean(
+          (comment.userId && comment.userId === safeId)
+          || matchesUserIdentity(comment, targetUser),
+        );
+      }
+    }
 
-  return sortComments(dedupeComments([
-    ...direct,
-    ...byRelatedEvents,
-    ...userAuthored,
-  ]));
+    if (!direct && !byRelatedEvents && !byMention && !userAuthored) {
+      return [];
+    }
+
+    return [{
+      comment,
+      matchedReplyIds,
+    }];
+  });
+
+  return sortComments(mergeCommentsWithViewContext(list));
 }
 
 export function getCommentFeedForTarget(targetType, targetId, {
@@ -718,9 +856,10 @@ export function createTargetComment(targetType, targetId, {
   mode,
   note,
   rating,
-  author = "Vous",
-  userId = "usr-manual",
+  author = "",
+  userId = "",
   eventId = "",
+  mentions = [],
 } = {}) {
   const safeType = normalizeTargetType(targetType);
   const safeTargetId = normalizeTargetId(targetId);
@@ -732,10 +871,7 @@ export function createTargetComment(targetType, targetId, {
   const resolvedEventId = safeType === COMMENT_TARGET.EVENT
     ? safeTargetId
     : normalizeTargetId(eventId);
-  const cloudIdentity = getCloudIdentity();
-  const resolvedUserId = normalizeTargetId(userId)
-    || normalizeTargetId(cloudIdentity?.appUserId)
-    || "usr-manual";
+  const identity = resolveCurrentCommentIdentity(userId, author);
 
   const now = new Date().toISOString();
   const payload = {
@@ -743,12 +879,13 @@ export function createTargetComment(targetType, targetId, {
     targetType: safeType,
     targetId: safeTargetId,
     eventId: resolvedEventId,
-    userId: resolvedUserId,
-    author,
+    userId: identity.userId,
+    author: identity.author,
     note: cleanNote,
     likes: 0,
     commentType: safeMode,
     rating: safeMode === COMMENT_MODE.REVIEW ? clampRating(rating) : undefined,
+    mentions: normalizeCommentMentions(mentions),
     createdAt: now,
     dateTime: now,
     replies: [],
@@ -829,18 +966,18 @@ export function toggleReplyLike(reply) {
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
 }
 
-export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
+export function createCommentReply(parentCommentId, { note, author = "", userId = "", mentions = [] } = {}) {
   const safeParentId = String(parentCommentId || "").trim();
   const cleanNote = String(note || "").trim();
   if (!safeParentId || !cleanNote) return null;
 
-  const cloudIdentity = getCloudIdentity();
-  const resolvedUserId = normalizeTargetId(cloudIdentity?.appUserId) || "usr-manual";
+  const identity = resolveCurrentCommentIdentity(userId, author);
   const newReply = normalizeReply({
     id: createReplyId(),
-    userId: resolvedUserId,
-    author,
+    userId: identity.userId,
+    author: identity.author,
     note: cleanNote,
+    mentions: normalizeCommentMentions(mentions),
     likes: 0,
     createdAt: new Date().toISOString(),
   });
@@ -855,7 +992,62 @@ export function createCommentReply(parentCommentId, { note, author = "Vous" }) {
   return newReply;
 }
 
-export function updateComment(commentId, { note, rating } = {}) {
+export async function renameAuthoredContentForUser(userId, nextDisplayName, { syncCloud = true } = {}) {
+  const safeUserId = normalizeTargetId(userId);
+  const safeDisplayName = String(nextDisplayName || "").trim();
+  if (!safeUserId || !safeDisplayName) return false;
+
+  let changed = false;
+
+  const comments = readManualComments();
+  const nextComments = comments.map((comment) => {
+    if (String(comment?.userId || "").trim() !== safeUserId) return comment;
+    changed = true;
+    return {
+      ...comment,
+      author: safeDisplayName,
+    };
+  });
+  if (changed) {
+    writeManualComments(nextComments);
+  }
+
+  const replyMap = readManualReplyMap();
+  let repliesChanged = false;
+  const nextReplyMap = Object.entries(replyMap).reduce((acc, [commentId, replies]) => {
+    const nextReplies = (Array.isArray(replies) ? replies : []).map((reply) => {
+      if (String(reply?.userId || "").trim() !== safeUserId) return reply;
+      repliesChanged = true;
+      return {
+        ...reply,
+        author: safeDisplayName,
+      };
+    });
+    acc[commentId] = nextReplies;
+    return acc;
+  }, {});
+  if (repliesChanged) {
+    writeManualReplyMap(nextReplyMap);
+    changed = true;
+  }
+
+  const cloudIdentity = getCloudIdentity();
+  if (syncCloud && cloudIdentity?.appUserId === safeUserId) {
+    try {
+      await renameAuthoredCloudContent(safeUserId, safeDisplayName);
+      changed = true;
+    } catch {
+      // Keep local rename even if cloud sync fails.
+    }
+  }
+
+  if (changed) {
+    notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
+  }
+  return changed;
+}
+
+export function updateComment(commentId, { note, rating, mentions } = {}) {
   const safeId = String(commentId || "").trim();
   const cleanNote = String(note || "").trim();
   if (!safeId || !cleanNote) return false;
@@ -868,6 +1060,9 @@ export function updateComment(commentId, { note, rating } = {}) {
   current.note = cleanNote;
   if (current.commentType === COMMENT_MODE.REVIEW) {
     current.rating = clampRating(rating);
+  }
+  if (mentions !== undefined) {
+    current.mentions = normalizeCommentMentions(mentions);
   }
   comments[index] = current;
   writeManualComments(comments);
@@ -919,7 +1114,7 @@ export function deleteEventComment(commentId) {
   return deleteComment(commentId);
 }
 
-export function updateCommentReply(parentCommentId, replyId, { note } = {}) {
+export function updateCommentReply(parentCommentId, replyId, { note, mentions } = {}) {
   const safeParentId = String(parentCommentId || "").trim();
   const safeReplyId = String(replyId || "").trim();
   const cleanNote = String(note || "").trim();
@@ -932,6 +1127,7 @@ export function updateCommentReply(parentCommentId, replyId, { note } = {}) {
   list[index] = {
     ...list[index],
     note: cleanNote,
+    ...(mentions !== undefined ? { mentions: normalizeCommentMentions(mentions) } : {}),
   };
   replyMap[safeParentId] = list;
   writeManualReplyMap(replyMap);
@@ -991,6 +1187,7 @@ export function getLikedComments({ limit = 12 } = {}) {
             parentCommentId: comment.id,
             parentAuthor: comment.author,
           },
+          parentComment: comment,
         });
       });
     }

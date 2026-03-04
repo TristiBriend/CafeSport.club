@@ -11,7 +11,7 @@ const PARCOURIR_NAV = [
   { to: "/athletes", label: "Athletes" },
   { to: "/teams", label: "Equipes" },
   { to: "/leagues", label: "Ligues" },
-  { to: "/lists", label: "Listes" },
+  { to: "/lists", label: "Classements" },
   { to: "/users", label: "Utilisateurs" },
 ];
 
@@ -405,14 +405,14 @@ function SiteHeader({ watchlistCount = 0 }) {
         </div>
 
         <nav className="nav nav-tristi">
-          <NavLink to="/feed">Mon Feed</NavLink>
-          <NavLink to="/watchlist">Ma Watchlist ({watchlistCount})</NavLink>
           <NavLink
             to="/discover"
             className={({ isActive }) => (isActive ? "nav-pill-link" : "")}
           >
             Decouvrir
           </NavLink>
+          <NavLink to="/feed">Mon Feed</NavLink>
+          <NavLink to="/watchlist">Ma Watchlist ({watchlistCount})</NavLink>
           <details
             ref={sportsMenuRef}
             className="nav-dropdown nav-sports-menu"
@@ -498,6 +498,8 @@ function SiteHeader({ watchlistCount = 0 }) {
               </summary>
               <div className="user-menu-dropdown" role="menu" aria-label="Menu utilisateur" onClick={handleMenuDropdownClick}>
                 <NavLink role="menuitem" to="/profile">Mon profil</NavLink>
+                <NavLink role="menuitem" to="/lists">Créer un classement</NavLink>
+                <NavLink role="menuitem" to="/discover">Noter des événements</NavLink>
                 <NavLink role="menuitem" to="/tierlist">Tierlist</NavLink>
                 <button type="button" role="menuitem" className="user-menu-logout-btn" onClick={handleLogout}>
                   Deconnexion

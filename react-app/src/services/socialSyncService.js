@@ -99,6 +99,10 @@ function normalizeId(value) {
   return String(value || "").trim();
 }
 
+function hasOwn(value, key) {
+  return Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+}
+
 function sanitizeIdList(input, maxLength = 5) {
   const values = Array.isArray(input) ? input : [];
   const seen = new Set();
@@ -279,40 +283,85 @@ function readLocalProfilePatch(appUserId) {
   if (!safeId) return {};
   const avatarMap = readLocalObject(PROFILE_AVATAR_OVERRIDES_KEY);
   const detailsMap = readLocalObject(PROFILE_DETAILS_OVERRIDES_KEY);
-  return {
-    avatarUrl: String(avatarMap[safeId] || "").trim(),
-    ...(detailsMap[safeId] && typeof detailsMap[safeId] === "object" ? detailsMap[safeId] : {}),
-  };
+  const detailsEntry = detailsMap[safeId] && typeof detailsMap[safeId] === "object"
+    ? detailsMap[safeId]
+    : {};
+  const avatarUrl = String(avatarMap[safeId] || "").trim();
+  return avatarUrl
+    ? { avatarUrl, ...detailsEntry }
+    : { ...detailsEntry };
 }
 
 function writeLocalProfilePatch(appUserId, patch = {}) {
   const safeId = normalizeId(appUserId);
   if (!safeId) return;
+  const input = patch && typeof patch === "object" ? patch : {};
   const avatarMap = readLocalObject(PROFILE_AVATAR_OVERRIDES_KEY);
   const detailsMap = readLocalObject(PROFILE_DETAILS_OVERRIDES_KEY);
+  const currentEntry = detailsMap[safeId] && typeof detailsMap[safeId] === "object" && !Array.isArray(detailsMap[safeId])
+    ? { ...detailsMap[safeId] }
+    : {};
+  const nextEntry = { ...currentEntry };
 
-  const avatar = String(patch.avatarUrl || "").trim();
-  if (avatar) {
-    avatarMap[safeId] = avatar;
+  const setTrimmedField = (key, value, maxLength) => {
+    const safeValue = String(value || "").trim().slice(0, maxLength);
+    if (safeValue) {
+      nextEntry[key] = safeValue;
+    } else {
+      delete nextEntry[key];
+    }
+  };
+  const setListField = (key, value, maxLength) => {
+    const safeValue = sanitizeIdList(value, maxLength);
+    if (safeValue.length) {
+      nextEntry[key] = safeValue;
+    } else {
+      delete nextEntry[key];
+    }
+  };
+
+  if (hasOwn(input, "avatarUrl")) {
+    const avatar = String(input.avatarUrl || "").trim();
+    if (avatar) {
+      avatarMap[safeId] = avatar;
+    } else {
+      delete avatarMap[safeId];
+    }
   }
 
-  const detailsPatch = {
-    age: String(patch.age || "").trim(),
-    city: String(patch.city || "").trim(),
-    bioLong: String(patch.bioLong || "").trim(),
-    favoriteTeam: String(patch.favoriteTeam || "").trim(),
-    favoriteTeamIds: sanitizeIdList(patch.favoriteTeamIds, 5),
-    favoriteAthlete: String(patch.favoriteAthlete || "").trim(),
-    favoriteAthleteIds: sanitizeIdList(patch.favoriteAthleteIds, 5),
-    topEventIds: sanitizeIdList(patch.topEventIds, 5),
-    quote: String(patch.quote || "").trim(),
-  };
-  const hasDetail = Object.values(detailsPatch).some((value) => {
+  if (hasOwn(input, "displayName")) {
+    setTrimmedField("displayName", input.displayName, 32);
+  }
+
+  if (hasOwn(input, "handle") || hasOwn(input, "handleNormalized")) {
+    const handle = String(input.handleNormalized || input.handle || "").trim().slice(0, 24);
+    if (handle) {
+      nextEntry.handle = handle;
+      nextEntry.handleNormalized = handle;
+    } else {
+      delete nextEntry.handle;
+      delete nextEntry.handleNormalized;
+    }
+  }
+
+  if (hasOwn(input, "age")) setTrimmedField("age", input.age, 3);
+  if (hasOwn(input, "city")) setTrimmedField("city", input.city, 80);
+  if (hasOwn(input, "bioLong")) setTrimmedField("bioLong", input.bioLong, 420);
+  if (hasOwn(input, "favoriteTeam")) setTrimmedField("favoriteTeam", input.favoriteTeam, 120);
+  if (hasOwn(input, "favoriteTeamIds")) setListField("favoriteTeamIds", input.favoriteTeamIds, 5);
+  if (hasOwn(input, "favoriteAthlete")) setTrimmedField("favoriteAthlete", input.favoriteAthlete, 120);
+  if (hasOwn(input, "favoriteAthleteIds")) setListField("favoriteAthleteIds", input.favoriteAthleteIds, 5);
+  if (hasOwn(input, "topEventIds")) setListField("topEventIds", input.topEventIds, 5);
+  if (hasOwn(input, "quote")) setTrimmedField("quote", input.quote, 220);
+
+  const hasDetail = Object.values(nextEntry).some((value) => {
     if (Array.isArray(value)) return value.length > 0;
     return Boolean(value);
   });
   if (hasDetail) {
-    detailsMap[safeId] = detailsPatch;
+    detailsMap[safeId] = nextEntry;
+  } else {
+    delete detailsMap[safeId];
   }
 
   writeLocalObject(PROFILE_AVATAR_OVERRIDES_KEY, avatarMap);
