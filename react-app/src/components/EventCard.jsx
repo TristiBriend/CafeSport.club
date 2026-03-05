@@ -29,6 +29,7 @@ import {
   deleteCatalogObject,
   getDeleteDependencies,
 } from "../services/adminCatalogModerationService";
+import { toggleEventLegendary } from "../services/eventLegendaryAdminService";
 
 function getEventImage(event) {
   const image = String(event?.image || "").trim();
@@ -149,6 +150,7 @@ function EventCard({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isFriendnotesOpen, setIsFriendnotesOpen] = useState(false);
   const [isAdminDeleting, setIsAdminDeleting] = useState(false);
+  const [isLegendaryBusy, setIsLegendaryBusy] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoUploadError, setPhotoUploadError] = useState("");
@@ -161,6 +163,7 @@ function EventCard({
   const mediaRef = useRef(null);
   const normalizedSize = normalizeEventCardSize(size);
   const isCompact = normalizedSize === "small";
+  const isLegendary = Boolean(event?.legendary);
   const statusClass = getStatusClass(event);
   const isFuture = statusClass === "is-upcoming";
   const communityPercent = toPercentScore(event?.communityScore);
@@ -377,6 +380,24 @@ function EventCard({
     setIsMoreMenuOpen(false);
   }
 
+  async function handleToggleLegendaryFromMenu() {
+    if (!isAdmin || isLegendaryBusy) return;
+    setIsLegendaryBusy(true);
+    try {
+      const result = await toggleEventLegendary(event?.id, !isLegendary, {
+        firebaseUid: currentUser?.firebaseUid,
+      });
+      if (!result?.ok) {
+        window.alert("Mise a jour impossible pour le moment.");
+      }
+    } catch {
+      window.alert("Mise a jour impossible pour le moment.");
+    } finally {
+      setIsLegendaryBusy(false);
+      setIsMoreMenuOpen(false);
+    }
+  }
+
   async function handleConfirmAdminDelete() {
     if (isAdminDeleting) return;
     setIsAdminDeleting(true);
@@ -403,11 +424,11 @@ function EventCard({
 
   return (
     <div
-      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
+      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
       data-size={normalizedSize}
     >
       <article
-        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
+        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
         data-event-id={event.id}
       >
         <div
@@ -519,6 +540,19 @@ function EventCard({
                     >
                       {sportActionLabel}
                     </Link>
+                  ) : null}
+                  {isAdmin ? (
+                    <button
+                      type="button"
+                      className="event-card-more-action"
+                      role="menuitem"
+                      onClick={handleToggleLegendaryFromMenu}
+                      disabled={isLegendaryBusy}
+                    >
+                      {isLegendaryBusy
+                        ? "Mise a jour..."
+                        : (isLegendary ? "Desactiver legendaire" : "Activer legendaire")}
+                    </button>
                   ) : null}
                   {isAdmin ? (
                     <button
@@ -651,9 +685,19 @@ function EventCard({
                     </p>
                   </div>
                 </div>
-                {showTags ? (
-                  <div className="object-tags-inline">
-                    <ObjectTagsWidget objectType="event" objectId={event.id} title="Tags" compact />
+                {isLegendary || showTags ? (
+                  <div className="object-tags-inline event-card-tags-row">
+                    {isLegendary ? (
+                      <span
+                        className="object-tag-chip event-tag-chip-legendary"
+                        title="Evenement legendaire"
+                      >
+                        Legendaire
+                      </span>
+                    ) : null}
+                    {showTags ? (
+                      <ObjectTagsWidget objectType="event" objectId={event.id} title="Tags" compact />
+                    ) : null}
                   </div>
                 ) : null}
               </div>

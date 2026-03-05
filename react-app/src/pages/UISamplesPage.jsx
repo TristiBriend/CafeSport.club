@@ -529,6 +529,7 @@ const COLOR_TOKENS = [
   { token: "--tristi-pink", fallback: "#ec8bd7", source: ":root" },
   { token: "--tristi-yellow", fallback: "#ecef46", source: ":root" },
   { token: "--tristi-teal", fallback: "#2caea3", source: ":root" },
+  { token: "--tristi-gold", fallback: "#d8b24c", source: ":root" },
   { token: "--text", fallback: "#191c1f", source: ":root" },
 ];
 

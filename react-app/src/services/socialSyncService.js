@@ -13,6 +13,11 @@ import {
   seedRatingsFromLocalUnion,
 } from "./ratingsFirestoreService";
 import {
+  readUserFeedActions,
+  seedFeedActionsFromLocalUnion,
+  subscribeUserFeedActions,
+} from "./feedActionsFirestoreService";
+import {
   readAllObjectTagsBundle,
   seedObjectTagsFromLocalUnion,
 } from "./objectTagsFirestoreService";
@@ -29,6 +34,7 @@ export const SOCIAL_SYNC_DOMAIN = {
   FOLLOWS: "follows",
   COMMENTS: "comments",
   RATINGS: "ratings",
+  FEED_ACTIONS: "feedActions",
   TAGS: "tags",
   TABS: "tabs",
   PROFILE: "profile",
@@ -46,6 +52,7 @@ const REPLY_LIKES_KEY = "cafesport.club_reply_likes";
 const COMMENT_IMPRESSIONS_KEY = "cafesport.club_comment_impressions";
 const COMMENT_IMPRESSIONS_SESSION_KEY = "cafesport.club_comment_impressions_session";
 const RATINGS_KEY = "cafesport.club_ratings";
+const FEED_ACTIONS_KEY = "cafesport.club_feed_actions_v1";
 const TAG_CATALOG_KEY = "cafesport.club_tag_catalog_v1";
 const OBJECT_TAGS_KEY = "cafesport.club_object_tags_v2";
 const OBJECT_TAG_VOTES_KEY = "cafesport.club_object_tag_votes_v2";
@@ -61,6 +68,7 @@ const DOMAIN_FLAGS = {
   follows: String(import.meta.env.VITE_FIREBASE_SYNC_FOLLOWS ?? "1") !== "0",
   comments: String(import.meta.env.VITE_FIREBASE_SYNC_COMMENTS ?? "1") !== "0",
   ratings: String(import.meta.env.VITE_FIREBASE_SYNC_RATINGS ?? "1") !== "0",
+  feedActions: String(import.meta.env.VITE_FIREBASE_SYNC_FEED_ACTIONS ?? "1") !== "0",
   tags: String(import.meta.env.VITE_FIREBASE_SYNC_TAGS ?? "1") !== "0",
   tabs: String(import.meta.env.VITE_FIREBASE_SYNC_FEED_TABS ?? "1") !== "0",
   profile: String(import.meta.env.VITE_FIREBASE_SYNC_PROFILE ?? "1") !== "0",
@@ -92,6 +100,7 @@ let currentIdentity = {
 };
 let syncRunToken = 0;
 let followUnsubscribe = null;
+let feedActionsUnsubscribe = null;
 
 const listeners = new Set();
 
@@ -186,6 +195,10 @@ function cleanupSubscriptions() {
     followUnsubscribe();
   }
   followUnsubscribe = null;
+  if (typeof feedActionsUnsubscribe === "function") {
+    feedActionsUnsubscribe();
+  }
+  feedActionsUnsubscribe = null;
 }
 
 function readLocalFollowEntries() {
@@ -258,6 +271,45 @@ function writeLocalCommentsBundle(bundle = {}) {
   writeLocalObject(REPLY_LIKES_KEY, bundle.replyLikes || {});
   writeLocalObject(COMMENT_IMPRESSIONS_KEY, bundle.impressions || {});
   writeSessionObject(COMMENT_IMPRESSIONS_SESSION_KEY, bundle.seenImpressions || {});
+}
+
+function normalizeFeedActionForSync(raw = {}) {
+  const id = normalizeId(raw?.id || raw?.actionId);
+  const actionType = String(raw?.actionType || "").trim().toLowerCase();
+  const targetType = String(raw?.targetType || "").trim().toLowerCase();
+  const targetId = normalizeId(raw?.targetId);
+  if (!id || !actionType || !targetType || !targetId) return null;
+  const createdAt = String(raw?.createdAt || "").trim() || new Date().toISOString();
+  const updatedAt = String(raw?.updatedAt || "").trim() || createdAt;
+  const meta = raw?.meta && typeof raw.meta === "object" && !Array.isArray(raw.meta)
+    ? raw.meta
+    : {};
+  return {
+    id,
+    actionType,
+    targetType,
+    targetId,
+    createdAt,
+    updatedAt,
+    meta,
+  };
+}
+
+function readLocalFeedActions() {
+  const raw = readLocalObject(FEED_ACTIONS_KEY);
+  return Object.values(raw)
+    .map((entry) => normalizeFeedActionForSync(entry))
+    .filter(Boolean);
+}
+
+function writeLocalFeedActions(actions = []) {
+  const payload = {};
+  (Array.isArray(actions) ? actions : []).forEach((action) => {
+    const normalized = normalizeFeedActionForSync(action);
+    if (!normalized) return;
+    payload[normalized.id] = normalized;
+  });
+  writeLocalObject(FEED_ACTIONS_KEY, payload);
 }
 
 function readLocalTagsBundle() {
@@ -418,6 +470,28 @@ async function syncCloudDomains(identity, runToken) {
       bumpDomainRevision(SOCIAL_SYNC_DOMAIN.RATINGS);
     } catch {
       setDomainReady(SOCIAL_SYNC_DOMAIN.RATINGS, true);
+    }
+  }
+
+  if (DOMAIN_FLAGS.feedActions) {
+    try {
+      const localActions = readLocalFeedActions();
+      await seedFeedActionsFromLocalUnion(safeUid, localActions);
+      const cloudActions = await readUserFeedActions(safeUid);
+      if (runToken !== syncRunToken) return;
+      writeLocalFeedActions(cloudActions);
+      setDomainReady(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS, true);
+      bumpDomainRevision(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS);
+
+      feedActionsUnsubscribe = subscribeUserFeedActions(safeUid, (actions) => {
+        writeLocalFeedActions(actions);
+        setDomainReady(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS, true);
+        bumpDomainRevision(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS);
+      }, () => {
+        setDomainReady(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS, true);
+      });
+    } catch {
+      setDomainReady(SOCIAL_SYNC_DOMAIN.FEED_ACTIONS, true);
     }
   }
 

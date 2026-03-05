@@ -38,12 +38,14 @@ import {
   subscribeCatalogRevision,
 } from "./services/catalogRepositoryService";
 import { readWatchlist, writeWatchlist } from "./services/watchlistStorage";
+import { logWatchlistAdded } from "./services/feedActionsService";
 import {
   readUserWatchlistIds,
   seedWatchlistFromLocalIfCloudEmpty,
   setUserWatchlistState,
   subscribeUserWatchlist,
 } from "./services/watchlistFirestoreService";
+import { getEventById } from "./services/eventsService";
 
 function App() {
   const {
@@ -117,6 +119,13 @@ function App() {
             .then((ids) => setWatchlistIds(ids))
             .catch(() => {});
         });
+    }
+
+    if (shouldSave) {
+      const event = getEventById(safeEventId);
+      if (event) {
+        logWatchlistAdded(event);
+      }
     }
   }
 

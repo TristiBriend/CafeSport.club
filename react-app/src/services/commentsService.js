@@ -43,6 +43,7 @@ import {
   getReplyIdsMatchingTarget,
   normalizeCommentMentions,
 } from "./commentMentionsService";
+import { logCommentLiked, logReplyLiked } from "./feedActionsService";
 
 const MANUAL_COMMENTS_KEY = "cafesport.club_manual_comments_v1";
 const MANUAL_REPLIES_KEY = "cafesport.club_manual_replies_v1";
@@ -914,6 +915,9 @@ export function toggleCommentLike(comment) {
   likes[comment.id] = nextLiked;
   writeStorageObject(key, likes);
   mirrorCommentLike(comment, nextLiked);
+  if (nextLiked) {
+    logCommentLiked(comment);
+  }
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
 }
 
@@ -963,6 +967,12 @@ export function toggleReplyLike(reply) {
   likes[reply.id] = nextLiked;
   writeStorageObject(REPLY_LIKES_KEY, likes);
   mirrorReplyLike(reply, nextLiked);
+  if (nextLiked) {
+    const parentComment = getPreparedComments().find((comment) => (
+      Array.isArray(comment?.replies) && comment.replies.some((item) => item?.id === reply.id)
+    )) || null;
+    logReplyLiked(reply, parentComment);
+  }
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
 }
 

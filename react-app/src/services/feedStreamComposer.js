@@ -1,4 +1,5 @@
 import { getUserById } from "./catalogService";
+import { FEED_ACTION_TYPE } from "./feedActionsService";
 
 const FEED_SCOPE_OBJECT = "object";
 const FEED_MODE_RECENT = "recent";
@@ -27,6 +28,56 @@ const ORIGIN_LABELS = {
   "object-event": "Evenement lie",
   "object-ranking": "Classement lie",
   "object-profile": "Profil lie",
+  "action-watchlist-add": "Ajout watchlist",
+  "action-follow-add": "Objet suivi",
+  "action-like-comment": "Like commentaire",
+  "action-like-reply": "Like reponse",
+  "action-rate-event": "Note event",
+};
+
+const FEED_ACTION_WEIGHTS = {
+  forYou: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.35,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.3,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.28,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.26,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.4,
+  },
+  recent: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.36,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.34,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.32,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.3,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.46,
+  },
+  favorites: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.42,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.4,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.34,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.32,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.5,
+  },
+  activityRecent: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.8,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.8,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.9,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.9,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.85,
+  },
+  activityPopular: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.76,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.76,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.86,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.86,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.84,
+  },
+  object: {
+    [FEED_ACTION_TYPE.WATCHLIST_ADD]: 0.52,
+    [FEED_ACTION_TYPE.FOLLOW_ADD]: 0.5,
+    [FEED_ACTION_TYPE.LIKE_COMMENT]: 0.58,
+    [FEED_ACTION_TYPE.LIKE_REPLY]: 0.56,
+    [FEED_ACTION_TYPE.RATE_EVENT]: 0.62,
+  },
 };
 
 function toTimestamp(value) {
@@ -76,6 +127,146 @@ function createEntityPayload({
   };
 }
 
+function toModeWeightKey(mode = "", scope = "") {
+  const safeMode = String(mode || "").trim().toLowerCase();
+  const safeScope = String(scope || "").trim().toLowerCase();
+  if (safeScope === FEED_SCOPE_OBJECT) return "object";
+  if (safeMode === FEED_MODE_FAVORITES) return "favorites";
+  if (safeMode === FEED_MODE_ACTIVITY_RECENT) return "activityRecent";
+  if (safeMode === FEED_MODE_ACTIVITY_POPULAR) return "activityPopular";
+  if (safeMode === FEED_MODE_RECENT) return "recent";
+  return "forYou";
+}
+
+function resolveActionWeight({ mode = "", scope = "", actionType = "" } = {}) {
+  const key = toModeWeightKey(mode, scope);
+  const modeWeights = FEED_ACTION_WEIGHTS[key] || FEED_ACTION_WEIGHTS.forYou;
+  const safeType = String(actionType || "").trim().toLowerCase();
+  const weight = Number(modeWeights?.[safeType] || 0);
+  return Number.isFinite(weight) && weight > 0 ? weight : 0;
+}
+
+function actionMatchesObjectTarget(action, targetType, targetId) {
+  const safeTargetType = String(targetType || "").trim().toLowerCase();
+  const safeTargetId = String(targetId || "").trim();
+  if (!safeTargetType || !safeTargetId) return true;
+  const actionType = String(action?.actionType || "").trim().toLowerCase();
+  const actionTargetType = String(action?.targetType || "").trim().toLowerCase();
+  const actionTargetId = String(action?.targetId || "").trim();
+
+  if (safeTargetType === "event") {
+    if (actionTargetType === "event" && actionTargetId === safeTargetId) return true;
+    const eventId = String(action?.meta?.eventId || "").trim();
+    if ((actionType === FEED_ACTION_TYPE.LIKE_COMMENT || actionType === FEED_ACTION_TYPE.LIKE_REPLY) && eventId) {
+      return eventId === safeTargetId;
+    }
+    return false;
+  }
+
+  return actionTargetType === safeTargetType && actionTargetId === safeTargetId;
+}
+
+function buildActionEntries({ mode = "", scope = "", request = {}, datasets = {} } = {}) {
+  const feedActions = Array.isArray(datasets.feedActions) ? datasets.feedActions : [];
+  const entries = [];
+
+  feedActions.forEach((action, index) => {
+    const actionType = String(action?.actionType || "").trim().toLowerCase();
+    if (!actionType) return;
+    if (!actionMatchesObjectTarget(action, request?.targetType, request?.targetId)) return;
+    const weight = resolveActionWeight({ mode, scope, actionType });
+    if (!weight) return;
+
+    const timestamp = toStableRecentTimestamp(toTimestamp(action?.updatedAt || action?.createdAt), index);
+    const popularity = actionType === FEED_ACTION_TYPE.RATE_EVENT
+      ? toNumber(action?.meta?.score || 0)
+      : toNumber(action?.meta?.popularity || 55);
+    const weightedScore = resolveModeScore(mode, {
+      popularity,
+      timestamp,
+      rank: index,
+    }) * weight;
+
+    if (actionType === FEED_ACTION_TYPE.LIKE_COMMENT && action?.resolvedComment) {
+      entries.push({
+        id: `action-${action.id}`,
+        type: "comment",
+        subtype: "comment",
+        modeScore: weightedScore,
+        timestamp,
+        originType: "action-like-comment",
+        payload: {
+          comment: action.resolvedComment,
+        },
+      });
+      return;
+    }
+
+    if (actionType === FEED_ACTION_TYPE.LIKE_REPLY && action?.resolvedReply) {
+      entries.push({
+        id: `action-${action.id}`,
+        type: "comment",
+        subtype: "reply",
+        modeScore: weightedScore,
+        timestamp,
+        originType: "action-like-reply",
+        payload: {
+          reply: action.resolvedReply,
+          comment: action.resolvedParentComment || null,
+          eventId: String(action?.meta?.eventId || "").trim(),
+        },
+      });
+      return;
+    }
+
+    if ((actionType === FEED_ACTION_TYPE.WATCHLIST_ADD || actionType === FEED_ACTION_TYPE.RATE_EVENT) && action?.resolvedEvent) {
+      entries.push({
+        id: `action-${action.id}`,
+        type: "card",
+        subtype: "event",
+        modeScore: weightedScore,
+        timestamp,
+        originType: actionType === FEED_ACTION_TYPE.RATE_EVENT ? "action-rate-event" : "action-watchlist-add",
+        payload: {
+          event: action.resolvedEvent,
+        },
+      });
+      return;
+    }
+
+    entries.push({
+      id: `action-${action.id}`,
+      type: "card",
+      subtype: "activity",
+      modeScore: weightedScore,
+      timestamp,
+      originType: actionType === FEED_ACTION_TYPE.FOLLOW_ADD
+        ? "action-follow-add"
+        : (actionType === FEED_ACTION_TYPE.RATE_EVENT
+          ? "action-rate-event"
+          : (actionType === FEED_ACTION_TYPE.LIKE_COMMENT
+            ? "action-like-comment"
+            : (actionType === FEED_ACTION_TYPE.LIKE_REPLY
+              ? "action-like-reply"
+              : "action-watchlist-add"))),
+      payload: {
+        targetType: String(action?.targetType || "").trim(),
+        targetId: String(action?.targetId || "").trim(),
+        entity: createEntityPayload({
+          title: String(action?.displayTitle || "").trim() || "Action",
+          subtitle: String(action?.displaySubtitle || "").trim() || "",
+          path: String(action?.displayPath || "").trim() || "/feed",
+          lines: actionType === FEED_ACTION_TYPE.RATE_EVENT && Number(action?.meta?.score || 0) > 0
+            ? [`Ma note: ${Math.round(Number(action.meta.score || 0))}/100`]
+            : [],
+        }),
+      },
+    });
+  });
+
+  return entries;
+}
+
 function buildForYouEntries(mode, datasets) {
   const commentLimit = mode === FEED_MODE_RECENT ? 20 : 16;
   const eventLimit = mode === FEED_MODE_RECENT ? 10 : 8;
@@ -90,6 +281,12 @@ function buildForYouEntries(mode, datasets) {
   const allActivities = Array.isArray(datasets.allActivities) ? datasets.allActivities : [];
   const followedListIds = datasets.followedListIds instanceof Set ? datasets.followedListIds : new Set();
   const entries = [];
+  const actionEntries = buildActionEntries({
+    mode,
+    scope: "my",
+    request: { scope: "my" },
+    datasets,
+  });
 
   myTopComments.slice(0, commentLimit).forEach((comment, index) => {
     const timestamp = toStableRecentTimestamp(toTimestamp(comment?.createdAt), index);
@@ -208,149 +405,27 @@ function buildForYouEntries(mode, datasets) {
     });
   });
 
-  return entries;
+  return [...entries, ...actionEntries];
 }
 
 function buildFavoritesEntries(mode, datasets) {
-  const likedEntries = Array.isArray(datasets.likedEntries) ? datasets.likedEntries : [];
-  const watchlistEvents = Array.isArray(datasets.watchlistEvents) ? datasets.watchlistEvents : [];
-  const followedTargets = Array.isArray(datasets.followedTargets) ? datasets.followedTargets : [];
   const entries = [];
-
-  likedEntries.forEach((entry, index) => {
-    const item = entry?.item || {};
-    const timestamp = toStableRecentTimestamp(toTimestamp(item?.createdAt), index);
-    const isReply = entry?.kind === "reply";
-    entries.push({
-      id: `favorite-liked-${entry.id}`,
-      type: "comment",
-      subtype: isReply ? "reply" : "comment",
-      modeScore: resolveModeScore(mode, {
-        popularity: toNumber(item?.totalLikes || item?.likes),
-        timestamp,
-        rank: index,
-      }),
-      timestamp,
-      originType: isReply ? "favorite-liked-reply" : "favorite-liked-comment",
-      payload: isReply
-        ? {
-          reply: item,
-          comment: entry?.parentComment || null,
-          eventId: entry?.eventId || "",
-        }
-        : {
-          comment: item,
-        },
-    });
+  const actionEntries = buildActionEntries({
+    mode,
+    scope: "my",
+    request: { scope: "my" },
+    datasets,
   });
-
-  watchlistEvents.forEach((event, index) => {
-    const timestamp = toStableRecentTimestamp(toTimestamp(event?.dateISO || event?.createdAt), index);
-    entries.push({
-      id: `favorite-watchlist-${event.id}`,
-      type: "card",
-      subtype: "event",
-      modeScore: resolveModeScore(mode, {
-        popularity: toNumber(event?.communityScore),
-        timestamp,
-        rank: index,
-      }),
-      timestamp,
-      originType: "favorite-watchlist-event",
-      payload: {
-        event,
-      },
-    });
-  });
-
-  followedTargets.forEach((target, index) => {
-    const timestamp = toStableRecentTimestamp(toNumber(target?.timestamp), index);
-    entries.push({
-      id: `favorite-followed-${target.id}`,
-      type: "card",
-      subtype: "activity",
-      modeScore: resolveModeScore(mode, {
-        popularity: toNumber(target?.popularity),
-        timestamp,
-        rank: index,
-      }),
-      timestamp,
-      originType: "favorite-followed-target",
-      payload: {
-        targetType: String(target?.targetType || "").trim(),
-        targetId: String(target?.targetId || "").trim(),
-        entity: createEntityPayload({
-          title: target?.title || "Objet",
-          subtitle: target?.subtitle || "",
-          path: target?.path || "/feed",
-          lines: target?.popularity ? [`Score ${Math.round(toNumber(target.popularity))}`] : [],
-        }),
-      },
-    });
-  });
-
-  return entries;
+  return [...entries, ...actionEntries];
 }
 
 function buildActivityEntries(mode, datasets) {
-  const likedEntries = Array.isArray(datasets.likedEntries) ? datasets.likedEntries : [];
-  const activityItems = Array.isArray(datasets.activityItems) ? datasets.activityItems : [];
-  const entries = [];
-
-  likedEntries.slice(0, 14).forEach((entry, index) => {
-    const item = entry?.item || {};
-    const timestamp = toStableRecentTimestamp(toTimestamp(item?.createdAt), index);
-    const isReply = entry?.kind === "reply";
-    entries.push({
-      id: `activity-liked-${entry.id}`,
-      type: "comment",
-      subtype: isReply ? "reply" : "comment",
-      modeScore: resolveModeScore(mode, {
-        popularity: toNumber(item?.totalLikes || item?.likes),
-        timestamp,
-        rank: index,
-      }),
-      timestamp,
-      originType: isReply ? "activity-liked-reply" : "activity-liked-comment",
-      payload: isReply
-        ? {
-          reply: item,
-          comment: entry?.parentComment || null,
-          eventId: entry?.eventId || "",
-        }
-        : {
-          comment: item,
-        },
-    });
+  return buildActionEntries({
+    mode,
+    scope: "my",
+    request: { scope: "my" },
+    datasets,
   });
-
-  activityItems.slice(0, 24).forEach((item, index) => {
-    const timestamp = toStableRecentTimestamp(toNumber(item?.timestamp), index);
-    entries.push({
-      id: `activity-card-${item.id}`,
-      type: "card",
-      subtype: "activity",
-      modeScore: resolveModeScore(mode, {
-        popularity: toNumber(item?.popularity),
-        timestamp,
-        rank: index,
-      }),
-      timestamp,
-      originType: "activity-card",
-      payload: {
-        targetType: String(item?.targetType || "").trim(),
-        targetId: String(item?.targetId || "").trim(),
-        entity: createEntityPayload({
-          title: item?.kind || "Activite",
-          subtitle: item?.label || "",
-          path: item?.path || "/feed",
-          lines: [`Score ${Math.round(toNumber(item?.popularity))}`],
-        }),
-      },
-    });
-  });
-
-  return entries;
 }
 
 function buildObjectEntries(mode, datasets, contentProfile = FEED_CONTENT_PROFILE_MIXED) {
@@ -361,6 +436,16 @@ function buildObjectEntries(mode, datasets, contentProfile = FEED_CONTENT_PROFIL
   const objectUsers = Array.isArray(datasets.objectUsers) ? datasets.objectUsers : [];
   const commentsOnly = String(contentProfile || "").trim().toLowerCase() === FEED_CONTENT_PROFILE_COMMENTS_ONLY;
   const entries = [];
+  const actionEntries = buildActionEntries({
+    mode,
+    scope: FEED_SCOPE_OBJECT,
+    request: {
+      scope: FEED_SCOPE_OBJECT,
+      targetType: datasets?.objectMeta?.targetType || datasets?.request?.targetType || "",
+      targetId: datasets?.objectMeta?.targetId || datasets?.request?.targetId || "",
+    },
+    datasets,
+  });
 
   if (!commentsOnly && objectMeta) {
     entries.push({
@@ -400,7 +485,7 @@ function buildObjectEntries(mode, datasets, contentProfile = FEED_CONTENT_PROFIL
     });
   });
 
-  if (commentsOnly) return entries;
+  if (commentsOnly) return [...entries, ...actionEntries];
 
   objectEvents.slice(0, 12).forEach((event, index) => {
     const timestamp = toStableRecentTimestamp(toTimestamp(event?.dateISO || event?.createdAt), index);
@@ -465,7 +550,7 @@ function buildObjectEntries(mode, datasets, contentProfile = FEED_CONTENT_PROFIL
     });
   });
 
-  return entries;
+  return [...entries, ...actionEntries];
 }
 
 export function buildRawFeedEntries(context = {}) {
@@ -476,7 +561,10 @@ export function buildRawFeedEntries(context = {}) {
   const contentProfile = String(request.contentProfile || FEED_CONTENT_PROFILE_MIXED).trim().toLowerCase();
 
   if (scope === FEED_SCOPE_OBJECT) {
-    return buildObjectEntries(mode, datasets, contentProfile);
+    return buildObjectEntries(mode, {
+      ...datasets,
+      request,
+    }, contentProfile);
   }
 
   if (mode === FEED_MODE_FAVORITES) {

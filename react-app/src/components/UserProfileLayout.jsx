@@ -731,6 +731,64 @@ function UserProfileLayout({
               </button>
             ) : null}
           </div>
+
+          <ProfileTopEventsSection
+            title={copy.topEventsTitle}
+            events={visibleTopEvents}
+            isOwnProfile={isOwnProfile}
+            isEditing={isEditingTopEvents}
+            topEventsQuery={topEventsQuery}
+            topEventsNotice={topEventsNotice}
+            searchResults={topEventSearchResults}
+            draggingTopEventId={draggingTopEventId}
+            dragOverTopEventId={dragOverTopEventId}
+            emptyDisplayText="Aucun top event disponible pour ce profil."
+            onSave={handleSaveTopEvents}
+            onCancel={handleCancelTopEventsEdit}
+            onStartEdit={openTopEventsEditor}
+            onQueryChange={(nextValue) => {
+              setTopEventsQuery(nextValue);
+              if (topEventsNotice) setTopEventsNotice("");
+            }}
+            onQueryKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              if (!topEventSearchResults.length) return;
+              event.preventDefault();
+              handleAddTopEvent(topEventSearchResults[0]);
+            }}
+            onAddResult={handleAddTopEvent}
+            onRemove={(eventItem) => handleRemoveTopEvent(eventItem?.id)}
+            onDragStart={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents) return;
+              const safeId = String(eventItem?.id || "").trim();
+              if (!safeId) return;
+              setDraggingTopEventId(safeId);
+              setDragOverTopEventId(safeId);
+              dragEvent.dataTransfer.effectAllowed = "move";
+              dragEvent.dataTransfer.setData("text/plain", safeId);
+            }}
+            onDragOver={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents || !draggingTopEventId) return;
+              dragEvent.preventDefault();
+              const safeId = String(eventItem?.id || "").trim();
+              if (!safeId) return;
+              dragEvent.dataTransfer.dropEffect = "move";
+              if (dragOverTopEventId !== safeId) setDragOverTopEventId(safeId);
+            }}
+            onDrop={(dragEvent, eventItem) => {
+              if (!isEditingTopEvents) return;
+              dragEvent.preventDefault();
+              const droppedId = String(dragEvent.dataTransfer.getData("text/plain") || draggingTopEventId).trim();
+              const targetId = String(eventItem?.id || "").trim();
+              handleMoveTopEvent(droppedId, targetId);
+              setDraggingTopEventId("");
+              setDragOverTopEventId("");
+            }}
+            onDragEnd={() => {
+              setDraggingTopEventId("");
+              setDragOverTopEventId("");
+            }}
+          />
         </div>
 
         <div className="profile-secondary-column">
@@ -843,6 +901,24 @@ function UserProfileLayout({
                     ) : (
                       <span>{profileDetails.bioLong || "Aucune bio detaillee."}</span>
                     )}
+                  </div>
+                </div>
+                {isOwnProfile ? (
+                  <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
+                    <strong>Amis</strong>
+                    <div className="profile-info-value">
+                      <a className="profile-info-link" href="#profile-friends-section">
+                        Voir le detail ({friends.length})
+                      </a>
+                    </div>
+                  </div>
+                ) : null}
+                <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
+                  <strong>Followers</strong>
+                  <div className="profile-info-value">
+                    <a className="profile-info-link" href="#profile-followers-section">
+                      Voir le detail ({followerCount})
+                    </a>
                   </div>
                 </div>
                 <div className={`profile-info-row ${isEditingDetails ? "is-editing" : ""}`.trim()}>
@@ -1010,68 +1086,11 @@ function UserProfileLayout({
             </article>
           </section>
 
-          <ProfileTopEventsSection
-            title={copy.topEventsTitle}
-            events={visibleTopEvents}
-            isOwnProfile={isOwnProfile}
-            isEditing={isEditingTopEvents}
-            topEventsQuery={topEventsQuery}
-            topEventsNotice={topEventsNotice}
-            searchResults={topEventSearchResults}
-            draggingTopEventId={draggingTopEventId}
-            dragOverTopEventId={dragOverTopEventId}
-            emptyDisplayText="Aucun top event disponible pour ce profil."
-            onSave={handleSaveTopEvents}
-            onCancel={handleCancelTopEventsEdit}
-            onStartEdit={openTopEventsEditor}
-            onQueryChange={(nextValue) => {
-              setTopEventsQuery(nextValue);
-              if (topEventsNotice) setTopEventsNotice("");
-            }}
-            onQueryKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              if (!topEventSearchResults.length) return;
-              event.preventDefault();
-              handleAddTopEvent(topEventSearchResults[0]);
-            }}
-            onAddResult={handleAddTopEvent}
-            onRemove={(eventItem) => handleRemoveTopEvent(eventItem?.id)}
-            onDragStart={(dragEvent, eventItem) => {
-              if (!isEditingTopEvents) return;
-              const safeId = String(eventItem?.id || "").trim();
-              if (!safeId) return;
-              setDraggingTopEventId(safeId);
-              setDragOverTopEventId(safeId);
-              dragEvent.dataTransfer.effectAllowed = "move";
-              dragEvent.dataTransfer.setData("text/plain", safeId);
-            }}
-            onDragOver={(dragEvent, eventItem) => {
-              if (!isEditingTopEvents || !draggingTopEventId) return;
-              dragEvent.preventDefault();
-              const safeId = String(eventItem?.id || "").trim();
-              if (!safeId) return;
-              dragEvent.dataTransfer.dropEffect = "move";
-              if (dragOverTopEventId !== safeId) setDragOverTopEventId(safeId);
-            }}
-            onDrop={(dragEvent, eventItem) => {
-              if (!isEditingTopEvents) return;
-              dragEvent.preventDefault();
-              const droppedId = String(dragEvent.dataTransfer.getData("text/plain") || draggingTopEventId).trim();
-              const targetId = String(eventItem?.id || "").trim();
-              handleMoveTopEvent(droppedId, targetId);
-              setDraggingTopEventId("");
-              setDragOverTopEventId("");
-            }}
-            onDragEnd={() => {
-              setDraggingTopEventId("");
-              setDragOverTopEventId("");
-            }}
-          />
         </div>
       </section>
 
       {isOwnProfile ? (
-        <section className="related-section">
+        <section id="profile-friends-section" className="related-section">
           <div className="group-title">
             <h2>{copy.friendsTitle}</h2>
           </div>
@@ -1101,7 +1120,7 @@ function UserProfileLayout({
         </section>
       ) : null}
 
-      <section className="related-section">
+      <section id="profile-followers-section" className="related-section">
         <div className="group-title">
           <h2>{copy.followersTitle}</h2>
         </div>

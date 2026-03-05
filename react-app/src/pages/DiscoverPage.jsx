@@ -3,10 +3,12 @@ import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import SportFilters from "../components/SportFilters";
 import {
+  EVENT_SORT,
   filterEvents,
   getAllEvents,
   getSports,
   groupEventsBySport,
+  sortEvents,
 } from "../services/eventsService";
 
 function resolveForcedSport(sports, forcedSport) {
@@ -40,6 +42,13 @@ function DiscoverPage({
   }, [activeSport, events, query]);
 
   const grouped = useMemo(() => groupEventsBySport(filtered), [filtered]);
+  const legendaryEvents = useMemo(
+    () => sortEvents(
+      filtered.filter((event) => Boolean(event?.legendary)),
+      EVENT_SORT.SCORE_DESC,
+    ),
+    [filtered],
+  );
 
   return (
     <section className="discover-page">
@@ -59,6 +68,33 @@ function DiscoverPage({
       ) : null}
 
       <p className="results-count">{filtered.length} evenements affiches</p>
+
+      {legendaryEvents.length ? (
+        <section className="discover-sport-group">
+          <h2 className="discover-sport-heading">Evenements legendaires</h2>
+          <HorizontalCardRail
+            label="Evenements legendaires"
+            itemType="event"
+            mode="carousel"
+            className="discover-carousel-row"
+            visibleDesktop={3.6}
+            visibleTablet={2.3}
+            visibleMobile={1.15}
+            scrollStepItems={1}
+            showArrows
+          >
+            {legendaryEvents.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                size="medium"
+                isInWatchlist={watchlistIds.includes(event.id)}
+                onToggleWatchlist={onToggleWatchlist}
+              />
+            ))}
+          </HorizontalCardRail>
+        </section>
+      ) : null}
 
       {filtered.length === 0 ? (
         <div className="simple-page">

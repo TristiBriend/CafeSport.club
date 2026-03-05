@@ -25,7 +25,10 @@ function toArray(value) {
 
 function buildLocalSnapshot() {
   return {
-    events: [...localEvents],
+    events: localEvents.map((event) => ({
+      ...event,
+      legendary: Boolean(event?.legendary),
+    })),
     athletes: [...localAthletes],
     teams: [...localTeams],
     leagues: localLeagues.map((row) => ({
@@ -59,6 +62,7 @@ function sanitizeCatalogRows(rows = []) {
 function normalizeCloudEvents(rows = []) {
   return sanitizeCatalogRows(rows).map((row) => ({
     ...row,
+    legendary: Boolean(row?.legendary),
     teamIds: toArray(row?.teamIds).map((id) => normalizeId(id)).filter(Boolean),
     athleteIds: toArray(row?.athleteIds).map((id) => normalizeId(id)).filter(Boolean),
   }));
@@ -289,6 +293,29 @@ export function upsertCatalogListInSnapshot(listDoc) {
   } else {
     next.lists.unshift(normalized);
   }
+
+  setSnapshot(next);
+  return true;
+}
+
+export function upsertCatalogEventInSnapshot(eventDoc) {
+  const safeId = normalizeId(eventDoc?.id);
+  if (!safeId) return false;
+
+  const next = {
+    ...snapshot,
+    events: [...snapshot.events],
+  };
+
+  const existingIndex = next.events.findIndex((event) => normalizeId(event?.id) === safeId);
+  if (existingIndex < 0) return false;
+
+  next.events.splice(existingIndex, 1, {
+    ...next.events[existingIndex],
+    ...eventDoc,
+    id: safeId,
+    legendary: Boolean(eventDoc?.legendary),
+  });
 
   setSnapshot(next);
   return true;

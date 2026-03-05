@@ -6,6 +6,7 @@ import {
   notifyDomainDirty,
   SOCIAL_SYNC_DOMAIN,
 } from "./socialSyncService";
+import { logEventRated } from "./feedActionsService";
 
 const RATINGS_KEY = "cafesport.club_ratings";
 let hasSeededSession = false;
@@ -110,6 +111,7 @@ export function setEventRating(eventId, score) {
   map[safeId] = nextScore;
   writeStorageObject(RATINGS_KEY, map);
   mirrorRatingToCloud(safeId, nextScore);
+  logEventRated(safeId, nextScore);
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.RATINGS);
   return nextScore;
 }

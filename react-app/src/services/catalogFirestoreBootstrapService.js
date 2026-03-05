@@ -98,6 +98,7 @@ function buildEventsRows() {
         title: String(event?.title || "").trim(),
         sport: String(event?.sport || "").trim(),
         league: String(event?.league || "").trim(),
+        legendary: Boolean(event?.legendary),
         competitionId: normalizeId(event?.competitionId),
         seasonId: normalizeId(event?.seasonId),
         seasonKey: String(event?.seasonKey || "").trim(),

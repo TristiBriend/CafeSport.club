@@ -5,6 +5,7 @@ import {
   notifyDomainDirty,
   SOCIAL_SYNC_DOMAIN,
 } from "./socialSyncService";
+import { logFollowAdded } from "./feedActionsService";
 
 const USER_FOLLOWS_KEY = "cafesport.club_user_follows";
 const TARGET_FOLLOWS_KEY = "cafesport.club_target_follows_v1";
@@ -72,6 +73,9 @@ export function setUserFollowed(userId, isFollowed) {
   map[userId] = Boolean(isFollowed);
   writeStorageObject(USER_FOLLOWS_KEY, map);
   mirrorFollowToCloud(FOLLOW_TARGET.USER, userId, map[userId]);
+  if (map[userId]) {
+    logFollowAdded(FOLLOW_TARGET.USER, userId);
+  }
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.FOLLOWS);
   return map[userId];
 }
@@ -122,6 +126,9 @@ export function setTargetFollowed(targetType, targetId, isFollowed) {
   map[key] = Boolean(isFollowed);
   writeStorageObject(TARGET_FOLLOWS_KEY, map);
   mirrorFollowToCloud(safeType, safeId, map[key]);
+  if (map[key]) {
+    logFollowAdded(safeType, safeId);
+  }
   notifyDomainDirty(SOCIAL_SYNC_DOMAIN.FOLLOWS);
   return map[key];
 }

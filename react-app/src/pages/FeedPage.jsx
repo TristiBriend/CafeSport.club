@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
@@ -36,6 +36,7 @@ import {
   updateCommentReply,
 } from "../services/commentsService";
 import { getAllEvents, getEventById } from "../services/eventsService";
+import { getFeedActions, FEED_ACTION_TYPE } from "../services/feedActionsService";
 import { matchesUserIdentity } from "../services/profileService";
 import {
   buildRawFeedEntries,
@@ -410,11 +411,43 @@ function getFeedEmptyStateText(request) {
   return "Aucun contenu a afficher pour le moment.";
 }
 
+function buildCommentsIndexes(comments = []) {
+  const commentById = new Map();
+  const replyById = new Map();
+  const parentCommentByReplyId = new Map();
+
+  (Array.isArray(comments) ? comments : []).forEach((comment) => {
+    const safeCommentId = String(comment?.id || "").trim();
+    if (safeCommentId) {
+      commentById.set(safeCommentId, comment);
+    }
+    if (!Array.isArray(comment?.replies)) return;
+    comment.replies.forEach((reply) => {
+      const safeReplyId = String(reply?.id || "").trim();
+      if (!safeReplyId) return;
+      replyById.set(safeReplyId, reply);
+      if (safeCommentId) {
+        parentCommentByReplyId.set(safeReplyId, comment);
+      }
+    });
+  });
+
+  return {
+    commentById,
+    replyById,
+    parentCommentByReplyId,
+  };
+}
+
 function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { revisionByDomain } = useSocialSync();
   const tabsRevision = Number(revisionByDomain?.tabs || 0);
+  const followsRevision = Number(revisionByDomain?.follows || 0);
+  const ratingsRevision = Number(revisionByDomain?.ratings || 0);
+  const commentsRevision = Number(revisionByDomain?.comments || 0);
+  const feedActionsRevision = Number(revisionByDomain?.feedActions || 0);
   const [optionalTabs, setOptionalTabs] = useState(() => loadOptionalFeedTabs());
   const [, setCommentsVersion] = useState(0);
   const request = normalizeFeedRequest(searchParams);
@@ -458,12 +491,22 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     );
   }
 
-  const allComments = getAllComments();
+  const allComments = useMemo(
+    () => getAllComments(),
+    [commentsRevision, followsRevision, ratingsRevision],
+  );
+  const { commentById, replyById, parentCommentByReplyId } = useMemo(
+    () => buildCommentsIndexes(allComments),
+    [allComments],
+  );
 
   const watchlistSet = new Set(watchlistIds);
   const watchlistEvents = getAllEvents().filter((event) => watchlistSet.has(event.id));
   const likedEntries = getLikedComments({ limit: 28 });
-  const followedTargetEntries = getAllFollowedTargets();
+  const followedTargetEntries = useMemo(
+    () => getAllFollowedTargets(),
+    [followsRevision],
+  );
   const followedUserIds = new Set(
     followedTargetEntries
       .filter((entry) => entry.targetType === FOLLOW_TARGET.USER)
@@ -641,6 +684,67 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       return Number(b.timestamp || 0) - Number(a.timestamp || 0);
     });
 
+  const feedActions = useMemo(
+    () => getFeedActions({ limit: 180 }).map((action) => {
+      const safeTargetId = String(action?.targetId || "").trim();
+      const safeTargetType = String(action?.targetType || "").trim().toLowerCase();
+      const eventId = String(action?.meta?.eventId || "").trim();
+      const score = Number(action?.meta?.score || 0);
+      const resolvedEvent = safeTargetType === "event" ? getEventById(safeTargetId) : null;
+      const resolvedComment = action.actionType === FEED_ACTION_TYPE.LIKE_COMMENT
+        ? (commentById.get(safeTargetId) || null)
+        : null;
+      const resolvedReply = action.actionType === FEED_ACTION_TYPE.LIKE_REPLY
+        ? (replyById.get(safeTargetId) || null)
+        : null;
+      const resolvedParentComment = resolvedReply
+        ? (parentCommentByReplyId.get(String(resolvedReply?.id || "").trim()) || null)
+        : null;
+
+      let displayTitle = "";
+      let displaySubtitle = "";
+      let displayPath = "/feed";
+
+      if (action.actionType === FEED_ACTION_TYPE.WATCHLIST_ADD) {
+        displayTitle = resolvedEvent?.title || "Evenement ajoute en watchlist";
+        displaySubtitle = "Ajout watchlist";
+        displayPath = resolvedEvent?.id ? `/event/${resolvedEvent.id}` : "/watchlist";
+      } else if (action.actionType === FEED_ACTION_TYPE.RATE_EVENT) {
+        displayTitle = resolvedEvent?.title || "Evenement note";
+        displaySubtitle = Number.isFinite(score) && score > 0 ? `Note ${Math.round(score)}/100` : "Evenement note";
+        displayPath = resolvedEvent?.id ? `/event/${resolvedEvent.id}` : "/feed";
+      } else if (action.actionType === FEED_ACTION_TYPE.FOLLOW_ADD) {
+        const followedPreview = buildFollowedTargetPreview({
+          targetType: safeTargetType,
+          targetId: safeTargetId,
+        }, allComments);
+        displayTitle = followedPreview?.title || "Objet suivi";
+        displaySubtitle = followedPreview?.subtitle || "Suivi";
+        displayPath = followedPreview?.path || "/feed";
+      } else if (action.actionType === FEED_ACTION_TYPE.LIKE_COMMENT) {
+        displayTitle = resolvedComment?.author || "Commentaire like";
+        displaySubtitle = "Like commentaire";
+        displayPath = eventId ? `/event/${eventId}` : "/feed";
+      } else if (action.actionType === FEED_ACTION_TYPE.LIKE_REPLY) {
+        displayTitle = resolvedReply?.author || "Reponse likee";
+        displaySubtitle = "Like reponse";
+        displayPath = eventId ? `/event/${eventId}` : "/feed";
+      }
+
+      return {
+        ...action,
+        resolvedEvent,
+        resolvedComment,
+        resolvedReply,
+        resolvedParentComment,
+        displayTitle,
+        displaySubtitle,
+        displayPath,
+      };
+    }),
+    [allComments, commentById, parentCommentByReplyId, replyById, followsRevision, ratingsRevision, commentsRevision, feedActionsRevision],
+  );
+
   const streamRawEntries = buildRawFeedEntries({
     request,
     datasets: {
@@ -653,6 +757,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       watchlistEvents,
       followedTargets,
       activityItems,
+      feedActions,
       objectMeta,
       objectComments,
       objectEvents,

@@ -44,6 +44,7 @@ import {
   composeBalancedFeedStream,
   groupCardRows,
 } from "../services/feedStreamComposer";
+import { FEED_ACTION_TYPE, getFeedActions } from "../services/feedActionsService";
 import {
   FEED_OPTIONAL_TABS_MAX,
   getOptionalFeedTabForTarget,
@@ -260,6 +261,9 @@ function ObjectFeedScopePanel({
   const { revisionByDomain } = useSocialSync();
   const commentsRevision = Number(revisionByDomain?.comments || 0);
   const tabsRevision = Number(revisionByDomain?.tabs || 0);
+  const followsRevision = Number(revisionByDomain?.follows || 0);
+  const ratingsRevision = Number(revisionByDomain?.ratings || 0);
+  const feedActionsRevision = Number(revisionByDomain?.feedActions || 0);
   const activeMode = isControlledMode ? mode : internalMode;
   const watchlistSet = useMemo(() => new Set(watchlistIds), [watchlistIds]);
   const allComments = useMemo(
@@ -338,6 +342,58 @@ function ObjectFeedScopePanel({
       });
   }, [activeMode, hasTarget, isCommentsOnlyProfile, objectComments, safeTargetId, safeTargetType]);
 
+  const feedActions = useMemo(() => {
+    if (!hasTarget) return [];
+    const commentById = new Map();
+    const replyById = new Map();
+    const parentByReplyId = new Map();
+
+    objectComments.forEach((comment) => {
+      const safeCommentId = String(comment?.id || "").trim();
+      if (safeCommentId) commentById.set(safeCommentId, comment);
+      if (!Array.isArray(comment?.replies)) return;
+      comment.replies.forEach((reply) => {
+        const safeReplyId = String(reply?.id || "").trim();
+        if (!safeReplyId) return;
+        replyById.set(safeReplyId, reply);
+        if (safeCommentId) parentByReplyId.set(safeReplyId, comment);
+      });
+    });
+
+    return getFeedActions({ limit: 140 }).map((action) => {
+      const safeTargetId = String(action?.targetId || "").trim();
+      const safeTargetType = String(action?.targetType || "").trim().toLowerCase();
+      const eventId = String(action?.meta?.eventId || "").trim();
+      const resolvedEvent = safeTargetType === "event"
+        ? (objectEvents.find((event) => String(event?.id || "").trim() === safeTargetId) || null)
+        : null;
+      const resolvedComment = action.actionType === FEED_ACTION_TYPE.LIKE_COMMENT
+        ? (commentById.get(safeTargetId) || null)
+        : null;
+      const resolvedReply = action.actionType === FEED_ACTION_TYPE.LIKE_REPLY
+        ? (replyById.get(safeTargetId) || null)
+        : null;
+      const resolvedParentComment = resolvedReply
+        ? (parentByReplyId.get(String(resolvedReply?.id || "").trim()) || null)
+        : null;
+
+      return {
+        ...action,
+        resolvedEvent,
+        resolvedComment,
+        resolvedReply,
+        resolvedParentComment,
+        displayTitle: action.actionType === FEED_ACTION_TYPE.RATE_EVENT
+          ? (resolvedEvent?.title || "Evenement note")
+          : "Action",
+        displaySubtitle: action.actionType === FEED_ACTION_TYPE.LIKE_COMMENT
+          ? "Like commentaire"
+          : (action.actionType === FEED_ACTION_TYPE.LIKE_REPLY ? "Like reponse" : ""),
+        displayPath: eventId ? `/event/${eventId}` : (resolvedEvent?.id ? `/event/${resolvedEvent.id}` : "/feed"),
+      };
+    });
+  }, [commentsRevision, followsRevision, hasTarget, objectComments, objectEvents, ratingsRevision, safeTargetId, safeTargetType, feedActionsRevision]);
+
   const streamRawEntries = useMemo(() => (
     buildRawFeedEntries({
       request: {
@@ -353,9 +409,10 @@ function ObjectFeedScopePanel({
         objectEvents,
         objectLists,
         objectUsers,
+        feedActions,
       },
     })
-  ), [activeMode, objectComments, objectEvents, objectLists, objectMeta, objectUsers, resolvedContentProfile, safeTargetId, safeTargetType]);
+  ), [activeMode, feedActions, objectComments, objectEvents, objectLists, objectMeta, objectUsers, resolvedContentProfile, safeTargetId, safeTargetType]);
 
   const streamEntries = useMemo(
     () => groupCardRows(composeBalancedFeedStream(streamRawEntries, { lookahead: 6 }), 3),
