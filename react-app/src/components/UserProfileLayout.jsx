@@ -4,6 +4,7 @@ import CommentCard from "./CommentCard";
 import EventCard from "./EventCard";
 import HorizontalCardRail from "./HorizontalCardRail";
 import ProfileTopEventsSection from "./ProfileTopEventsSection";
+import ReviewListPanel from "./ReviewListPanel";
 import UserCard from "./UserCard";
 import { getAthleteById, getTeamById, getUserById, getUsers } from "../services/catalogService";
 import {
@@ -35,7 +36,6 @@ import {
   getProfileIdentityOverride,
   isHandleAvailable,
   migrateProfileOverridesToUserId,
-  matchesUserIdentity,
   normalizeDisplayName,
   normalizeHandle,
   setCurrentProfileUserId,
@@ -43,6 +43,10 @@ import {
   setProfileIdentityOverride,
   setProfileDetailsOverride,
 } from "../services/profileService";
+import {
+  getFollowedUsersReviews,
+  getUserReviews,
+} from "../services/profileReviewsService";
 import { useSocialSync } from "../contexts/SocialSyncContext";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -63,19 +67,6 @@ const RADAR_COLORS = [
   "#447fc8",
   "#5b63cc",
 ];
-
-function toTimestamp(value) {
-  const parsed = Date.parse(String(value || ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function resolveAuthoredComments(allComments, user) {
-  const safeUserId = String(user?.id || "").trim();
-  if (!safeUserId && !String(user?.name || "").trim()) return [];
-  return allComments
-    .filter((comment) => matchesUserIdentity(comment, user))
-    .sort((left, right) => toTimestamp(right?.createdAt) - toTimestamp(left?.createdAt));
-}
 
 function getSharedSportCount(user, profileUser) {
   const left = new Set(Array.isArray(user?.favoriteSports) ? user.favoriteSports : []);
@@ -118,7 +109,7 @@ function buildProfileCopy({ isOwnProfile, userName }) {
       followersTitle: "Mes followers",
       likesTitle: "Mes likes",
       watchlistTitle: "Ma watchlist",
-      commentsTitle: "Mes commentaires",
+      commentsTitle: "Notes & critiques",
       ideasTitle: "Autres idees",
     };
   }
@@ -126,7 +117,7 @@ function buildProfileCopy({ isOwnProfile, userName }) {
     topEventsTitle: `Top 5 events de ${userName}`,
     infoTitle: `Infos perso de ${userName}`,
     followersTitle: `Followers de ${userName}`,
-    commentsTitle: `Commentaires de ${userName}`,
+    commentsTitle: `Notes & critiques de ${userName}`,
   };
 }
 
@@ -247,6 +238,7 @@ function UserProfileLayout({
   const [topEventsNotice, setTopEventsNotice] = useState("");
   const [draggingTopEventId, setDraggingTopEventId] = useState("");
   const [dragOverTopEventId, setDragOverTopEventId] = useState("");
+  const [activeReviewTab, setActiveReviewTab] = useState("mine");
   const ageInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -285,8 +277,8 @@ function UserProfileLayout({
     () => getAllComments(),
     [commentsRevision, commentsVersion],
   );
-  const authoredComments = useMemo(
-    () => resolveAuthoredComments(allComments, profileUser),
+  const myReviews = useMemo(
+    () => getUserReviews(profileUser, allComments),
     [allComments, profileUser],
   );
   const likedEntries = useMemo(
@@ -328,6 +320,10 @@ function UserProfileLayout({
       })
       .slice(0, 8);
   }, [allUsers, profileUser]);
+  const friendsReviews = useMemo(
+    () => (isOwnProfile ? getFollowedUsersReviews({ allComments, followedUsers: friends }) : []),
+    [allComments, friends, isOwnProfile],
+  );
   const topEventsData = useMemo(
     () => (profileUser ? getTop5EventsForUser(profileUser.id, 5) : { events: [], rankingList: null }),
     [commentsRevision, commentsVersion, profileUser],
@@ -704,7 +700,7 @@ function UserProfileLayout({
   }
 
   return (
-    <section className={`profile-page profile-page-shell ${isOwnProfile ? "profile-mode-owner" : "profile-mode-visitor"}`.trim()}>
+      <section className={`profile-page profile-page-shell ${isOwnProfile ? "profile-mode-owner" : "profile-mode-visitor"}`.trim()}>
       <section className="profile-top-grid">
         <div className="profile-primary-column">
           {isUploadingAvatar ? <p className="event-meta">Upload de la photo en cours...</p> : null}
@@ -1229,30 +1225,47 @@ function UserProfileLayout({
         </section>
       ) : null}
 
-      <section className="related-section">
-        <div className="group-title">
-          <h2>{copy.commentsTitle}</h2>
-        </div>
-        {authoredComments.length ? (
-          <div className="profile-comments-list">
-            {authoredComments.slice(0, 20).map((comment) => (
-              <CommentCard
-                key={comment.id}
-                comment={comment}
-                onToggleLike={handleToggleLike}
-                onCreateReply={handleCreateReply}
-                onToggleReplyLike={handleToggleReplyLike}
-                onDeleteComment={handleDeleteCommentEntry}
-                onDeleteReply={handleDeleteReplyEntry}
-              />
-            ))}
-          </div>
-        ) : (
-          <article className="entity-card">
-            <p className="event-meta">Aucun commentaire publie pour l instant.</p>
-          </article>
-        )}
-      </section>
+      <ReviewListPanel
+        title={copy.commentsTitle}
+        comments={isOwnProfile && activeReviewTab === "friends" ? friendsReviews : myReviews}
+        maxItems={20}
+        emptyMessage={
+          isOwnProfile && activeReviewTab === "friends"
+            ? (friends.length
+              ? "Aucune critique publiee par tes amis pour le moment."
+              : "Tu ne suis encore aucun membre.")
+            : "Aucune critique publiee pour l instant."
+        }
+        headerActions={
+          isOwnProfile ? (
+            <div className="profile-reviews-tabs" role="tablist" aria-label="Filtres critiques profil">
+              <button
+                type="button"
+                className={`filter-btn ${activeReviewTab === "mine" ? "is-active" : ""}`.trim()}
+                role="tab"
+                aria-selected={activeReviewTab === "mine"}
+                onClick={() => setActiveReviewTab("mine")}
+              >
+                Mes critiques
+              </button>
+              <button
+                type="button"
+                className={`filter-btn ${activeReviewTab === "friends" ? "is-active" : ""}`.trim()}
+                role="tab"
+                aria-selected={activeReviewTab === "friends"}
+                onClick={() => setActiveReviewTab("friends")}
+              >
+                Mes amis
+              </button>
+            </div>
+          ) : null
+        }
+        onToggleLike={handleToggleLike}
+        onCreateReply={handleCreateReply}
+        onToggleReplyLike={handleToggleReplyLike}
+        onDeleteComment={handleDeleteCommentEntry}
+        onDeleteReply={handleDeleteReplyEntry}
+      />
 
       {isOwnProfile ? (
         <section className="related-section">

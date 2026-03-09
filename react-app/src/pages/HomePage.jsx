@@ -4,6 +4,7 @@ import CommentCard from "../components/CommentCard";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import RankingCard from "../components/RankingCard";
+import SelectField from "../components/SelectField";
 import ScoreBadge from "../components/ScoreBadge";
 import {
   COMMENT_MODE,
@@ -374,33 +375,29 @@ function HomePage({ watchlistCount = 0, watchlistIds = [], onToggleWatchlist = (
           <h2>Best of des derniers jours</h2>
         </div>
         <div className="watchlist-controls">
-          <label className="select-wrap" htmlFor="home-bestof-days">
-            <span>Periode</span>
-            <select
-              id="home-bestof-days"
-              value={bestOfDays}
-              onChange={(event) => setBestOfDays(Number(event.target.value))}
-            >
+          <SelectField
+            id="home-bestof-days"
+            label="Periode"
+            value={bestOfDays}
+            onChange={(nextValue) => setBestOfDays(Number(nextValue))}
+          >
               <option value={7}>7 jours</option>
               <option value={14}>14 jours</option>
               <option value={30}>30 jours</option>
-            </select>
-          </label>
-          <label className="select-wrap" htmlFor="home-bestof-sport">
-            <span>Sport</span>
-            <select
-              id="home-bestof-sport"
-              value={bestOfSport}
-              onChange={(event) => setBestOfSport(event.target.value)}
-            >
+          </SelectField>
+          <SelectField
+            id="home-bestof-sport"
+            label="Sport"
+            value={bestOfSport}
+            onChange={setBestOfSport}
+          >
               <option value="Tous">Tous</option>
               {sports.map((sportValue) => (
                 <option key={sportValue} value={sportValue}>
                   {sportValue}
                 </option>
               ))}
-            </select>
-          </label>
+          </SelectField>
         </div>
         {bestOfEvents.length ? (
           <HorizontalCardRail

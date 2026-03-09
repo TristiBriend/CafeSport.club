@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import CommentComposerModePill from "./CommentComposerModePill";
 import CommentMentionTextarea from "./CommentMentionTextarea";
 import EventCard from "./EventCard";
 import LeagueCard from "./LeagueCard";
@@ -33,6 +34,7 @@ import {
   getCommentFeedForTarget,
   getCommentDateLabel,
   isReviewAllowedTarget,
+  resolveComposerModeForTarget,
   toggleCommentLike,
   toggleReplyLike,
   updateComment,
@@ -246,7 +248,9 @@ function ObjectFeedScopePanel({
   const safeTargetType = String(targetType || "").trim();
   const safeTargetId = String(targetId || "").trim();
   const hasTarget = Boolean(safeTargetType && safeTargetId);
-  const canReviewTarget = isReviewAllowedTarget(safeTargetType);
+  const resolvedComposer = resolveComposerModeForTarget(safeTargetType, safeTargetId);
+  const canReviewTarget = isReviewAllowedTarget(safeTargetType)
+    && resolvedComposer.commentMode === COMMENT_MODE.REVIEW;
   const resolvedContentProfile = contentProfile === FEED_CONTENT_PROFILE.COMMENTS_ONLY
     ? FEED_CONTENT_PROFILE.COMMENTS_ONLY
     : FEED_CONTENT_PROFILE.MIXED;
@@ -254,7 +258,6 @@ function ObjectFeedScopePanel({
   const isControlledMode = mode === FEED_MODE.RECENT || mode === FEED_MODE.POPULAR;
   const [internalMode, setInternalMode] = useState(FEED_MODE.RECENT);
   const [commentsVersion, setCommentsVersion] = useState(0);
-  const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [composerMentions, setComposerMentions] = useState([]);
@@ -394,30 +397,43 @@ function ObjectFeedScopePanel({
     });
   }, [commentsRevision, followsRevision, hasTarget, objectComments, objectEvents, ratingsRevision, safeTargetId, safeTargetType, feedActionsRevision]);
 
-  const streamRawEntries = useMemo(() => (
-    buildRawFeedEntries({
-      request: {
-        scope: "object",
-        mode: activeMode,
-        targetType: safeTargetType,
-        targetId: safeTargetId,
-        contentProfile: resolvedContentProfile,
-      },
-      datasets: {
-        objectMeta,
-        objectComments,
-        objectEvents,
-        objectLists,
-        objectUsers,
-        feedActions,
-      },
-    })
-  ), [activeMode, feedActions, objectComments, objectEvents, objectLists, objectMeta, objectUsers, resolvedContentProfile, safeTargetId, safeTargetType]);
-
-  const streamEntries = useMemo(
-    () => groupCardRows(composeBalancedFeedStream(streamRawEntries, { lookahead: 6 }), 3),
-    [streamRawEntries],
-  );
+  const streamState = useMemo(() => {
+    try {
+      const rawEntries = buildRawFeedEntries({
+        request: {
+          scope: "object",
+          mode: activeMode,
+          targetType: safeTargetType,
+          targetId: safeTargetId,
+          contentProfile: resolvedContentProfile,
+        },
+        datasets: {
+          objectMeta,
+          objectComments,
+          objectEvents,
+          objectLists,
+          objectUsers,
+          feedActions,
+        },
+      });
+      const entries = groupCardRows(composeBalancedFeedStream(rawEntries, { lookahead: 6 }), 3);
+      return { entries, hasError: false };
+    } catch (_error) {
+      return { entries: [], hasError: true };
+    }
+  }, [
+    activeMode,
+    feedActions,
+    objectComments,
+    objectEvents,
+    objectLists,
+    objectMeta,
+    objectUsers,
+    resolvedContentProfile,
+    safeTargetId,
+    safeTargetType,
+  ]);
+  const streamEntries = streamState.entries;
 
   function bumpComments() {
     setCommentsVersion((value) => value + 1);
@@ -474,9 +490,9 @@ function ObjectFeedScopePanel({
   function handleCreateComment(submitEvent) {
     submitEvent.preventDefault();
     const created = createTargetComment(safeTargetType, safeTargetId, {
-      mode: canReviewTarget ? composerMode : COMMENT_MODE.COMMENT,
+      mode: resolvedComposer.commentMode,
       note: composerText,
-      rating: composerRating,
+      rating: resolvedComposer.showRating ? composerRating : undefined,
       eventId: safeTargetType === COMMENT_TARGET.EVENT ? safeTargetId : "",
       mentions: filterCommentMentionsForText(composerText, composerMentions),
     });
@@ -657,7 +673,16 @@ function ObjectFeedScopePanel({
     return renderCardEntry(entry);
   }
 
-  if (!hasTarget) return null;
+  if (!hasTarget) {
+    return (
+      <section className="related-section object-feed-scope-panel">
+        <article className="entity-card">
+          <h3>Feed indisponible</h3>
+          <p className="event-meta">Lien de feed invalide: cible manquante.</p>
+        </article>
+      </section>
+    );
+  }
 
   return (
     <section className="related-section object-feed-scope-panel">
@@ -707,29 +732,23 @@ function ObjectFeedScopePanel({
 
       {showComposer ? (
         <form className="comment-composer" onSubmit={handleCreateComment}>
-          <div className="comment-composer-top">
-            <label className="select-wrap" htmlFor={`object-feed-comment-mode-${safeTargetType}-${safeTargetId}`}>
-              <span>Type</span>
-              <select
-                id={`object-feed-comment-mode-${safeTargetType}-${safeTargetId}`}
-                value={canReviewTarget ? composerMode : COMMENT_MODE.COMMENT}
-                onChange={(changeEvent) => setComposerMode(changeEvent.target.value)}
-                disabled={!canReviewTarget}
-              >
-                <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
-                {canReviewTarget ? <option value={COMMENT_MODE.REVIEW}>Critique</option> : null}
-              </select>
-            </label>
+          {resolvedComposer.teaserOnlyHint ? (
+            <p className="event-meta">Evenement a venir: seuls les teasers sont autorises.</p>
+          ) : null}
+          {resolvedComposer.displayMode !== "comment" || resolvedComposer.showRating ? (
+            <div className="comment-composer-top">
+              <CommentComposerModePill mode={resolvedComposer.displayMode} />
 
-            {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
-              <ScoreSliderField
-                id={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}
-                label="Note (0-100)"
-                value={composerRating}
-                onChange={handleChangeComposerRating}
-              />
-            ) : null}
-          </div>
+              {resolvedComposer.showRating ? (
+                <ScoreSliderField
+                  id={`object-feed-comment-rating-${safeTargetType}-${safeTargetId}`}
+                  label="Note (0-100)"
+                  value={composerRating}
+                  onChange={handleChangeComposerRating}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <CommentMentionTextarea
             id={`object-feed-comment-text-${safeTargetType}-${safeTargetId}`}
@@ -754,7 +773,12 @@ function ObjectFeedScopePanel({
         <h2>Flux</h2>
       </div>
 
-      {streamEntries.length ? (
+      {streamState.hasError ? (
+        <article className="entity-card">
+          <h3>Flux indisponible</h3>
+          <p className="event-meta">Une erreur de donnees empeche le chargement du feed pour cet objet.</p>
+        </article>
+      ) : streamEntries.length ? (
         <div className="feed-stream-shell object-feed-stream-shell">
           <div className="feed-stream">
             {streamEntries.map((entry) => {

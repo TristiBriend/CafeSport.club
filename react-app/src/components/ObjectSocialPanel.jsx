@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
+import CommentComposerModePill from "./CommentComposerModePill";
 import CommentMentionTextarea from "./CommentMentionTextarea";
 import ObjectTagsWidget from "./ObjectTagsWidget";
 import ScoreSliderField from "./ScoreSliderField";
@@ -13,6 +14,7 @@ import {
   filterCommentsByMode,
   getCommentsForTarget,
   isReviewAllowedTarget,
+  resolveComposerModeForTarget,
   toggleCommentLike,
   toggleReplyLike,
   updateComment,
@@ -41,8 +43,10 @@ function ObjectSocialPanel({
 }) {
   const [comments, setComments] = useState([]);
   const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
-  const canReviewTarget = allowReview && isReviewAllowedTarget(targetType);
-  const [composerMode, setComposerMode] = useState(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
+  const resolvedComposer = resolveComposerModeForTarget(targetType, targetId, { allowReview });
+  const canReviewTarget = allowReview
+    && isReviewAllowedTarget(targetType)
+    && resolvedComposer.commentMode === COMMENT_MODE.REVIEW;
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [composerMentions, setComposerMentions] = useState([]);
@@ -57,7 +61,6 @@ function ObjectSocialPanel({
     if (!targetType || !targetId) return;
     setComments(getCommentsForTarget(targetType, targetId));
     setActiveMode(COMMENT_MODE.ALL);
-    setComposerMode(canReviewTarget ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
     setComposerText("");
     setComposerMentions([]);
     setComposerRating(80);
@@ -85,11 +88,10 @@ function ObjectSocialPanel({
 
   function handleCreateComment(event) {
     event.preventDefault();
-    const mode = canReviewTarget ? composerMode : COMMENT_MODE.COMMENT;
     const created = createTargetComment(targetType, targetId, {
-      mode,
+      mode: resolvedComposer.commentMode,
       note: composerText,
-      rating: composerRating,
+      rating: resolvedComposer.showRating ? composerRating : undefined,
       mentions: filterCommentMentionsForText(composerText, composerMentions),
     });
     if (!created) return;
@@ -205,6 +207,9 @@ function ObjectSocialPanel({
         <div className="group-title">
           <h2>{title}</h2>
         </div>
+        {resolvedComposer.teaserOnlyHint ? (
+          <p className="event-meta">Evenement a venir: seuls les teasers sont autorises.</p>
+        ) : null}
 
         <div className="comment-filter-row" role="tablist" aria-label="Filtrer les commentaires">
           <button
@@ -233,29 +238,20 @@ function ObjectSocialPanel({
         </div>
 
         <form className="comment-composer" onSubmit={handleCreateComment}>
-          <div className="comment-composer-top">
-            <label className="select-wrap" htmlFor={`comment-mode-${targetType}-${targetId}`}>
-              <span>Type</span>
-              <select
-                id={`comment-mode-${targetType}-${targetId}`}
-                value={composerMode}
-                onChange={(changeEvent) => setComposerMode(changeEvent.target.value)}
-                disabled={!canReviewTarget}
-              >
-                <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
-                {canReviewTarget ? <option value={COMMENT_MODE.REVIEW}>Critique</option> : null}
-              </select>
-            </label>
+          {resolvedComposer.displayMode !== "comment" || resolvedComposer.showRating ? (
+            <div className="comment-composer-top">
+              <CommentComposerModePill mode={resolvedComposer.displayMode} />
 
-            {canReviewTarget && composerMode === COMMENT_MODE.REVIEW ? (
-              <ScoreSliderField
-                id={`comment-rating-${targetType}-${targetId}`}
-                label="Note (0-100)"
-                value={composerRating}
-                onChange={handleChangeComposerRating}
-              />
-            ) : null}
-          </div>
+              {resolvedComposer.showRating ? (
+                <ScoreSliderField
+                  id={`comment-rating-${targetType}-${targetId}`}
+                  label="Note (0-100)"
+                  value={composerRating}
+                  onChange={handleChangeComposerRating}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <CommentMentionTextarea
             id={`comment-text-${targetType}-${targetId}`}

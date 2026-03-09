@@ -8,7 +8,6 @@ import ObjectDetailInfoCard from "../components/ObjectDetailInfoCard";
 import ObjectFeedScopePanel from "../components/ObjectFeedScopePanel";
 import RankingCard from "../components/RankingCard";
 import ScoreSliderField from "../components/ScoreSliderField";
-import { getEventAccessLinks } from "../services/eventAccessLinksService";
 import { getEventById, getRelatedEvents } from "../services/eventsService";
 import { getCuratedLists, resolveListEntries } from "../services/catalogService";
 import { buildEventDetailInfoItems } from "../services/objectDetailInfoService";
@@ -65,7 +64,6 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const relatedEvents = getRelatedEvents(event, 6);
   const isFutureEvent = isUpcomingEvent(event);
   const eventInfoItems = buildEventDetailInfoItems(event);
-  const eventAccess = getEventAccessLinks(event);
 
   function handleChangeUserRating(nextValue) {
     const normalized = normalizeScore(nextValue);
@@ -97,39 +95,6 @@ function EventDetailPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           />
         )}
       />
-
-      {eventAccess.links.length ? (
-        <section className="related-section">
-          <div className="group-title">
-            <h2>{eventAccess.title}</h2>
-          </div>
-          <article className="entity-card event-access-links-card">
-            {eventAccess.description ? (
-              <p className="event-meta">{eventAccess.description}</p>
-            ) : null}
-            <ul className="event-access-links-list">
-              {eventAccess.links.map((link) => (
-                <li key={link.id}>
-                  <a
-                    className="event-access-link"
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <span className="event-access-link-copy">
-                      <span className="event-access-link-label">{link.label}</span>
-                      {link.meta ? (
-                        <span className="event-access-link-meta">{link.meta}</span>
-                      ) : null}
-                    </span>
-                    <span className="event-access-link-action">Ouvrir</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </article>
-        </section>
-      ) : null}
 
       {!isFutureEvent ? (
         <section className="related-section">

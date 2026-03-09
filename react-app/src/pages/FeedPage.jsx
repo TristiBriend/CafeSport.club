@@ -50,6 +50,7 @@ import {
   getOptionalFeedTabForTarget,
   loadOptionalFeedTabs,
   removeOptionalFeedTab,
+  setOptionalFeedTabsOrder,
   setOptionalFeedTabMode,
   upsertOptionalFeedTab,
 } from "../services/feedOptionalTabsService";
@@ -106,8 +107,18 @@ function normalizeFeedMode(modeToken) {
 }
 
 function normalizeFeedRequest(searchParams) {
-  const targetType = String(searchParams.get("targetType") || "").trim();
-  const targetId = String(searchParams.get("targetId") || "").trim();
+  const targetType = String(
+    searchParams.get("targetType")
+    || searchParams.get("targettype")
+    || "",
+  ).trim();
+  const targetId = String(
+    searchParams.get("targetId")
+    || searchParams.get("targetID")
+    || searchParams.get("targetid")
+    || searchParams.get("targetld")
+    || "",
+  ).trim();
   const scopeToken = String(searchParams.get("scope") || "").trim().toLowerCase();
   const modeToken = normalizeFeedMode(searchParams.get("mode") || searchParams.get("feedMode"));
 
@@ -449,6 +460,10 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   const commentsRevision = Number(revisionByDomain?.comments || 0);
   const feedActionsRevision = Number(revisionByDomain?.feedActions || 0);
   const [optionalTabs, setOptionalTabs] = useState(() => loadOptionalFeedTabs());
+  const [draggingOptionalTabId, setDraggingOptionalTabId] = useState("");
+  const [optionalTabsPreview, setOptionalTabsPreview] = useState(null);
+  const [dragOverOptionalTabId, setDragOverOptionalTabId] = useState("");
+  const [dragOverPosition, setDragOverPosition] = useState("before");
   const [, setCommentsVersion] = useState(0);
   const request = normalizeFeedRequest(searchParams);
   const isObjectScope = request.scope === FEED_SCOPE.OBJECT;
@@ -458,38 +473,18 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
   }, [tabsRevision]);
 
   useEffect(() => {
+    if (draggingOptionalTabId) return;
+    setOptionalTabsPreview(null);
+    setDragOverOptionalTabId("");
+    setDragOverPosition("before");
+  }, [draggingOptionalTabId, optionalTabs]);
+
+  useEffect(() => {
     if (!isObjectScope) return;
     const currentTab = getOptionalFeedTabForTarget(request.targetType, request.targetId);
     if (!currentTab || currentTab.mode === request.mode) return;
     setOptionalTabs(setOptionalFeedTabMode(currentTab.id, request.mode));
   }, [isObjectScope, request.mode, request.targetId, request.targetType]);
-
-  if (isObjectScope) {
-    const objectMeta = resolveObjectMeta(request.targetType, request.targetId);
-    const subtitle = `${objectMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`;
-    return (
-      <section className="feed-page is-editorial">
-        <ObjectFeedScopePanel
-          targetType={request.targetType}
-          targetId={request.targetId}
-          watchlistIds={watchlistIds}
-          onToggleWatchlist={onToggleWatchlist}
-          subtitle={subtitle}
-          mode={request.mode}
-          onModeChange={(nextMode) => {
-            navigate(
-              buildFeedLink({
-                scope: FEED_SCOPE.OBJECT,
-                mode: nextMode,
-                targetType: request.targetType,
-                targetId: request.targetId,
-              }),
-            );
-          }}
-        />
-      </section>
-    );
-  }
 
   const allComments = useMemo(
     () => getAllComments(),
@@ -772,6 +767,33 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     3,
   );
 
+  if (isObjectScope) {
+    const objectScopeMeta = resolveObjectMeta(request.targetType, request.targetId);
+    const subtitle = `${objectScopeMeta?.subtitle || "Objet"} · ${request.mode === FEED_MODE.POPULAR ? "mode Populaires" : "mode Chrono"}`;
+    return (
+      <section className="feed-page is-editorial">
+        <ObjectFeedScopePanel
+          targetType={request.targetType}
+          targetId={request.targetId}
+          watchlistIds={watchlistIds}
+          onToggleWatchlist={onToggleWatchlist}
+          subtitle={subtitle}
+          mode={request.mode}
+          onModeChange={(nextMode) => {
+            navigate(
+              buildFeedLink({
+                scope: FEED_SCOPE.OBJECT,
+                mode: nextMode,
+                targetType: request.targetType,
+                targetId: request.targetId,
+              }),
+            );
+          }}
+        />
+      </section>
+    );
+  }
+
   function handleAddCurrentObjectFeed() {
     if (!isObjectScope) return;
     const result = upsertOptionalFeedTab({
@@ -792,6 +814,23 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
     if (tabId && tabId === currentOptionalTabId) {
       navigate(buildFeedLink({ scope: FEED_SCOPE.MY, mode: FEED_MODE.FOR_YOU }), { replace: true });
     }
+  }
+
+  function reorderTabsLocally(list, sourceTabId, targetTabId, position = "before") {
+    const sourceId = String(sourceTabId || "").trim();
+    const targetId = String(targetTabId || "").trim();
+    if (!sourceId || !targetId || sourceId === targetId) return list;
+    const safeList = Array.isArray(list) ? list : [];
+    const fromIndex = safeList.findIndex((tab) => tab.id === sourceId);
+    const toIndex = safeList.findIndex((tab) => tab.id === targetId);
+    if (fromIndex < 0 || toIndex < 0) return safeList;
+    const next = safeList.slice();
+    const [moved] = next.splice(fromIndex, 1);
+    const normalizedPosition = position === "after" ? "after" : "before";
+    const targetIndexAfterRemoval = next.findIndex((tab) => tab.id === targetId);
+    const insertIndex = normalizedPosition === "after" ? targetIndexAfterRemoval + 1 : targetIndexAfterRemoval;
+    next.splice(Math.max(0, insertIndex), 0, moved);
+    return next;
   }
 
   function bumpComments() {
@@ -1038,12 +1077,87 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
           ) : null}
         </div>
 
-        {optionalTabs.length ? (
+        {(optionalTabsPreview || optionalTabs).length ? (
           <div className="feed-optional-row-react">
-            {optionalTabs.map((tab) => {
+            {(optionalTabsPreview || optionalTabs).map((tab) => {
               const isActive = isObjectScope && tab.id === currentOptionalTabId;
               return (
-                <span key={tab.id} className="feed-optional-chip-react">
+                <span
+                  key={tab.id}
+                  className={[
+                    "feed-optional-chip-react",
+                    draggingOptionalTabId === tab.id ? "is-dragging" : "",
+                    dragOverOptionalTabId === tab.id && dragOverPosition === "before" ? "is-drag-over-before" : "",
+                    dragOverOptionalTabId === tab.id && dragOverPosition === "after" ? "is-drag-over-after" : "",
+                  ].filter(Boolean).join(" ")}
+                  draggable
+                  onDragStart={(event) => {
+                    if (
+                      event.target instanceof Element
+                      && event.target.closest(".feed-optional-open-react, .feed-optional-remove-react")
+                    ) {
+                      event.preventDefault();
+                      return;
+                    }
+                    setDraggingOptionalTabId(tab.id);
+                    setOptionalTabsPreview(optionalTabs);
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", tab.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingOptionalTabId("");
+                    setOptionalTabsPreview(null);
+                    setDragOverOptionalTabId("");
+                    setDragOverPosition("before");
+                  }}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    if (!draggingOptionalTabId || draggingOptionalTabId === tab.id) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const nextPosition = event.clientX > rect.left + rect.width / 2 ? "after" : "before";
+                    setDragOverOptionalTabId(tab.id);
+                    setDragOverPosition(nextPosition);
+                    setOptionalTabsPreview((current) => reorderTabsLocally(
+                      current || optionalTabs,
+                      draggingOptionalTabId,
+                      tab.id,
+                      nextPosition,
+                    ));
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    if (!draggingOptionalTabId || draggingOptionalTabId === tab.id) return;
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const nextPosition = event.clientX > rect.left + rect.width / 2 ? "after" : "before";
+                    if (dragOverOptionalTabId !== tab.id || dragOverPosition !== nextPosition) {
+                      setDragOverOptionalTabId(tab.id);
+                      setDragOverPosition(nextPosition);
+                      setOptionalTabsPreview((current) => reorderTabsLocally(
+                        current || optionalTabs,
+                        draggingOptionalTabId,
+                        tab.id,
+                        nextPosition,
+                      ));
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const sourceId = String(event.dataTransfer.getData("text/plain") || draggingOptionalTabId).trim();
+                    const previewList = reorderTabsLocally(
+                      optionalTabsPreview || optionalTabs,
+                      sourceId,
+                      tab.id,
+                      dragOverPosition,
+                    );
+                    const nextIds = previewList.map((item) => item.id);
+                    setOptionalTabs(setOptionalFeedTabsOrder(nextIds));
+                    setOptionalTabsPreview(null);
+                    setDraggingOptionalTabId("");
+                    setDragOverOptionalTabId("");
+                    setDragOverPosition("before");
+                  }}
+                >
                   <Link
                     className={`filter-btn feed-optional-open-react ${isActive ? "is-active" : ""}`}
                     to={buildFeedLink({
@@ -1066,7 +1180,7 @@ function FeedPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
                     aria-label={`Supprimer ${tab.label}`}
                     title="Supprimer ce feed complementaire"
                   >
-                    x
+                    <span aria-hidden="true">x</span>
                   </button>
                 </span>
               );

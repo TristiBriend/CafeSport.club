@@ -86,6 +86,76 @@ export function isReviewAllowedTarget(targetType) {
   return REVIEW_ALLOWED_TARGETS.has(safeType);
 }
 
+function toEventDateTimeValue(event = null) {
+  const primary = Date.parse(String(event?.dateISO || ""));
+  if (Number.isFinite(primary) && primary > 0) return primary;
+  const fallback = Date.parse(String(event?.date || ""));
+  if (Number.isFinite(fallback) && fallback > 0) return fallback;
+  return 0;
+}
+
+export function isFutureEventByDateTime(event) {
+  const timestamp = toEventDateTimeValue(event);
+  if (timestamp > 0) {
+    return timestamp > Date.now();
+  }
+  return String(event?.status || "").toLowerCase() !== "passe";
+}
+
+export function resolveEventForCommentTarget(targetType, targetId, eventId = "") {
+  const safeType = normalizeTargetType(targetType);
+  const safeTargetId = normalizeTargetId(targetId);
+  const explicitEventId = normalizeTargetId(eventId);
+
+  if (safeType === COMMENT_TARGET.EVENT) {
+    return getEventById(safeTargetId) || null;
+  }
+  if (explicitEventId) {
+    return getEventById(explicitEventId) || null;
+  }
+  return null;
+}
+
+export function canReviewTargetNow(targetType, targetId, eventId = "") {
+  const safeType = normalizeTargetType(targetType);
+  if (!isReviewAllowedTarget(safeType)) return false;
+  if (safeType !== COMMENT_TARGET.EVENT) return true;
+  const event = resolveEventForCommentTarget(safeType, targetId, eventId);
+  if (!event) return false;
+  return !isFutureEventByDateTime(event);
+}
+
+export function resolveComposerModeForTarget(targetType, targetId, options = {}) {
+  const safeType = normalizeTargetType(targetType);
+  const safeTargetId = normalizeTargetId(targetId);
+  const allowReview = options.allowReview !== false;
+
+  if (!allowReview || !isReviewAllowedTarget(safeType)) {
+    return {
+      commentMode: COMMENT_MODE.COMMENT,
+      displayMode: "comment",
+      showRating: false,
+      teaserOnlyHint: false,
+    };
+  }
+
+  if (canReviewTargetNow(safeType, safeTargetId, options.eventId)) {
+    return {
+      commentMode: COMMENT_MODE.REVIEW,
+      displayMode: "review",
+      showRating: true,
+      teaserOnlyHint: false,
+    };
+  }
+
+  return {
+    commentMode: COMMENT_MODE.COMMENT,
+    displayMode: safeType === COMMENT_TARGET.EVENT ? "teaser" : "comment",
+    showRating: false,
+    teaserOnlyHint: safeType === COMMENT_TARGET.EVENT,
+  };
+}
+
 const reviewLines = [
   "Match intense du debut a la fin.",
   "Belle execution tactique et rythme eleve.",
@@ -170,13 +240,7 @@ function resolveCurrentCommentIdentity(userId = "", author = "") {
 }
 
 function isUpcomingEvent(event) {
-  const parsed = Date.parse(event?.dateISO || "");
-  if (Number.isFinite(parsed)) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return parsed >= today.getTime();
-  }
-  return String(event?.status || "").toLowerCase() !== "passe";
+  return isFutureEventByDateTime(event);
 }
 
 function getEventDateTime(event, shiftHours = 0) {
@@ -867,11 +931,14 @@ export function createTargetComment(targetType, targetId, {
   const cleanNote = String(note || "").trim();
   if (!safeType || !safeTargetId || !cleanNote) return null;
 
-  const canReview = isReviewAllowedTarget(safeType);
-  const safeMode = mode === COMMENT_MODE.REVIEW && canReview ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT;
   const resolvedEventId = safeType === COMMENT_TARGET.EVENT
     ? safeTargetId
     : normalizeTargetId(eventId);
+  const canReview = isReviewAllowedTarget(safeType);
+  const canReviewNow = canReviewTargetNow(safeType, safeTargetId, resolvedEventId);
+  const safeMode = mode === COMMENT_MODE.REVIEW && canReview && canReviewNow
+    ? COMMENT_MODE.REVIEW
+    : COMMENT_MODE.COMMENT;
   const identity = resolveCurrentCommentIdentity(userId, author);
 
   const now = new Date().toISOString();
@@ -1067,6 +1134,10 @@ export function updateComment(commentId, { note, rating, mentions } = {}) {
   if (index < 0) return false;
 
   const current = { ...comments[index] };
+  if (current.commentType === COMMENT_MODE.REVIEW) {
+    const canReviewNow = canReviewTargetNow(current.targetType, current.targetId, current.eventId);
+    if (!canReviewNow) return false;
+  }
   current.note = cleanNote;
   if (current.commentType === COMMENT_MODE.REVIEW) {
     current.rating = clampRating(rating);

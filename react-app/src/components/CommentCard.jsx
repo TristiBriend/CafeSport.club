@@ -77,6 +77,29 @@ function getInitials(name) {
   return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase() || "?";
 }
 
+function getEventInitials(title) {
+  const source = String(title || "").trim();
+  if (!source) return "EV";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (!parts.length) return "EV";
+  if (parts.length === 1) {
+    const token = parts[0].replace(/[^A-Za-z0-9]/g, "");
+    return (token.slice(0, 2) || "EV").toUpperCase();
+  }
+  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
+}
+
+function resolveEventImage(event) {
+  const imageCandidates = [
+    event?.image,
+    event?.coverImage,
+    event?.thumbnail,
+    event?.imageUrl,
+  ];
+  const rawImage = imageCandidates.find((candidate) => String(candidate || "").trim());
+  return getImagePath(rawImage);
+}
+
 function resolveCommentUser(comment) {
   const safeUserId = String(comment?.userId || "").trim();
   if (safeUserId) {
@@ -226,6 +249,14 @@ function CommentCard({
   const targetContext = useMemo(
     () => resolveTargetCommentContext(comment?.targetType, comment?.targetId),
     [comment?.targetType, comment?.targetId],
+  );
+  const eventImage = useMemo(
+    () => resolveEventImage(resolvedEvent),
+    [resolvedEvent?.image, resolvedEvent?.coverImage, resolvedEvent?.thumbnail, resolvedEvent?.imageUrl],
+  );
+  const eventInitials = useMemo(
+    () => getEventInitials(resolvedEvent?.title),
+    [resolvedEvent?.title],
   );
   const eventPath = resolvedEvent?.id ? `/event/${resolvedEvent.id}` : "";
   const targetPath = useMemo(
@@ -389,6 +420,13 @@ function CommentCard({
       {shouldRenderEventLink ? (
         <p className="comment-card-event-row typo-meta">
           <Link className="comment-card-event-link" to={eventPath}>
+            <span className="comment-card-event-avatar" aria-hidden="true">
+              {eventImage ? (
+                <img src={eventImage} alt="" loading="lazy" />
+              ) : (
+                <span className="comment-card-event-avatar-fallback">{eventInitials}</span>
+              )}
+            </span>
             {resolvedEvent.title}
           </Link>
         </p>

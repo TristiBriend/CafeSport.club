@@ -20,6 +20,7 @@ import TeamCard from "../components/TeamCard";
 import UserCard from "../components/UserCard";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
 import { buildUserFollowFabButton } from "../components/UserFollowFabButton";
+import SelectField from "../components/SelectField";
 import {
   getAthletes,
   getCuratedLists,
@@ -360,7 +361,7 @@ const DISPLAYED_SAMPLE_LEGENDS = [
   {
     name: "UI de base · Form controls",
     details: [
-      "Markup: .search-wrap > input / .select-wrap > select / input.tag-textbox",
+      "Markup: .search-wrap > input / <SelectField /> / input.tag-textbox",
       "Bindings: defaultValue='Sample', select default='a', tag textbox",
     ],
   },
@@ -939,13 +940,10 @@ function UISamplesPage() {
                 <span>Input</span>
                 <input id="ui-sample-input" type="text" placeholder="Tape quelque chose" defaultValue="Sample" />
               </label>
-              <label className="select-wrap" htmlFor="ui-sample-select">
-                <span>Select</span>
-                <select id="ui-sample-select" defaultValue="a">
-                  <option value="a">Option A</option>
-                  <option value="b">Option B</option>
-                </select>
-              </label>
+              <SelectField id="ui-sample-select" label="Select" value="a" onChange={() => {}}>
+                <option value="a">Option A</option>
+                <option value="b">Option B</option>
+              </SelectField>
               <input className="tag-textbox" type="text" defaultValue="Tag textbox" />
             </div>
           </article>
@@ -1333,30 +1331,26 @@ function UISamplesPage() {
         </div>
 
         <div className="watchlist-controls">
-          <label className="select-wrap" htmlFor="ui-comment-event-select">
-            <span>Event cible</span>
-            <select
-              id="ui-comment-event-select"
-              value={commentFocusEventId}
-              onChange={(event) => setCommentFocusEventId(event.target.value)}
-            >
+          <SelectField
+            id="ui-comment-event-select"
+            label="Event cible"
+            value={commentFocusEventId}
+            onChange={setCommentFocusEventId}
+          >
               {allEvents.slice(0, 20).map((event) => (
                 <option key={event.id} value={event.id}>{event.title}</option>
               ))}
-            </select>
-          </label>
+          </SelectField>
 
-          <label className="select-wrap" htmlFor="ui-comment-mode-select">
-            <span>Type nouveau commentaire</span>
-            <select
-              id="ui-comment-mode-select"
-              value={composerMode}
-              onChange={(event) => setComposerMode(event.target.value)}
-            >
+          <SelectField
+            id="ui-comment-mode-select"
+            label="Type nouveau commentaire"
+            value={composerMode}
+            onChange={setComposerMode}
+          >
               <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
               <option value={COMMENT_MODE.REVIEW}>Critique</option>
-            </select>
-          </label>
+          </SelectField>
         </div>
 
         <form className="comment-composer" onSubmit={handleCreateComment}>
@@ -1428,18 +1422,16 @@ function UISamplesPage() {
           </div>
         </div>
 
-        <label className="select-wrap" htmlFor="ui-social-target-select">
-          <span>Cible</span>
-          <select
-            id="ui-social-target-select"
-            value={activeSocialTargetId}
-            onChange={(event) => setActiveSocialTargetId(event.target.value)}
-          >
+        <SelectField
+          id="ui-social-target-select"
+          label="Cible"
+          value={activeSocialTargetId}
+          onChange={setActiveSocialTargetId}
+        >
             {socialTargets.map((target) => (
               <option key={target.id} value={target.id}>{target.label}</option>
             ))}
-          </select>
-        </label>
+        </SelectField>
 
         {activeSocialTarget ? (
           <ObjectSocialPanel

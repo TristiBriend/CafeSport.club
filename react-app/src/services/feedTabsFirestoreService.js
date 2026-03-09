@@ -48,6 +48,7 @@ function normalizeTab(raw) {
     mode: normalizeMode(raw?.mode),
     label: String(raw?.label || "").trim().slice(0, 80),
     createdAt: Number(raw?.createdAt || Date.now()),
+    order: Number.isFinite(Number(raw?.order)) ? Number(raw.order) : Number(raw?.createdAt || Date.now()),
   };
 }
 
@@ -58,7 +59,11 @@ export async function readUserFeedTabs(uid) {
   return snap.docs
     .map((docSnap) => normalizeTab({ id: docSnap.id, ...docSnap.data() }))
     .filter(Boolean)
-    .sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0));
+    .sort((a, b) => {
+      const orderDiff = Number(a.order || 0) - Number(b.order || 0);
+      if (orderDiff !== 0) return orderDiff;
+      return Number(a.createdAt || 0) - Number(b.createdAt || 0);
+    });
 }
 
 export async function upsertUserFeedTabCloud(uid, tab) {
@@ -73,6 +78,7 @@ export async function upsertUserFeedTabCloud(uid, tab) {
     mode: normalized.mode,
     label: normalized.label,
     createdAt: Number(normalized.createdAt || Date.now()),
+    order: Number.isFinite(Number(normalized.order)) ? Number(normalized.order) : Number(normalized.createdAt || Date.now()),
     updatedAt: serverTimestamp(),
   }, { merge: true });
   return normalized;

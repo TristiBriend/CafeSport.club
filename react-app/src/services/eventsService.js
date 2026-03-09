@@ -41,7 +41,13 @@ export function getSports() {
 }
 
 export function getEventById(eventId) {
-  return getAllEvents().find((event) => event.id === eventId) || null;
+  const safeId = String(eventId || "").trim();
+  if (!safeId) return null;
+  return getAllEvents().find((event) => {
+    const currentId = String(event?.id || "").trim();
+    const legacyEventId = String(event?.eventId || "").trim();
+    return currentId === safeId || legacyEventId === safeId;
+  }) || null;
 }
 
 export function filterEvents(list, { sportFilter = "Tous", query = "" } = {}) {

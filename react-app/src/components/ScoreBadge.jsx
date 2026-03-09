@@ -9,6 +9,14 @@ function IconTeaserMegaphone() {
   );
 }
 
+function IconReviewNote() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2.8 14.7 8l5.7.8-4.1 4 1 5.6L12 15.6 6.7 18.4l1-5.6-4.1-4L9.3 8 12 2.8Z" />
+    </svg>
+  );
+}
+
 function toScorePercent(value, scale = "percent") {
   const raw = Number(value || 0);
   if (!Number.isFinite(raw)) return 0;
@@ -53,6 +61,14 @@ function ScoreBadge({
     return (
       <span className="event-corner-chip event-corner-chip-user event-corner-chip-teaser" title={safeTitle} aria-label={safeTitle}>
         <IconTeaserMegaphone />
+      </span>
+    );
+  }
+
+  if (variant === "review-chip") {
+    return (
+      <span className="event-corner-chip event-corner-chip-user event-corner-chip-review" title="Critique" aria-label="Critique">
+        <IconReviewNote />
       </span>
     );
   }

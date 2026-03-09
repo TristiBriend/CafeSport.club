@@ -11,17 +11,15 @@ import { logEventRated } from "./feedActionsService";
 const RATINGS_KEY = "cafesport.club_ratings";
 let hasSeededSession = false;
 
-function toTimeValue(dateISO) {
-  const value = Date.parse(dateISO || "");
-  return Number.isFinite(value) ? value : 0;
+function toTimeValue(value) {
+  const parsed = Date.parse(String(value || ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export function isUpcomingEvent(event) {
-  const timestamp = toTimeValue(event?.dateISO);
-  if (timestamp) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return timestamp >= today.getTime();
+  const timestamp = toTimeValue(event?.dateISO) || toTimeValue(event?.date);
+  if (timestamp > 0) {
+    return timestamp > Date.now();
   }
   return String(event?.status || "").toLowerCase() !== "passe";
 }

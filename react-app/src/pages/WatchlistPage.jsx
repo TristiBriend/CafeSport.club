@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import CalendarPeriodSelector from "../components/CalendarPeriodSelector";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
+import SelectField from "../components/SelectField";
 import { buildAddWatchlistFabButton } from "../components/WatchlistFabButton";
 import { filterEvents, getWatchlistEvents } from "../services/eventsService";
 import { isUpcomingEvent } from "../services/ratingsService";
@@ -173,19 +174,17 @@ function WatchlistPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       />
 
       <div className="watchlist-controls">
-        <label className="select-wrap" htmlFor="watchlist-sport-filter">
-          <span>Sport</span>
-          <select
-            id="watchlist-sport-filter"
-            value={safeSportFilter}
-            onChange={(event) => setSportFilter(event.target.value)}
-          >
+        <SelectField
+          id="watchlist-sport-filter"
+          label="Sport"
+          value={safeSportFilter}
+          onChange={setSportFilter}
+        >
             <option value="Tous">Tous</option>
             {availableSports.map((sport) => (
               <option key={sport} value={sport}>{sport}</option>
             ))}
-          </select>
-        </label>
+        </SelectField>
       </div>
 
       {watchlistEvents.length === 0 ? (

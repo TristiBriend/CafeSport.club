@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import SelectField from "../components/SelectField";
 import { getAthleteSports } from "../services/catalogService";
 import { useAuth } from "../contexts/AuthContext";
 import { createJoinRequestCloud } from "../services/joinRequestsFirestoreService";
@@ -90,20 +91,18 @@ function JoinPage() {
               onChange={(event) => handleChange("email", event.target.value)}
             />
           </label>
-          <label className="select-wrap" htmlFor="join-sport">
-            <span>Sport prefere</span>
-            <select
-              id="join-sport"
-              value={form.sport}
-              onChange={(event) => handleChange("sport", event.target.value)}
-            >
+          <SelectField
+            id="join-sport"
+            label="Sport prefere"
+            value={form.sport}
+            onChange={(nextValue) => handleChange("sport", nextValue)}
+          >
               {sports.map((sport) => (
                 <option key={sport} value={sport}>
                   {sport}
                 </option>
               ))}
-            </select>
-          </label>
+          </SelectField>
           <label className="search-wrap" htmlFor="join-favorite">
             <span>Equipe ou athlete prefere</span>
             <input

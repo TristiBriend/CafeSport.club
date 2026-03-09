@@ -6,6 +6,7 @@ import {
   getTeamsForEvent,
 } from "./catalogService";
 import { getFriendnotesForEvent } from "./friendnotesService";
+import { getEventAccessLinks } from "./eventAccessLinksService";
 import { getLeagueById } from "./leaguesService";
 import { getEventRating } from "./ratingsService";
 
@@ -93,6 +94,20 @@ function buildScoreItems(events = [], { aggregate = false } = {}) {
   ].filter(Boolean);
 }
 
+function buildEventAccessInfoItems(event) {
+  const access = getEventAccessLinks(event);
+  const links = access?.links || [];
+  const label = String(access?.title || "").trim() || "Replay";
+  return links
+    .map((link) => createItem(
+      `access-${link.id}`,
+      label,
+      link?.meta ? `${link.label} · ${link.meta}` : link.label,
+      { href: String(link?.href || "").trim() },
+    ))
+    .filter(Boolean);
+}
+
 export function buildEventDetailInfoItems(event) {
   if (!event) return [];
   const league = getLeagueById(event?.competitionId);
@@ -101,6 +116,7 @@ export function buildEventDetailInfoItems(event) {
     ? `${teams[0].nameFull || teams[0].name} vs ${teams[1].nameFull || teams[1].name}`
     : (String(event?.title || "").trim() || "Evenement");
   const scoreItems = buildScoreItems([event], { aggregate: false });
+  const accessItems = buildEventAccessInfoItems(event);
 
   return [
     createItem("sport", "Sport", String(event?.sport || "").trim()),
@@ -116,6 +132,7 @@ export function buildEventDetailInfoItems(event) {
     createItem("community-score", "Score communaute", `${Math.round(Number(event?.communityScore || 0))}/100`),
     ...scoreItems,
     createItem("watchlist", "Watchlist", compactNumber(event?.watchlistCount)),
+    ...accessItems,
   ].filter(Boolean);
 }
 

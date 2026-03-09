@@ -8,6 +8,18 @@ function renderValue(item) {
       </Link>
     );
   }
+  if (item?.href) {
+    return (
+      <a
+        className="object-detail-info-link"
+        href={item.href}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {item.value}
+      </a>
+    );
+  }
   return item?.value;
 }
 

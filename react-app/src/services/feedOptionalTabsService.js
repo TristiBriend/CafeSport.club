@@ -141,6 +141,7 @@ function normalizeOptionalFeedTabEntry(raw) {
   const fallbackLabel = getOptionalFeedTabDefaultLabel(targetType, targetId);
   const label = String(raw.label || "").trim() || fallbackLabel;
   const createdAt = Number(raw.createdAt || 0);
+  const order = Number(raw.order);
 
   return {
     id,
@@ -149,6 +150,7 @@ function normalizeOptionalFeedTabEntry(raw) {
     mode,
     label: label.slice(0, 80),
     createdAt: createdAt > 0 ? Math.round(createdAt) : Date.now(),
+    order: Number.isFinite(order) ? Math.round(order) : (createdAt > 0 ? Math.round(createdAt) : Date.now()),
   };
 }
 
@@ -167,13 +169,15 @@ function normalizeOptionalFeedTabs(list) {
 
   const normalizedList = Array.from(byId.values())
     .sort((a, b) => {
-      const timeDiff = Number(a.createdAt || 0) - Number(b.createdAt || 0);
-      if (timeDiff !== 0) return timeDiff;
+      const orderDiff = Number(a.order || 0) - Number(b.order || 0);
+      if (orderDiff !== 0) return orderDiff;
+      const createdDiff = Number(a.createdAt || 0) - Number(b.createdAt || 0);
+      if (createdDiff !== 0) return createdDiff;
       return String(a.id || "").localeCompare(String(b.id || ""));
     });
 
   return normalizedList.length > FEED_OPTIONAL_TABS_MAX
-    ? normalizedList.slice(normalizedList.length - FEED_OPTIONAL_TABS_MAX)
+    ? normalizedList.slice(0, FEED_OPTIONAL_TABS_MAX)
     : normalizedList;
 }
 
@@ -238,8 +242,10 @@ export function upsertOptionalFeedTab({
       targetId: safeTargetId,
       mode: nextMode,
       label: finalLabel,
+      order: Number.isFinite(Number(current?.order)) ? Number(current.order) : Number(current?.createdAt || Date.now()),
     };
   } else {
+    const maxOrder = nextTabs.reduce((max, tab) => Math.max(max, Number(tab?.order || 0)), 0);
     nextTabs.push({
       id: tabId,
       targetType: safeType,
@@ -247,6 +253,7 @@ export function upsertOptionalFeedTab({
       mode: nextMode,
       label: finalLabel,
       createdAt: Date.now(),
+      order: maxOrder + 1,
     });
   }
 
@@ -292,6 +299,71 @@ export function setOptionalFeedTabMode(tabId, mode) {
     mirrorTabUpsertCloud(updated);
     notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
   }
+  return saved;
+}
+
+export function reorderOptionalFeedTabs(sourceTabId, targetTabId) {
+  const sourceId = String(sourceTabId || "").trim();
+  const targetId = String(targetTabId || "").trim();
+  if (!sourceId || !targetId || sourceId === targetId) return loadOptionalFeedTabs();
+
+  const currentTabs = loadOptionalFeedTabs();
+  const fromIndex = currentTabs.findIndex((tab) => tab.id === sourceId);
+  const toIndex = currentTabs.findIndex((tab) => tab.id === targetId);
+  if (fromIndex < 0 || toIndex < 0) return currentTabs;
+
+  const reordered = currentTabs.slice();
+  const [moved] = reordered.splice(fromIndex, 1);
+  reordered.splice(toIndex, 0, moved);
+
+  const now = Date.now();
+  const nextTabs = reordered.map((tab, index) => ({
+    ...tab,
+    order: index + 1,
+    createdAt: Number(tab?.createdAt || now),
+  }));
+
+  const saved = saveOptionalFeedTabs(nextTabs);
+  saved.forEach((tab) => mirrorTabUpsertCloud(tab));
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
+  return saved;
+}
+
+export function setOptionalFeedTabsOrder(tabIds = []) {
+  const orderIds = Array.isArray(tabIds)
+    ? tabIds.map((id) => String(id || "").trim()).filter(Boolean)
+    : [];
+  if (!orderIds.length) return loadOptionalFeedTabs();
+
+  const currentTabs = loadOptionalFeedTabs();
+  const byId = new Map(currentTabs.map((tab) => [tab.id, tab]));
+  const seen = new Set();
+  const ordered = [];
+
+  orderIds.forEach((id) => {
+    if (seen.has(id)) return;
+    const tab = byId.get(id);
+    if (!tab) return;
+    seen.add(id);
+    ordered.push(tab);
+  });
+
+  currentTabs.forEach((tab) => {
+    if (seen.has(tab.id)) return;
+    seen.add(tab.id);
+    ordered.push(tab);
+  });
+
+  const now = Date.now();
+  const nextTabs = ordered.map((tab, index) => ({
+    ...tab,
+    order: index + 1,
+    createdAt: Number(tab?.createdAt || now),
+  }));
+
+  const saved = saveOptionalFeedTabs(nextTabs);
+  saved.forEach((tab) => mirrorTabUpsertCloud(tab));
+  notifyDomainDirty(SOCIAL_SYNC_DOMAIN.TABS);
   return saved;
 }
 

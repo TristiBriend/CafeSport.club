@@ -30,6 +30,7 @@ import SiteHeader from "./components/SiteHeader";
 import SiteFooter from "./components/SiteFooter";
 import RequireAuth from "./components/RequireAuth";
 import RequireAdmin from "./components/RequireAdmin";
+import RouteErrorBoundary from "./components/RouteErrorBoundary";
 import { useAuth } from "./contexts/AuthContext";
 import { useSocialSync } from "./contexts/SocialSyncContext";
 import { HeaderSearchPickerProvider } from "./contexts/HeaderSearchPickerContext";
@@ -180,49 +181,59 @@ function App() {
           <Route
             path="/event/:eventId"
             element={
-              <EventDetailPage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RouteErrorBoundary>
+                <EventDetailPage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RouteErrorBoundary>
             }
           />
           <Route path="/athletes" element={<AthletesPage />} />
           <Route
             path="/athlete/:athleteId"
             element={
-              <AthleteDetailPage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RouteErrorBoundary>
+                <AthleteDetailPage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RouteErrorBoundary>
             }
           />
           <Route path="/teams" element={<TeamsPage />} />
           <Route
             path="/team/:teamId"
             element={
-              <TeamDetailPage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RouteErrorBoundary>
+                <TeamDetailPage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RouteErrorBoundary>
             }
           />
           <Route path="/leagues" element={<LeaguesPage />} />
           <Route
             path="/league/:leagueId"
             element={
-              <LeagueDetailPage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RouteErrorBoundary>
+                <LeagueDetailPage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RouteErrorBoundary>
             }
           />
           <Route
             path="/league-season/:seasonId"
             element={
-              <LeagueSeasonDetailPage
-                watchlistIds={watchlistIds}
-                onToggleWatchlist={handleToggleWatchlist}
-              />
+              <RouteErrorBoundary>
+                <LeagueSeasonDetailPage
+                  watchlistIds={watchlistIds}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </RouteErrorBoundary>
             }
           />
           <Route path="/lists" element={<ListsPage />} />

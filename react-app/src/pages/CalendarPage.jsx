@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
+import SelectField from "../components/SelectField";
 import { getAllEvents, getSports } from "../services/eventsService";
 import { getRatingsMap, isUpcomingEvent } from "../services/ratingsService";
 
@@ -385,19 +386,17 @@ function CalendarPage({ watchlistIds = [], onToggleWatchlist = () => {} }) {
       </div>
 
       <div className="watchlist-controls">
-        <label className="select-wrap" htmlFor="calendar-sport-filter-react">
-          <span>Sport</span>
-          <select
-            id="calendar-sport-filter-react"
-            value={sportFilter}
-            onChange={(event) => setSportFilter(event.target.value)}
-          >
+        <SelectField
+          id="calendar-sport-filter-react"
+          label="Sport"
+          value={sportFilter}
+          onChange={setSportFilter}
+        >
             <option value="Tous">Tous</option>
             {sports.map((sport) => (
               <option key={sport} value={sport}>{sport}</option>
             ))}
-          </select>
-        </label>
+        </SelectField>
 
         <label className="select-wrap" htmlFor="calendar-date-react">
           <span>Date de base</span>

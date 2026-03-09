@@ -1,5 +1,4 @@
 import { Children, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 
 function toVisibleCount(value, fallback) {
   const parsed = Number(value);
@@ -21,31 +20,6 @@ function getScrollBehavior() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 }
 
-function clamp(value, min, max) {
-  if (max < min) return min;
-  return Math.min(Math.max(value, min), max);
-}
-
-function getPreviewPosition(itemRect, hoverScale, side) {
-  const viewportInset = 12;
-  const anchorX = side === "left" ? 0 : side === "right" ? 1 : 0.5;
-  const anchorY = 0.12;
-  const scaledWidth = itemRect.width * hoverScale;
-  const scaledHeight = itemRect.height * hoverScale;
-  return {
-    left: clamp(
-      itemRect.left - (scaledWidth - itemRect.width) * anchorX,
-      viewportInset,
-      window.innerWidth - viewportInset - scaledWidth,
-    ),
-    top: clamp(
-      itemRect.top - (scaledHeight - itemRect.height) * anchorY,
-      viewportInset,
-      window.innerHeight - viewportInset - scaledHeight,
-    ),
-  };
-}
-
 function HorizontalCardRail({
   children,
   label = "Cards",
@@ -63,12 +37,7 @@ function HorizontalCardRail({
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
   const [hoverEdge, setHoverEdge] = useState(null);
-  const [hoverPreview, setHoverPreview] = useState(null);
   const isCarouselMode = mode === "carousel";
-  const overlayRef = useRef(null);
-  const overlayContentRef = useRef(null);
-  const previewSourceElementRef = useRef(null);
-  const previewSourceItemRef = useRef(null);
   const items = useMemo(
     () => Children.toArray(children).filter(Boolean),
     [children],
@@ -106,12 +75,6 @@ function HorizontalCardRail({
     return { hoverScale, itemRect, side };
   }
 
-  function resetHoverPreview() {
-    previewSourceElementRef.current = null;
-    previewSourceItemRef.current = null;
-    setHoverPreview(null);
-  }
-
   function updateHoverEdge(itemIndex, itemElement) {
     const metrics = getHoverMetrics(itemElement);
     if (!metrics) {
@@ -132,27 +95,6 @@ function HorizontalCardRail({
     });
   }
 
-  function updateHoverPreview(itemIndex, itemElement) {
-    const metrics = getHoverMetrics(itemElement);
-    if (!metrics) {
-      resetHoverPreview();
-      return;
-    }
-
-    const sourceElement = itemElement.firstElementChild ?? itemElement;
-    const position = getPreviewPosition(metrics.itemRect, metrics.hoverScale, metrics.side);
-    previewSourceElementRef.current = sourceElement;
-    previewSourceItemRef.current = itemElement;
-    setHoverPreview({
-      index: itemIndex,
-      side: metrics.side,
-      scale: metrics.hoverScale,
-      width: metrics.itemRect.width,
-      left: position.left,
-      top: position.top,
-    });
-  }
-
   function clearHoverEdge(itemIndex, event) {
     const relatedTarget = event?.relatedTarget;
     if (
@@ -167,86 +109,6 @@ function HorizontalCardRail({
     setHoverEdge((current) => (current && current.index === itemIndex ? null : current));
   }
 
-  function clearHoverPreview(itemIndex, event) {
-    const relatedTarget = event?.relatedTarget;
-    if (typeof Node !== "undefined" && relatedTarget instanceof Node) {
-      if (event?.currentTarget?.contains(relatedTarget)) {
-        return;
-      }
-      if (overlayRef.current?.contains(relatedTarget)) {
-        return;
-      }
-      if (previewSourceItemRef.current?.contains(relatedTarget)) {
-        return;
-      }
-    }
-
-    if (hoverPreview && hoverPreview.index !== itemIndex) {
-      return;
-    }
-
-    resetHoverPreview();
-  }
-
-  useEffect(() => {
-    if (!hoverPreview) return undefined;
-
-    const overlayContent = overlayContentRef.current;
-    const sourceElement = previewSourceElementRef.current;
-    if (!overlayContent || !sourceElement) return undefined;
-
-    overlayContent.replaceChildren(sourceElement.cloneNode(true));
-
-    const rafId = window.requestAnimationFrame(() => {
-      const overlayElement = overlayRef.current;
-      if (!overlayElement) return;
-
-      const rect = overlayElement.getBoundingClientRect();
-      const viewportInset = 12;
-      const offsetLeft = Math.max(0, viewportInset - rect.left) - Math.max(0, rect.right - (window.innerWidth - viewportInset));
-      const offsetTop = Math.max(0, viewportInset - rect.top) - Math.max(0, rect.bottom - (window.innerHeight - viewportInset));
-
-      if (Math.abs(offsetLeft) < 1 && Math.abs(offsetTop) < 1) {
-        return;
-      }
-
-      setHoverPreview((current) => {
-        if (!current || current.index !== hoverPreview.index) {
-          return current;
-        }
-        return {
-          ...current,
-          left: current.left + offsetLeft,
-          top: current.top + offsetTop,
-        };
-      });
-    });
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-      overlayContent.replaceChildren();
-    };
-  }, [hoverPreview?.index]);
-
-  useEffect(() => {
-    if (!hoverPreview) return undefined;
-
-    const track = trackRef.current;
-    function handleDismiss() {
-      resetHoverPreview();
-    }
-
-    window.addEventListener("resize", handleDismiss);
-    window.addEventListener("scroll", handleDismiss, true);
-    track?.addEventListener("scroll", handleDismiss, { passive: true });
-
-    return () => {
-      window.removeEventListener("resize", handleDismiss);
-      window.removeEventListener("scroll", handleDismiss, true);
-      track?.removeEventListener("scroll", handleDismiss);
-    };
-  }, [hoverPreview]);
-
   const renderedItems = items.map((item, itemIndex) => (
     <div
       key={`rail-${itemIndex}`}
@@ -254,17 +116,14 @@ function HorizontalCardRail({
         "card-rail-item",
         hoverEdge?.index === itemIndex && hoverEdge.side === "left" ? "is-edge-left" : "",
         hoverEdge?.index === itemIndex && hoverEdge.side === "right" ? "is-edge-right" : "",
-        hoverPreview?.index === itemIndex ? "is-preview-source" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       onMouseEnter={(event) => {
         updateHoverEdge(itemIndex, event.currentTarget);
-        updateHoverPreview(itemIndex, event.currentTarget);
       }}
       onMouseLeave={(event) => {
         clearHoverEdge(itemIndex, event);
-        clearHoverPreview(itemIndex, event);
       }}
       onFocus={(event) => updateHoverEdge(itemIndex, event.currentTarget)}
       onBlur={(event) => clearHoverEdge(itemIndex, event)}
@@ -341,74 +200,42 @@ function HorizontalCardRail({
       "is-hover-reveal",
       "is-peek",
       canScroll ? "is-scrollable" : "is-static",
-      hoverPreview ? "has-hover-preview" : "",
       className,
     ]
       .filter(Boolean)
       .join(" ");
 
   const shouldRenderArrows = showArrows && carouselEnabled;
-  const shouldRenderHoverPreview = hoverPreview && typeof document !== "undefined";
-  const hoverPreviewTransformOrigin = hoverPreview
-    ? hoverPreview.side === "left"
-      ? "left 12%"
-      : hoverPreview.side === "right"
-        ? "right 12%"
-        : "center 12%"
-    : "center 12%";
-
   return (
-    <>
-      <div className={wrapperClassName} role="region" aria-label={label} style={railStyle}>
-        {shouldRenderArrows ? (
-          <button
-            className="card-rail-nav is-prev"
-            type="button"
-            onClick={() => handleScroll(-1)}
-            disabled={!canScroll || atStart}
-            aria-label={`Defiler ${label} vers la gauche`}
-          >
-            {"<"}
-          </button>
-        ) : null}
-        <div className="card-rail-viewport">
-          <div ref={trackRef} className="card-rail-track">
-            {renderedItems}
-          </div>
+    <div className={wrapperClassName} role="region" aria-label={label} style={railStyle}>
+      {shouldRenderArrows ? (
+        <button
+          className="card-rail-nav is-prev"
+          type="button"
+          onClick={() => handleScroll(-1)}
+          disabled={!canScroll || atStart}
+          aria-label={`Defiler ${label} vers la gauche`}
+        >
+          {"<"}
+        </button>
+      ) : null}
+      <div className="card-rail-viewport">
+        <div ref={trackRef} className="card-rail-track">
+          {renderedItems}
         </div>
-        {shouldRenderArrows ? (
-          <button
-            className="card-rail-nav is-next"
-            type="button"
-            onClick={() => handleScroll(1)}
-            disabled={!canScroll || atEnd}
-            aria-label={`Defiler ${label} vers la droite`}
-          >
-            {">"}
-          </button>
-        ) : null}
       </div>
-      {shouldRenderHoverPreview
-        ? createPortal(
-            <div
-              ref={overlayRef}
-              className="card-rail-hover-overlay"
-              aria-hidden="true"
-              style={{
-                top: `${hoverPreview.top}px`,
-                left: `${hoverPreview.left}px`,
-                width: `${hoverPreview.width}px`,
-                transform: `scale(${hoverPreview.scale})`,
-                transformOrigin: hoverPreviewTransformOrigin,
-              }}
-              onMouseLeave={(event) => clearHoverPreview(hoverPreview.index, event)}
-            >
-              <div ref={overlayContentRef} className="card-rail-hover-overlay-content" />
-            </div>,
-            document.body,
-          )
-        : null}
-    </>
+      {shouldRenderArrows ? (
+        <button
+          className="card-rail-nav is-next"
+          type="button"
+          onClick={() => handleScroll(1)}
+          disabled={!canScroll || atEnd}
+          aria-label={`Defiler ${label} vers la droite`}
+        >
+          {">"}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
