@@ -1,0 +1,621 @@
+/* Override layer: keep final cascade winners in one place when needed. */
+@media (max-width: 900px) {
+  .app-main-wrap {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* Unified card system: cardbase + cardhover */
+:root {
+  --card-bg-default: #efefec;
+  --card-border-default: #111111;
+  --card-radius-default: 18px;
+  --card-shadow-default: 4px 4px 0 rgba(17, 17, 17, 0.82);
+  --card-shadow-hover-default: 6px 6px 0 rgba(17, 17, 17, 0.88);
+}
+
+.cardbase, .entity-card, .hero-card, .hero-review-card, .list-card, .event-card, .object-card, .detail-card, .review-card, .comment-card, .comment-preview-item, .data-card, .ui-sample-card {
+  background: var(--card-bg, var(--card-bg-default));
+  border: 2px solid var(--card-border, var(--card-border-default));
+  border-radius: var(--card-radius, var(--card-radius-default));
+  box-shadow: var(--card-shadow, var(--card-shadow-default));
+}
+
+.cardhover, .entity-card, .hero-card, .hero-review-card, .list-card, .event-card, .object-card, .ui-sample-card, .data-card {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.cardhover:hover, .cardhover:focus-visible, .entity-card:hover, .hero-card:hover, .hero-review-card:hover, .list-card:hover, .event-card:hover, .object-card:hover, .ui-sample-card:hover, .data-card:hover {
+  transform: translate(-2px, -2px);
+  border-color: var(--card-border, var(--card-border-default));
+  box-shadow: var(--card-shadow-hover, var(--card-shadow-hover-default));
+}
+
+/* Card links: underline only on hover/focus-visible. */
+.event-card :is(.event-title-link, .ui-event-description-inline-link, .ui-event-description-link),
+.object-card .object-card-inline-link,
+.comment-card-shell .comment-card-event-link,
+.comment-card.comment-card-ui .comment-card-author-link,
+.ranking-card .user-link,
+.comment-card-stats .comment-card-stat-link span,
+.unified-comment-card .comment-actions .comment-reply-btn,
+.event-card .event-card-comment .event-card-comment-card .comment-actions .comment-reply-btn {
+  text-decoration: none;
+}
+
+.event-card :is(.event-title-link, .ui-event-description-inline-link, .ui-event-description-link):is(:hover, :focus-visible),
+.object-card .object-card-inline-link:is(:hover, :focus-visible),
+.comment-card-shell .comment-card-event-link:is(:hover, :focus-visible),
+.ranking-card .user-link:is(:hover, :focus-visible),
+.unified-comment-card .comment-actions .comment-reply-btn:is(:hover, :focus-visible),
+.event-card .event-card-comment .event-card-comment-card .comment-actions .comment-reply-btn:is(:hover, :focus-visible),
+.comment-card.comment-card-ui .comment-card-author-identity:is(:hover, :focus-visible) .comment-card-author-link,
+.comment-card-stats .comment-card-stat-link:is(:hover, :focus-visible) span {
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.14em;
+}
+
+/* Global rule: never more than 4 cards per row. */
+.event-grid,
+.entity-grid,
+.list-grid,
+.card-grid,
+.stats,
+.search-results,
+.tierlist-mini-grid-react {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1280px) {
+  .event-grid,
+  .entity-grid,
+  .list-grid,
+  .card-grid,
+  .stats,
+  .search-results,
+  .tierlist-mini-grid-react {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .event-grid,
+  .entity-grid,
+  .list-grid,
+  .card-grid,
+  .stats,
+  .search-results,
+  .tierlist-mini-grid-react {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .event-grid,
+  .entity-grid,
+  .list-grid,
+  .card-grid,
+  .stats,
+  .search-results,
+  .tierlist-mini-grid-react {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Source of truth: selection buttons (.filter-btn) across app. */
+.filter-btn {
+  background: transparent !important;
+  border-color: #111111 !important;
+  color: #111111 !important;
+}
+
+.filter-btn.is-active {
+  background: var(--tristi-yellow) !important;
+  border-color: #111111 !important;
+  color: #111111 !important;
+}
+
+/* Feed optional tabs keep same transparent/yellow contract. */
+.filter-btn.feed-optional-open-react {
+  background: transparent !important;
+  border-color: #111111 !important;
+  color: #111111 !important;
+}
+
+.filter-btn.feed-optional-open-react.is-active {
+  background: var(--tristi-yellow) !important;
+  border-color: #111111 !important;
+  color: #111111 !important;
+}
+
+.auth-page-shell {
+  max-width: 640px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.auth-page-shell .auth-form {
+  margin-top: 0;
+}
+
+.auth-page-shell .auth-inline-link {
+  color: #111111;
+  text-decoration: underline;
+}
+
+.auth-page-shell .auth-feedback-error {
+  color: #9a1d2e;
+  font-weight: 700;
+}
+
+/* Discover carousel mode (opt-in via HorizontalCardRail mode="carousel"). */
+.card-rail {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.card-rail.is-carousel {
+  --card-rail-gap: 12px;
+  --card-rail-peek: 0px;
+  --card-rail-peek-desktop: 24px;
+  --card-rail-peek-tablet: 20px;
+  --card-rail-peek-mobile: 14px;
+  --card-rail-hover-scale: 1.18;
+  --card-rail-hover-gutter-inline: 40px;
+  --card-rail-hover-gutter-top: 24px;
+  --card-rail-hover-gutter-bottom: 88px;
+  --card-rail-nav-top: 50%;
+  --card-rail-nav-translate-y: -50%;
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+}
+
+.card-rail.is-carousel.is-scrollable.is-peek {
+  --card-rail-peek: var(--card-rail-peek-desktop);
+}
+
+.card-rail.is-carousel .card-rail-viewport {
+  position: relative;
+  overflow: visible;
+  padding:
+    var(--card-rail-hover-gutter-top)
+    var(--card-rail-hover-gutter-inline)
+    var(--card-rail-hover-gutter-bottom);
+  margin:
+    calc(-1 * var(--card-rail-hover-gutter-top))
+    calc(-1 * var(--card-rail-hover-gutter-inline))
+    calc(-1 * var(--card-rail-hover-gutter-bottom));
+  min-width: 0;
+}
+
+.card-rail.is-carousel .card-rail-track {
+  display: flex;
+  align-items: stretch;
+  gap: var(--card-rail-gap);
+  position: relative;
+  isolation: isolate;
+  overflow-x: auto;
+  overflow-y: visible;
+  margin: 0;
+  padding: 16px 2px 18px;
+  scroll-snap-type: x proximity;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.card-rail.is-carousel .card-rail-track::-webkit-scrollbar {
+  display: none;
+}
+
+.card-rail.is-carousel .card-rail-item {
+  flex: 0 0 calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-desktop) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-desktop));
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+  scroll-snap-align: start;
+  transform-origin: center 12%;
+  transition: transform 0.22s ease, z-index 0.22s ease;
+}
+
+.card-rail.is-carousel .card-rail-item.is-edge-left {
+  transform-origin: left 12%;
+}
+
+.card-rail.is-carousel .card-rail-item.is-edge-right {
+  transform-origin: right 12%;
+}
+
+.card-rail.is-carousel .card-rail-item > * {
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.card-rail.is-carousel .card-rail-item:hover,
+.card-rail.is-carousel .card-rail-item:focus-within {
+  transform: scale(var(--card-rail-hover-scale));
+  z-index: 80;
+}
+
+.card-rail.is-carousel .card-rail-item:hover > *,
+.card-rail.is-carousel .card-rail-item:focus-within > * {
+  z-index: 81;
+}
+
+/* In carousel rows, reveal optional comment card only on zoom/hover. */
+@media (hover: hover) and (pointer: fine) {
+  .card-rail.is-carousel .card-rail-item .event-card-comment-addon {
+    display: none;
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 82;
+  }
+
+  .card-rail.is-carousel .card-rail-item:is(:hover, :focus-within) .event-card-comment-addon {
+    display: grid;
+  }
+}
+
+/* Prevent hover-scale jitter while the rail is moving with wheel inertia. */
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:hover,
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:focus-within {
+  transform: none;
+  z-index: 1;
+}
+
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:hover > *,
+.card-rail.is-carousel.is-wheel-scrolling .card-rail-item:focus-within > * {
+  z-index: 1;
+}
+
+.card-rail.is-carousel .card-rail-nav {
+  position: absolute;
+  top: var(--card-rail-nav-top);
+  transform: translateY(var(--card-rail-nav-translate-y)) scale(0.94);
+  width: 42px;
+  height: 42px;
+  border: 2px solid #111111;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111111;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.75);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.card-rail.is-carousel .card-rail-nav.is-prev {
+  left: 6px;
+}
+
+.card-rail.is-carousel .card-rail-nav.is-next {
+  right: 6px;
+}
+
+.card-rail.is-carousel .card-rail-nav:hover {
+  background: #ffffff;
+}
+
+.card-rail.is-carousel.is-scrollable.is-hover-reveal:hover .card-rail-nav,
+.card-rail.is-carousel.is-scrollable.is-hover-reveal:focus-within .card-rail-nav {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(var(--card-rail-nav-translate-y)) scale(1);
+}
+
+.card-rail.is-carousel.is-static .card-rail-nav,
+.card-rail.is-carousel .card-rail-nav:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Keep nav arrows fixed in event rails despite hover zoom/content expansion. */
+.card-rail.is-carousel.is-event {
+  --card-rail-nav-top: 204px;
+  --card-rail-nav-translate-y: 0;
+}
+
+/* Discover hard-lock: rows stay horizontal even with other global layout rules. */
+.discover-page .discover-carousel-row .card-rail-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch;
+}
+
+.discover-page .discover-carousel-row .card-rail-item {
+  display: block;
+  flex-shrink: 0;
+}
+
+.profile-page .profile-watchlist-row .card-rail-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch;
+}
+
+.profile-page .profile-watchlist-row .card-rail-item {
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .card-rail.is-carousel.is-event {
+    --card-rail-nav-top: 176px;
+  }
+
+  .card-rail.is-carousel {
+    --card-rail-hover-gutter-inline: 30px;
+    --card-rail-hover-gutter-top: 20px;
+    --card-rail-hover-gutter-bottom: 68px;
+  }
+
+  .card-rail.is-carousel.is-scrollable.is-peek {
+    --card-rail-peek: var(--card-rail-peek-tablet);
+  }
+
+  .card-rail.is-carousel .card-rail-item {
+    flex-basis: calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-tablet) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-tablet));
+  }
+}
+
+@media (max-width: 720px) {
+  .card-rail.is-carousel {
+    --card-rail-gap: 12px;
+    --card-rail-hover-scale: 1.1;
+    --card-rail-hover-gutter-inline: 18px;
+    --card-rail-hover-gutter-top: 14px;
+    --card-rail-hover-gutter-bottom: 40px;
+  }
+
+  .card-rail.is-carousel.is-event {
+    --card-rail-nav-top: 142px;
+  }
+
+  .card-rail.is-carousel.is-scrollable.is-peek {
+    --card-rail-peek: var(--card-rail-peek-mobile);
+  }
+
+  .card-rail.is-carousel .card-rail-item {
+    flex-basis: calc((100% - var(--card-rail-peek) - (var(--card-rail-visible-mobile) - 1) * var(--card-rail-gap)) / var(--card-rail-visible-mobile));
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .card-rail.is-carousel .card-rail-nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-rail.is-carousel .card-rail-track {
+    scroll-behavior: auto;
+  }
+
+  .card-rail.is-carousel .card-rail-item,
+  .card-rail.is-carousel .card-rail-nav {
+    transition: none;
+  }
+}
+
+.friendnotes-panel {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 2px solid rgba(17, 17, 17, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(8px);
+}
+
+.friendnotes-panel.is-compact {
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.friendnotes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.friendnotes-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.friendnotes-header span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(17, 17, 17, 0.64);
+}
+
+.friendnotes-table {
+  display: grid;
+  gap: 0;
+}
+
+.friendnotes-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid rgba(17, 17, 17, 0.12);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.friendnotes-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.friendnotes-row:last-child {
+  padding-bottom: 0;
+}
+
+.friendnotes-row:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: translateX(2px);
+}
+
+.friendnotes-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.friendnotes-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.friendnotes-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 2px solid var(--tristi-ink);
+  border-radius: 50%;
+  background: rgba(17, 17, 17, 0.08);
+  font-weight: 800;
+  font-size: 0.82rem;
+}
+
+.friendnotes-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.friendnotes-user-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.friendnotes-name,
+.friendnotes-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friendnotes-name {
+  font-size: 0.96rem;
+}
+
+.friendnotes-meta {
+  font-size: 0.78rem;
+  color: rgba(17, 17, 17, 0.62);
+}
+
+.friendnotes-empty {
+  margin: 0;
+  font-size: 0.92rem;
+  color: rgba(17, 17, 17, 0.7);
+}
+
+.friendnotes-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 17, 17, 0.42);
+}
+
+.friendnotes-modal {
+  width: min(100%, 680px);
+  max-height: min(80vh, 720px);
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 2px solid var(--tristi-ink);
+  border-radius: 22px;
+  background: rgba(247, 243, 232, 0.96);
+  box-shadow: 8px 8px 0 rgba(17, 17, 17, 0.85);
+}
+
+.friendnotes-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.friendnotes-modal-head h2,
+.friendnotes-modal-head p {
+  margin: 0;
+}
+
+.friendnotes-modal-head p {
+  margin-top: 4px;
+  color: rgba(17, 17, 17, 0.64);
+}
+
+.event-detail-friendnotes {
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .friendnotes-panel {
+    padding: 12px;
+  }
+
+  .friendnotes-row {
+    gap: 10px;
+    padding: 8px 0;
+  }
+
+  .friendnotes-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .friendnotes-modal-backdrop {
+    padding: 12px;
+  }
+
+  .friendnotes-modal {
+    padding: 16px;
+  }
+
+  .friendnotes-modal-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
