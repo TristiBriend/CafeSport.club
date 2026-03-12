@@ -141,6 +141,7 @@ function EventCard({
   isInWatchlist = false,
   onToggleWatchlist = null,
   size = "default",
+  variant = "default",
   note = "",
   showTags = true,
   showComment = true,
@@ -162,6 +163,8 @@ function EventCard({
   const photoInputRef = useRef(null);
   const mediaRef = useRef(null);
   const normalizedSize = normalizeEventCardSize(size);
+  const normalizedVariant = String(variant || "default").trim().toLowerCase();
+  const isAlterVariant = normalizedVariant === "_alter";
   const isCompact = normalizedSize === "small";
   const isLegendary = Boolean(event?.legendary);
   const statusClass = getStatusClass(event);
@@ -211,6 +214,135 @@ function EventCard({
   const followActionLabel = isInWatchlist
     ? `Ne plus suivre ${eventTitle}`
     : `Suivre ${eventTitle}`;
+  const seasonTokenRaw = String(event?.seasonKey || "").trim();
+  const seasonToken = seasonTokenRaw && seasonTokenRaw.toLowerCase() !== "na" ? seasonTokenRaw : "";
+  const ribbonLeagueLabel = String(league?.title || event?.league || "").trim();
+  const ribbonMetaLabel = [ribbonLeagueLabel, seasonToken].filter(Boolean).join(" · ");
+  const resultLabel = String(event?.result || "").trim();
+  const ribbonDateLocationLabel = [String(event?.date || "").trim(), String(event?.location || "").trim()]
+    .filter(Boolean)
+    .join(" · ");
+  const hasSportChip = Boolean(String(event?.sport || "").trim());
+  const participantsContent = visibleAthletes.length ? (
+    <div className="overlay-participants">
+      <div className="event-player-miniatures" aria-label={`Participants (${eventAthletes.length})`}>
+        {visibleAthletes.map((athlete) => {
+          const athleteName = String(athlete?.name || "Athlete").trim() || "Athlete";
+          const athleteImage = getImagePath(athlete?.image);
+          return (
+            <Link
+              key={athlete.id}
+              className="player-miniature"
+              to={`/athlete/${athlete.id}`}
+              aria-label={`Voir ${athleteName}`}
+              title={athleteName}
+            >
+              <span className="player-miniature-avatar">
+                {athleteImage ? (
+                  <img src={athleteImage} alt={athleteName} loading="lazy" />
+                ) : (
+                  <span>{getInitials(athleteName)}</span>
+                )}
+              </span>
+            </Link>
+          );
+        })}
+        {remainingCount > 0 ? (
+          <span
+            className="player-miniature player-miniature-overflow"
+            aria-label={`${remainingCount} autres participants`}
+            title={`+${remainingCount} autres participants`}
+          >
+            <span className="player-miniature-avatar">+{remainingCount}</span>
+          </span>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+  const descriptionContent = (
+    <div className="ui-event-description">
+      <p className="ui-event-description-line ui-event-description-line-meta ui-event-description-line-league typo-label">
+        {league ? (
+          <Link className="ui-event-description-inline-link" to={`/league/${league.id}`}>
+            {league.title}
+          </Link>
+        ) : event.league}
+      </p>
+      <p className="ui-event-description-line ui-event-description-line-title typo-body-strong">
+        <span className="ui-event-description-line-name">
+          {teams.length ? (
+            <>
+              {teams.map((team, index) => (
+                <span key={team.id}>
+                  {index > 0 ? <span className="ui-event-description-sep">vs</span> : null}
+                  <Link className="ui-event-description-inline-link" to={`/team/${team.id}`}>
+                    {team.name}
+                  </Link>
+                </span>
+              ))}
+              {event.result ? (
+                <>
+                  <span className="ui-event-description-sep">:</span>
+                  <span className="ui-event-description-result">{event.result}</span>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <Link className="event-title-link" to={`/event/${event.id}`}>
+                {event.title}
+              </Link>
+              {event.result ? (
+                <>
+                  <span className="ui-event-description-sep">:</span>
+                  <span className="ui-event-description-result">{event.result}</span>
+                </>
+              ) : null}
+            </>
+          )}
+        </span>
+      </p>
+      <p className="ui-event-description-line ui-event-description-line-meta ui-event-description-line-datetime typo-meta">
+        {event.date} <span className="ui-event-description-sep">·</span> {event.location}
+      </p>
+    </div>
+  );
+  const alterRibbonContent = (
+    <div className="event-alter-ribbon" aria-label={`Informations principales ${eventTitle}`}>
+      <div className="event-alter-ribbon-inner">
+        <p className="event-alter-ribbon-title">{eventTitle}</p>
+        {(ribbonMetaLabel || resultLabel) ? (
+          <p className="event-alter-ribbon-meta">
+            {ribbonMetaLabel}
+            {resultLabel ? (
+              <>
+                {ribbonMetaLabel ? <span className="event-alter-ribbon-sep">·</span> : null}
+                <span className="event-alter-ribbon-result">{resultLabel}</span>
+              </>
+            ) : null}
+          </p>
+        ) : null}
+        {ribbonDateLocationLabel ? (
+          <p className="event-alter-ribbon-submeta">{ribbonDateLocationLabel}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+  const tagsContent = isLegendary || showTags ? (
+    <div className="object-tags-inline event-card-tags-row">
+      {isLegendary ? (
+        <span
+          className="object-tag-chip event-tag-chip-legendary"
+          title="Evenement legendaire"
+        >
+          Legendaire
+        </span>
+      ) : null}
+      {showTags ? (
+        <ObjectTagsWidget objectType="event" objectId={event.id} title="Tags" compact />
+      ) : null}
+    </div>
+  ) : null;
 
   useEffect(() => {
     if (!isMoreMenuOpen) return undefined;
@@ -424,12 +556,14 @@ function EventCard({
 
   return (
     <div
-      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
+      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${isAlterVariant ? "_alter" : ""}`.trim()}
       data-size={normalizedSize}
+      data-variant={isAlterVariant ? "_alter" : "default"}
     >
       <article
-        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""}`.trim()}
+        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${isAlterVariant ? "_alter" : ""}`.trim()}
         data-event-id={event.id}
+        data-variant={isAlterVariant ? "_alter" : "default"}
       >
         <div
           className="event-corner-meta"
@@ -442,10 +576,20 @@ function EventCard({
           {isFuture ? (
             <span className="event-corner-leading">
               <span className="event-corner-upcoming-text">{getUpcomingLabel(event)}</span>
+              {isAlterVariant && hasSportChip ? (
+                <span className="event-corner-chip event-corner-chip-sport event-alter-top-sport-chip" title={event.sport}>
+                  {event.sport}
+                </span>
+              ) : null}
             </span>
           ) : (
             <span className="event-corner-leading">
               <ScoreBadge variant="user-chip" value={userScore} scale="percent" />
+              {isAlterVariant && hasSportChip ? (
+                <span className="event-corner-chip event-corner-chip-sport event-alter-top-sport-chip" title={event.sport}>
+                  {event.sport}
+                </span>
+              ) : null}
             </span>
           )}
           <span className="event-corner-trailing">
@@ -595,113 +739,31 @@ function EventCard({
               ) : null}
               {photoUploadError ? <p className="catalog-photo-upload-error">{photoUploadError}</p> : null}
               {eventImage ? <img src={eventImage} alt={event.title} /> : null}
-              <div className={`event-media-overlay ${isCompact ? "compact" : ""}`}>
-                {String(event?.sport || "").trim() ? (
-                  <span className="event-overlay-sport-chip event-corner-chip event-corner-chip-sport" title={event.sport}>
-                    {event.sport}
-                  </span>
-                ) : null}
-                {visibleAthletes.length ? (
-                  <div className="overlay-participants">
-                    <div className="event-player-miniatures" aria-label={`Participants (${eventAthletes.length})`}>
-                      {visibleAthletes.map((athlete) => {
-                        const athleteName = String(athlete?.name || "Athlete").trim() || "Athlete";
-                        const athleteImage = getImagePath(athlete?.image);
-                        return (
-                          <Link
-                            key={athlete.id}
-                            className="player-miniature"
-                            to={`/athlete/${athlete.id}`}
-                            aria-label={`Voir ${athleteName}`}
-                            title={athleteName}
-                          >
-                            <span className="player-miniature-avatar">
-                              {athleteImage ? (
-                                <img src={athleteImage} alt={athleteName} loading="lazy" />
-                              ) : (
-                                <span>{getInitials(athleteName)}</span>
-                              )}
-                            </span>
-                          </Link>
-                        );
-                      })}
-                      {remainingCount > 0 ? (
-                        <span
-                          className="player-miniature player-miniature-overflow"
-                          aria-label={`${remainingCount} autres participants`}
-                          title={`+${remainingCount} autres participants`}
-                        >
-                          <span className="player-miniature-avatar">+{remainingCount}</span>
-                        </span>
-                      ) : null}
-                    </div>
+              {isAlterVariant ? alterRibbonContent : null}
+              {!isAlterVariant ? (
+                <div className={`event-media-overlay ${isCompact ? "compact" : ""}`}>
+                  {hasSportChip ? (
+                    <span className="event-overlay-sport-chip event-corner-chip event-corner-chip-sport" title={event.sport}>
+                      {event.sport}
+                    </span>
+                  ) : null}
+                  {participantsContent}
+                  <div className="overlay-description">
+                    {descriptionContent}
                   </div>
-                ) : null}
-                <div className="overlay-description">
-                  <div className="ui-event-description">
-                    <p className="ui-event-description-line ui-event-description-line-meta ui-event-description-line-league typo-label">
-                      {league ? (
-                        <Link className="ui-event-description-inline-link" to={`/league/${league.id}`}>
-                          {league.title}
-                        </Link>
-                      ) : event.league}
-                    </p>
-                    <p className="ui-event-description-line ui-event-description-line-title typo-body-strong">
-                      <span className="ui-event-description-line-name">
-                        {teams.length ? (
-                          <>
-                            {teams.map((team, index) => (
-                              <span key={team.id}>
-                                {index > 0 ? <span className="ui-event-description-sep">vs</span> : null}
-                                <Link className="ui-event-description-inline-link" to={`/team/${team.id}`}>
-                                  {team.name}
-                                </Link>
-                              </span>
-                            ))}
-                            {event.result ? (
-                              <>
-                                <span className="ui-event-description-sep">:</span>
-                                <span className="ui-event-description-result">{event.result}</span>
-                              </>
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
-                            <Link className="event-title-link" to={`/event/${event.id}`}>
-                              {event.title}
-                            </Link>
-                            {event.result ? (
-                              <>
-                                <span className="ui-event-description-sep">:</span>
-                                <span className="ui-event-description-result">{event.result}</span>
-                              </>
-                            ) : null}
-                          </>
-                        )}
-                      </span>
-                    </p>
-                    <p className="ui-event-description-line ui-event-description-line-meta ui-event-description-line-datetime typo-meta">
-                      {event.date} <span className="ui-event-description-sep">·</span> {event.location}
-                    </p>
-                  </div>
+                  {tagsContent}
                 </div>
-                {isLegendary || showTags ? (
-                  <div className="object-tags-inline event-card-tags-row">
-                    {isLegendary ? (
-                      <span
-                        className="object-tag-chip event-tag-chip-legendary"
-                        title="Evenement legendaire"
-                      >
-                        Legendaire
-                      </span>
-                    ) : null}
-                    {showTags ? (
-                      <ObjectTagsWidget objectType="event" objectId={event.id} title="Tags" compact />
-                    ) : null}
+              ) : null}
+            </div>
+            {isAlterVariant ? (
+              <div className={`event-alter-body ${isCompact ? "compact" : ""}`.trim()}>
+                {participantsContent ? (
+                  <div className="event-alter-meta-row">
+                    {participantsContent}
                   </div>
                 ) : null}
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </article>

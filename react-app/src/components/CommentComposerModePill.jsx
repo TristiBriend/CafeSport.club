@@ -1,10 +1,14 @@
 import ScoreBadge from "./ScoreBadge";
 
 function CommentComposerModePill({ mode = "comment" }) {
-  if (mode !== "teaser" && mode !== "review") return null;
+  if (mode !== "teaser" && mode !== "live" && mode !== "review") return null;
 
-  const label = mode === "teaser" ? "Teaser" : "Critique";
-  const badgeVariant = mode === "teaser" ? "teaser-chip" : "review-chip";
+  const label = mode === "teaser"
+    ? "Teaser"
+    : (mode === "live" ? "Live" : "Critique");
+  const badgeVariant = mode === "teaser"
+    ? "teaser-chip"
+    : (mode === "live" ? "live-chip" : "review-chip");
 
   return (
     <div className="comment-composer-mode-pill" aria-label={`Mode ${label.toLowerCase()}`}>

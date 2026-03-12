@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { getProfileAvatarOverride } from "../services/profileService";
 import { getAthleteById, getTeamById } from "../services/catalogService";
 import { useHeaderSearchPicker } from "../contexts/HeaderSearchPickerContext";
+import UnifiedSearchBar from "./UnifiedSearchBar";
 
 const PARCOURIR_NAV = [
   { to: "/athletes", label: "Athletes" },
@@ -28,19 +29,6 @@ function toSportSlug(value) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-}
-
-function getSearchPlaceholder(pathname) {
-  if (pathname.startsWith("/event/")) return "Rechercher un autre evenement...";
-  if (pathname.startsWith("/league/")) return "Rechercher une ligue, un event ou un athlete...";
-  if (pathname.startsWith("/user/")) return "Rechercher users, lists, events...";
-  return "Rechercher competition, joueur, classement, user...";
-}
-
-function getPickerPlaceholder(kind) {
-  return kind === "athlete"
-    ? "Rechercher un athlete favori..."
-    : "Rechercher une equipe favorite...";
 }
 
 function getImagePath(value) {
@@ -274,33 +262,25 @@ function SiteHeader({ watchlistCount = 0 }) {
         </div>
 
         <div className="header-search-inline" ref={headerSearchRef}>
-          <label className="search header-search" htmlFor="global-search-input-react">
-            <input
-              id="global-search-input-react"
-              ref={inputRef}
-              type="search"
-              placeholder={isPickerActive ? getPickerPlaceholder(pickerKind) : getSearchPlaceholder(location.pathname)}
-              value={query}
-              onFocus={() => setIsOpen(true)}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                if (pickerNotice) setPickerNotice("");
-              }}
-              onKeyDown={(event) => {
-                if (!isPickerActive || event.key !== "Enter") return;
-                event.preventDefault();
-                if (results.length) {
-                  handleAddPickerResult(results[0]);
-                }
-              }}
-            />
-            <span className="search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
-                <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </span>
-          </label>
+          <UnifiedSearchBar
+            id="global-search-input-react"
+            inputRef={inputRef}
+            value={query}
+            scope={isPickerActive ? pickerKind : "all"}
+            className="header-search"
+            onFocus={() => setIsOpen(true)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              if (pickerNotice) setPickerNotice("");
+            }}
+            onKeyDown={(event) => {
+              if (!isPickerActive || event.key !== "Enter") return;
+              event.preventDefault();
+              if (results.length) {
+                handleAddPickerResult(results[0]);
+              }
+            }}
+          />
 
           <div className="search-results header-search-results">
             {isOpen ? (

@@ -23,6 +23,15 @@ function normalizeType(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+const COMMENT_TYPES = new Set(["teaser", "live", "critique"]);
+
+function normalizeCommentType(value) {
+  const token = normalizeType(value);
+  if (token === "review") return "critique";
+  if (token === "comment") return "teaser";
+  return COMMENT_TYPES.has(token) ? token : "teaser";
+}
+
 function toIso(value) {
   if (!value) return new Date().toISOString();
   if (typeof value === "string") return value;
@@ -92,7 +101,7 @@ function parseCommentFromDoc(docSnap) {
     note,
     mentions: normalizeCommentMentions(data.mentions),
     likes: toPositiveInt(data.likes),
-    commentType: String(data.commentType || "teaser").trim() || "teaser",
+    commentType: normalizeCommentType(data.commentType),
     rating: data.rating == null ? undefined : toPositiveInt(data.rating),
     createdAt: toIso(data.createdAt),
   };
@@ -317,18 +326,30 @@ export async function upsertCommentCloud(comment) {
     authorUid: normalizeId(comment?.firebaseUid),
     authorAppUserId: normalizeId(comment?.userId),
     authorName: String(comment?.author || "Utilisateur").trim() || "Utilisateur",
-    commentType: String(comment?.commentType || "teaser").trim() || "teaser",
+    commentType: normalizeCommentType(comment?.commentType),
     rating: comment?.rating == null ? null : toPositiveInt(comment.rating),
     note: String(comment?.note || "").trim(),
     mentions: normalizeCommentMentions(comment?.mentions),
     likes: toPositiveInt(comment?.likes),
     deleted: false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
   };
 
   if (!payload.targetType || !payload.targetId || !payload.note) return null;
-  await setDoc(ref, payload, { merge: true });
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists()) {
+      tx.set(ref, {
+        ...payload,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      return;
+    }
+    tx.set(ref, {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  });
   return safeCommentId;
 }
 

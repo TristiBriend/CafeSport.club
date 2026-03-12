@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import PlayerCard from "../components/PlayerCard";
+import UnifiedSearchBar from "../components/UnifiedSearchBar";
 import { getAthleteSports, getAthletes } from "../services/catalogService";
 
 function AthletesPage() {
@@ -14,16 +15,12 @@ function AthletesPage() {
 
   return (
     <section>
-      <label className="search-wrap" htmlFor="athlete-search">
-        <span>Recherche</span>
-        <input
-          id="athlete-search"
-          type="search"
-          placeholder="Nom, sport, pays..."
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <UnifiedSearchBar
+        id="athlete-search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        scope="athlete"
+      />
 
       <div className="filter-row">
         {["Tous", ...sports].map((sport) => (

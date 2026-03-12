@@ -222,6 +222,7 @@ function CommentCard({
 }) {
   const cloudIdentity = getSocialSyncCloudIdentity();
   const isReview = comment.commentType === COMMENT_MODE.REVIEW;
+  const isLive = comment.commentType === COMMENT_MODE.LIVE;
   const replies = Array.isArray(comment.replies) ? comment.replies : [];
   const resolvedUser = useMemo(
     () => resolveCommentUser(comment),
@@ -440,6 +441,8 @@ function CommentCard({
                 scale="percent"
                 variant="user-chip"
               />
+            ) : isLive ? (
+              <ScoreBadge variant="live-chip" />
             ) : (
               <ScoreBadge variant="teaser-chip" />
             )}

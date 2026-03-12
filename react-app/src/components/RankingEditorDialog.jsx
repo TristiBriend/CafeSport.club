@@ -4,6 +4,7 @@ import CompactSelectionRow, {
   buildCompactSelectionMeta,
   buildCompactSelectionMetaFromSearchResult,
 } from "./CompactSelectionRow";
+import UnifiedSearchBar from "./UnifiedSearchBar";
 import { searchGlobal } from "../services/globalSearchService";
 import {
   MAX_RANKING_ROWS,
@@ -93,7 +94,6 @@ function RankingEditorDialog({
   const [editingRowKey, setEditingRowKey] = useState("");
   const [draggingRowKey, setDraggingRowKey] = useState("");
   const [pendingAddQuery, setPendingAddQuery] = useState("");
-  const [pendingAddSelection, setPendingAddSelection] = useState(null);
   const [saveError, setSaveError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -107,7 +107,6 @@ function RankingEditorDialog({
       setEditingRowKey("");
       setDraggingRowKey("");
       setPendingAddQuery("");
-      setPendingAddSelection(null);
       setSaveError("");
       setValidationErrors({});
       setIsSaving(false);
@@ -197,7 +196,8 @@ function RankingEditorDialog({
     setIsDirty(true);
   }
 
-  function handleQueueAddSelection(result) {
+  function handleAddSelection(result) {
+    if (rows.length >= MAX_RANKING_ROWS) return;
     const selection = buildResultSelection(result);
     if (!selection) return;
     const resolvedSelection = getRankingDraftRowSelection(selection);
@@ -206,13 +206,6 @@ function RankingEditorDialog({
       setSaveError("Toutes les lignes doivent appartenir au meme sport.");
       return;
     }
-    setPendingAddSelection(selection);
-    setPendingAddQuery(String(result?.title || "").trim());
-    setSaveError("");
-  }
-
-  function handleConfirmAddRow() {
-    if (rows.length >= MAX_RANKING_ROWS || !pendingAddSelection) return;
     const nextKey = createRowKey("ranking");
     setDraft((current) => ({
       ...current,
@@ -220,8 +213,8 @@ function RankingEditorDialog({
         ...current.rows,
         {
           key: nextKey,
-          itemType: pendingAddSelection.itemType,
-          itemId: pendingAddSelection.itemId,
+          itemType: selection.itemType,
+          itemId: selection.itemId,
           note: "",
           query: "",
         },
@@ -229,7 +222,6 @@ function RankingEditorDialog({
     }));
     setIsDirty(true);
     setPendingAddQuery("");
-    setPendingAddSelection(null);
     setSaveError("");
   }
 
@@ -453,11 +445,10 @@ function RankingEditorDialog({
                     })() : null}
                     {isEditingRow ? (
                       <div className="ranking-editor-entry-search">
-                        <input
-                          className="tag-textbox"
-                          type="search"
+                        <UnifiedSearchBar
                           value={row.query || ""}
-                          placeholder="Rechercher un event ou un athlete..."
+                          scope="all"
+                          className="ranking-editor-search-field"
                           onChange={(event) => {
                             updateRow(row.key, { query: event.target.value });
                             setSaveError("");
@@ -528,36 +519,16 @@ function RankingEditorDialog({
           <div className="ranking-editor-actions-row">
             <div className="ranking-editor-add-bar">
               <div className="ranking-editor-add-input">
-                <input
-                  className="tag-textbox"
-                  type="search"
+                <UnifiedSearchBar
                   value={pendingAddQuery}
-                  placeholder="Rechercher un event ou un athlete..."
+                  scope="all"
+                  className="ranking-editor-add-search-field"
                   onChange={(event) => {
                     setPendingAddQuery(event.target.value);
-                    setPendingAddSelection(null);
                     setSaveError("");
                   }}
                   disabled={rows.length >= MAX_RANKING_ROWS}
                 />
-                {pendingAddSelection ? (
-                  (() => {
-                    const pendingSelection = getRankingDraftRowSelection(pendingAddSelection);
-                    const compactRow = buildCompactRowPropsFromSelection(pendingSelection);
-                    if (!pendingSelection || !compactRow) return null;
-                    return (
-                      <div className="ranking-editor-add-preview">
-                        <CompactSelectionRow
-                          kind={compactRow.kind}
-                          title={compactRow.title}
-                          subtitle={compactRow.subtitle}
-                          leadingLabel={compactRow.kind === "athlete" ? "Athlete" : "Event"}
-                          className="ranking-editor-selection-row profile-top5-search-result"
-                        />
-                      </div>
-                    );
-                  })()
-                ) : null}
                 {pendingAddQuery ? (
                   pendingAddResults.length ? (
                     <div className="ranking-editor-search-results">
@@ -568,9 +539,6 @@ function RankingEditorDialog({
                         });
                         const compactRow = buildCompactSelectionMetaFromSearchResult(result);
                         if (!resultSelection || !compactRow) return null;
-                        const isSelected =
-                          pendingAddSelection?.itemType === resultSelection.type
-                          && pendingAddSelection?.itemId === resultSelection.id;
                         return (
                           <CompactSelectionRow
                             key={`pending-${result.type}-${result.id}`}
@@ -579,9 +547,8 @@ function RankingEditorDialog({
                             subtitle={compactRow.subtitle}
                             leadingLabel={compactRow.kind === "athlete" ? "Athlete" : "Event"}
                             interactive
-                            selected={isSelected}
                             className="ranking-editor-search-result profile-top5-search-result"
-                            onClick={() => handleQueueAddSelection(result)}
+                            onClick={() => handleAddSelection(result)}
                           />
                         );
                       })}
@@ -591,15 +558,6 @@ function RankingEditorDialog({
                   )
                 ) : null}
               </div>
-              <button
-                type="button"
-                className="btn btn-primary ranking-editor-add-confirm"
-                onClick={handleConfirmAddRow}
-                disabled={rows.length >= MAX_RANKING_ROWS || !pendingAddSelection}
-                aria-label="Valider l ajout de la ligne"
-              >
-                +
-              </button>
             </div>
           </div>
         </div>

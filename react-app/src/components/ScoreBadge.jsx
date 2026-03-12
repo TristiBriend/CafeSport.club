@@ -17,6 +17,14 @@ function IconReviewNote() {
   );
 }
 
+function IconLiveBolt() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12.8 2.7 5.9 13h4.7l-1 8.3L18.1 11h-4.4l2.2-8.3h-3.1Z" />
+    </svg>
+  );
+}
+
 function toScorePercent(value, scale = "percent") {
   const raw = Number(value || 0);
   if (!Number.isFinite(raw)) return 0;
@@ -39,6 +47,10 @@ function ScoreBadge({
     ? "Score communaute"
     : variant === "teaser-chip"
       ? "Teaser"
+      : variant === "live-chip"
+        ? "Live"
+        : variant === "review-chip"
+          ? "Critique"
       : (isUnsetUserScore ? "Noter" : "Mon score");
 
   if (variant === "user-chip") {
@@ -69,6 +81,14 @@ function ScoreBadge({
     return (
       <span className="event-corner-chip event-corner-chip-user event-corner-chip-review" title="Critique" aria-label="Critique">
         <IconReviewNote />
+      </span>
+    );
+  }
+
+  if (variant === "live-chip") {
+    return (
+      <span className="event-corner-chip event-corner-chip-user event-corner-chip-live" title="Live" aria-label="Live">
+        <IconLiveBolt />
       </span>
     );
   }

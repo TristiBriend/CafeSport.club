@@ -1,0 +1,127 @@
+.comment-card {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.unified-comment-card.compact {
+  padding: 12px;
+  border-radius: 16px;
+  gap: 8px;
+}
+
+.unified-comment-card.compact .comment-head {
+  gap: 8px;
+}
+
+.unified-comment-card.compact .comment-text {
+  margin: 6px 0 4px 0;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.unified-comment-card.compact .comment-actions {
+  gap: 8px;
+}
+
+.unified-comment-card.compact .comment-thread {
+  margin-top: 8px;
+  gap: 8px;
+  padding-left: 12px;
+}
+
+.unified-comment-card.compact .comment-reply {
+  padding: 8px;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.comment-avatar.small {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+}
+
+.comment-text {
+  margin: 10px 0 6px 0;
+}
+
+.unified-comment-with-event-heading.compact {
+  gap: 4px;
+}
+
+.unified-comment-with-event-heading.compact .comment-event-heading-outside {
+  margin-left: 10px;
+  font-size: 0.75rem;
+}
+
+.comment-event-miniature .event-mini {
+  width: min(220px, 100%);
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.unified-comment-card .comment-actions {
+  gap: 6px;
+}
+
+.unified-comment-card .user-identity-name {
+  font-weight: 500;
+}
+
+.unified-comment-card .comment-text {
+  font-weight: 700;
+}
+
+.unified-comment-card .comment-actions .relative-date-element {
+  font-size: 0.64rem;
+  color: var(--text);
+}
+
+.unified-comment-card .comment-actions .comment-reply-btn,
+.event-card .event-card-comment .event-card-comment-card .comment-actions .comment-reply-btn {
+  min-height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #111111;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.16em;
+}
+
+.comment-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  border: 1px solid rgba(153, 255, 102, 0.5);
+  background: rgba(153, 255, 102, 0.22);
+  color: var(--tristi-ink);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comment-like-btn.is-liked {
+  background: rgba(255, 49, 49, 0.2);
+  border-color: rgba(255, 49, 49, 0.45);
+  color: var(--accent-strong);
+}
+

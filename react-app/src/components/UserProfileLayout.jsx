@@ -5,6 +5,7 @@ import EventCard from "./EventCard";
 import HorizontalCardRail from "./HorizontalCardRail";
 import ProfileTopEventsSection from "./ProfileTopEventsSection";
 import ReviewListPanel from "./ReviewListPanel";
+import UnifiedSearchBar from "./UnifiedSearchBar";
 import UserCard from "./UserCard";
 import { getAthleteById, getTeamById, getUserById, getUsers } from "../services/catalogService";
 import {
@@ -923,11 +924,10 @@ function UserProfileLayout({
                     {isOwnProfile && isEditingDetails ? (
                       <>
                         <div className="profile-inline-picker">
-                          <input
-                            className="profile-inline-picker-input"
-                            type="search"
-                            placeholder="Ajouter une equipe..."
+                          <UnifiedSearchBar
                             value={favoriteTeamQuery}
+                            className="profile-inline-picker-search"
+                            scope="team"
                             onChange={(event) => setFavoriteTeamQuery(event.target.value)}
                             onKeyDown={(event) => {
                               if (event.key !== "Enter" || !favoriteTeamSearchResults.length) return;
@@ -995,11 +995,10 @@ function UserProfileLayout({
                     {isOwnProfile && isEditingDetails ? (
                       <>
                         <div className="profile-inline-picker">
-                          <input
-                            className="profile-inline-picker-input"
-                            type="search"
-                            placeholder="Ajouter un athlete..."
+                          <UnifiedSearchBar
                             value={favoriteAthleteQuery}
+                            className="profile-inline-picker-search"
+                            scope="athlete"
                             onChange={(event) => setFavoriteAthleteQuery(event.target.value)}
                             onKeyDown={(event) => {
                               if (event.key !== "Enter" || !favoriteAthleteSearchResults.length) return;

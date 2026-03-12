@@ -13,7 +13,6 @@ import {
   deleteCommentReply,
   filterCommentsByMode,
   getCommentsForTarget,
-  isReviewAllowedTarget,
   resolveComposerModeForTarget,
   toggleCommentLike,
   toggleReplyLike,
@@ -44,9 +43,6 @@ function ObjectSocialPanel({
   const [comments, setComments] = useState([]);
   const [activeMode, setActiveMode] = useState(COMMENT_MODE.ALL);
   const resolvedComposer = resolveComposerModeForTarget(targetType, targetId, { allowReview });
-  const canReviewTarget = allowReview
-    && isReviewAllowedTarget(targetType)
-    && resolvedComposer.commentMode === COMMENT_MODE.REVIEW;
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [composerMentions, setComposerMentions] = useState([]);
@@ -68,14 +64,7 @@ function ObjectSocialPanel({
       setIsFollowed(isTargetFollowed(resolvedFollowType, targetId));
       setFollowers(getTargetFollowerCount(resolvedFollowType, targetId, followBaseCount));
     }
-  }, [canReviewTarget, followBaseCount, followsRevision, resolvedFollowType, showFollow, targetId, targetType]);
-
-  useEffect(() => {
-    if (canReviewTarget) return;
-    if (activeMode === COMMENT_MODE.REVIEW) {
-      setActiveMode(COMMENT_MODE.ALL);
-    }
-  }, [activeMode, canReviewTarget]);
+  }, [followBaseCount, followsRevision, resolvedFollowType, showFollow, targetId, targetType]);
 
   const visibleComments = useMemo(
     () => filterCommentsByMode(comments, activeMode),
@@ -207,8 +196,8 @@ function ObjectSocialPanel({
         <div className="group-title">
           <h2>{title}</h2>
         </div>
-        {resolvedComposer.teaserOnlyHint ? (
-          <p className="event-meta">Evenement a venir: seuls les teasers sont autorises.</p>
+        {resolvedComposer.timingHint ? (
+          <p className="event-meta">{resolvedComposer.timingHint}</p>
         ) : null}
 
         <div className="comment-filter-row" role="tablist" aria-label="Filtrer les commentaires">
@@ -219,21 +208,26 @@ function ObjectSocialPanel({
           >
             Tous
           </button>
-          {canReviewTarget ? (
-            <button
-              className={`filter-btn ${activeMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
-              onClick={() => setActiveMode(COMMENT_MODE.REVIEW)}
-              type="button"
-            >
-              Critiques
-            </button>
-          ) : null}
           <button
             className={`filter-btn ${activeMode === COMMENT_MODE.COMMENT ? "is-active" : ""}`}
             onClick={() => setActiveMode(COMMENT_MODE.COMMENT)}
             type="button"
           >
-            Commentaires
+            Teasers
+          </button>
+          <button
+            className={`filter-btn ${activeMode === COMMENT_MODE.LIVE ? "is-active" : ""}`}
+            onClick={() => setActiveMode(COMMENT_MODE.LIVE)}
+            type="button"
+          >
+            Live
+          </button>
+          <button
+            className={`filter-btn ${activeMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
+            onClick={() => setActiveMode(COMMENT_MODE.REVIEW)}
+            type="button"
+          >
+            Critiques
           </button>
         </div>
 

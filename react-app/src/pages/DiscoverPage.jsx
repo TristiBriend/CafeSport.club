@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import EventCard from "../components/EventCard";
 import HorizontalCardRail from "../components/HorizontalCardRail";
 import SportFilters from "../components/SportFilters";
+import UnifiedSearchBar from "../components/UnifiedSearchBar";
 import {
   EVENT_SORT,
   filterEvents,
@@ -52,16 +53,12 @@ function DiscoverPage({
 
   return (
     <section className="discover-page">
-      <label className="search-wrap" htmlFor="discover-search">
-        <span>Recherche</span>
-        <input
-          id="discover-search"
-          type="search"
-          placeholder="Rechercher equipes, ligues, ou lieux"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <UnifiedSearchBar
+        id="discover-search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        scope="event"
+      />
 
       {!lockedSport ? (
         <SportFilters sports={sports} activeSport={sportFilter} onChange={setSportFilter} />

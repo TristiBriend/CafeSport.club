@@ -1545,6 +1545,16 @@ main {
   fill: currentColor;
 }
 
+.event-corner-chip-live {
+  background: var(--orange);
+}
+
+.event-corner-chip-live svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
 .event-media-overlay.hero {
   padding: 20px;
 }

@@ -56,6 +56,8 @@ const COMMENT_IMPRESSIONS_SESSION_KEY = "cafesport.club_comment_impressions_sess
 export const COMMENT_MODE = {
   ALL: "all",
   REVIEW: "critique",
+  LIVE: "live",
+  TEASER: "teaser",
   COMMENT: "teaser",
 };
 
@@ -94,12 +96,57 @@ function toEventDateTimeValue(event = null) {
   return 0;
 }
 
-export function isFutureEventByDateTime(event) {
+const EVENT_STATUS_PAST = new Set([
+  "passe",
+  "past",
+  "ended",
+  "termine",
+  "terminee",
+  "finished",
+]);
+const EVENT_STATUS_LIVE = new Set([
+  "en cours",
+  "live",
+  "ongoing",
+  "in progress",
+]);
+const EVENT_STATUS_UPCOMING = new Set([
+  "a venir",
+  "upcoming",
+  "scheduled",
+]);
+
+function normalizeEventStatusToken(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function resolveEventCommentMode(event) {
+  const statusToken = normalizeEventStatusToken(event?.status);
+  if (EVENT_STATUS_LIVE.has(statusToken)) {
+    return COMMENT_MODE.LIVE;
+  }
+  if (EVENT_STATUS_PAST.has(statusToken)) {
+    return COMMENT_MODE.REVIEW;
+  }
+  if (EVENT_STATUS_UPCOMING.has(statusToken)) {
+    return COMMENT_MODE.COMMENT;
+  }
   const timestamp = toEventDateTimeValue(event);
   if (timestamp > 0) {
-    return timestamp > Date.now();
+    return timestamp > Date.now()
+      ? COMMENT_MODE.COMMENT
+      : COMMENT_MODE.REVIEW;
   }
-  return String(event?.status || "").toLowerCase() !== "passe";
+  return COMMENT_MODE.COMMENT;
+}
+
+export function isFutureEventByDateTime(event) {
+  return resolveEventCommentMode(event) === COMMENT_MODE.COMMENT;
 }
 
 export function resolveEventForCommentTarget(targetType, targetId, eventId = "") {
@@ -122,7 +169,7 @@ export function canReviewTargetNow(targetType, targetId, eventId = "") {
   if (safeType !== COMMENT_TARGET.EVENT) return true;
   const event = resolveEventForCommentTarget(safeType, targetId, eventId);
   if (!event) return false;
-  return !isFutureEventByDateTime(event);
+  return resolveEventCommentMode(event) === COMMENT_MODE.REVIEW;
 }
 
 export function resolveComposerModeForTarget(targetType, targetId, options = {}) {
@@ -130,12 +177,50 @@ export function resolveComposerModeForTarget(targetType, targetId, options = {})
   const safeTargetId = normalizeTargetId(targetId);
   const allowReview = options.allowReview !== false;
 
+  if (safeType === COMMENT_TARGET.EVENT) {
+    const event = resolveEventForCommentTarget(safeType, safeTargetId, options.eventId);
+    const mode = resolveEventCommentMode(event);
+
+    if (mode === COMMENT_MODE.REVIEW) {
+      return {
+        commentMode: COMMENT_MODE.REVIEW,
+        displayMode: "review",
+        showRating: true,
+        teaserOnlyHint: false,
+        liveOnlyHint: false,
+        timingHint: "Evenement termine: publie une critique avec note.",
+      };
+    }
+
+    if (mode === COMMENT_MODE.LIVE) {
+      return {
+        commentMode: COMMENT_MODE.LIVE,
+        displayMode: "live",
+        showRating: false,
+        teaserOnlyHint: false,
+        liveOnlyHint: true,
+        timingHint: "Evenement en cours: commentaires live ouverts.",
+      };
+    }
+
+    return {
+      commentMode: COMMENT_MODE.COMMENT,
+      displayMode: "teaser",
+      showRating: false,
+      teaserOnlyHint: true,
+      liveOnlyHint: false,
+      timingHint: "Evenement a venir: seuls les teasers sont autorises.",
+    };
+  }
+
   if (!allowReview || !isReviewAllowedTarget(safeType)) {
     return {
       commentMode: COMMENT_MODE.COMMENT,
       displayMode: "comment",
       showRating: false,
       teaserOnlyHint: false,
+      liveOnlyHint: false,
+      timingHint: "",
     };
   }
 
@@ -145,6 +230,8 @@ export function resolveComposerModeForTarget(targetType, targetId, options = {})
       displayMode: "review",
       showRating: true,
       teaserOnlyHint: false,
+      liveOnlyHint: false,
+      timingHint: "",
     };
   }
 
@@ -153,6 +240,8 @@ export function resolveComposerModeForTarget(targetType, targetId, options = {})
     displayMode: safeType === COMMENT_TARGET.EVENT ? "teaser" : "comment",
     showRating: false,
     teaserOnlyHint: safeType === COMMENT_TARGET.EVENT,
+    liveOnlyHint: false,
+    timingHint: "",
   };
 }
 
@@ -168,6 +257,13 @@ const commentLines = [
   "Je prends place devant l'ecran, ca va etre chaud.",
   "On va avoir du suspense jusqu'au bout.",
   "J'espere un finish memorable.",
+];
+
+const liveCommentLines = [
+  "Gros temps fort en direct, ca accelere.",
+  "Ca joue vite, je commente en live.",
+  "Momentum en train de basculer, incroyable.",
+  "La tension monte, l'ambiance est enorme.",
 ];
 
 const autoReplyLines = [
@@ -200,6 +296,76 @@ function normalizeTargetType(targetType) {
 
 function normalizeTargetId(targetId) {
   return String(targetId || "").trim();
+}
+
+function buildReviewUniquenessKey(userId, targetType, targetId) {
+  const safeUserId = normalizeTargetId(userId);
+  const safeTargetType = normalizeTargetType(targetType);
+  const safeTargetId = normalizeTargetId(targetId);
+  if (!safeUserId || !safeTargetType || !safeTargetId) return "";
+  return `${safeUserId}\u001f${safeTargetType}\u001f${safeTargetId}\u001f${COMMENT_MODE.REVIEW}`;
+}
+
+function buildDeterministicReviewCommentId(userId, targetType, targetId) {
+  const key = buildReviewUniquenessKey(userId, targetType, targetId);
+  if (!key) return "";
+  return `review-${encodeURIComponent(key)}`;
+}
+
+function findReviewIndexForIdentity(list, {
+  userId = "",
+  targetType = "",
+  targetId = "",
+} = {}) {
+  const safeUserId = normalizeTargetId(userId);
+  const safeTargetType = normalizeTargetType(targetType);
+  const safeTargetId = normalizeTargetId(targetId);
+  if (!safeUserId || !safeTargetType || !safeTargetId) return -1;
+  const source = Array.isArray(list) ? list : [];
+  let resolvedIndex = -1;
+  let resolvedCreatedAt = -Infinity;
+  source.forEach((item, index) => {
+    const normalized = normalizeComment(item, {
+      targetType: safeTargetType,
+      targetId: safeTargetId,
+    });
+    if (!normalized) return;
+    const isMatch = normalized.commentType === COMMENT_MODE.REVIEW
+      && normalizeTargetType(normalized.targetType) === safeTargetType
+      && normalizeTargetId(normalized.targetId) === safeTargetId
+      && normalizeTargetId(normalized.userId) === safeUserId;
+    if (!isMatch) return;
+    const nextCreatedAt = Date.parse(String(normalized.createdAt || ""));
+    if (!Number.isFinite(nextCreatedAt)) {
+      if (resolvedIndex < 0) {
+        resolvedIndex = index;
+      }
+      return;
+    }
+    if (nextCreatedAt >= resolvedCreatedAt) {
+      resolvedCreatedAt = nextCreatedAt;
+      resolvedIndex = index;
+    }
+  });
+  return resolvedIndex;
+}
+
+function normalizeCommentMode(mode, targetType) {
+  const token = String(mode || "").trim().toLowerCase();
+  if (token === COMMENT_MODE.REVIEW || token === "review") {
+    return isReviewAllowedTarget(targetType)
+      ? COMMENT_MODE.REVIEW
+      : COMMENT_MODE.COMMENT;
+  }
+  if (token === COMMENT_MODE.LIVE) {
+    return targetType === COMMENT_TARGET.EVENT
+      ? COMMENT_MODE.LIVE
+      : COMMENT_MODE.COMMENT;
+  }
+  if (token === "comment" || token === COMMENT_MODE.TEASER || token === COMMENT_MODE.COMMENT) {
+    return COMMENT_MODE.COMMENT;
+  }
+  return COMMENT_MODE.COMMENT;
 }
 
 function resolveAuthoredDisplayName(userId, explicitAuthor = "", fallbackLabel = "Utilisateur") {
@@ -239,10 +405,6 @@ function resolveCurrentCommentIdentity(userId = "", author = "") {
   };
 }
 
-function isUpcomingEvent(event) {
-  return isFutureEventByDateTime(event);
-}
-
 function getEventDateTime(event, shiftHours = 0) {
   const parsed = Date.parse(event?.dateISO || "");
   const base = Number.isFinite(parsed) ? parsed : Date.UTC(2026, 1, 9);
@@ -277,18 +439,20 @@ function createSeedReview(event, index = 0) {
   };
 }
 
-function createSeedComment(event, index = 0) {
+function createSeedComment(event, index = 0, mode = COMMENT_MODE.COMMENT) {
   const seed = hashCode(event.id);
   const author = ["Jamal T.", "Riley K.", "Nina P.", "Marcus L."][seed % 4];
+  const safeMode = mode === COMMENT_MODE.LIVE ? COMMENT_MODE.LIVE : COMMENT_MODE.COMMENT;
+  const noteLines = safeMode === COMMENT_MODE.LIVE ? liveCommentLines : commentLines;
   return {
     id: `seed-cmt-${event.id}`,
     targetType: COMMENT_TARGET.EVENT,
     targetId: event.id,
     eventId: event.id,
     author,
-    note: commentLines[seed % commentLines.length],
+    note: noteLines[seed % noteLines.length],
     likes: 5 + (seed % 10),
-    commentType: COMMENT_MODE.COMMENT,
+    commentType: safeMode,
     createdAt: getEventDateTime(event, 15 - (index % 6)),
     replies: [
       {
@@ -312,9 +476,7 @@ function normalizeComment(raw, fallbackTarget = {}) {
 
   if (!targetType || !targetId || !note) return null;
 
-  const mode = raw.commentType === COMMENT_MODE.REVIEW && isReviewAllowedTarget(targetType)
-    ? COMMENT_MODE.REVIEW
-    : COMMENT_MODE.COMMENT;
+  const mode = normalizeCommentMode(raw.commentType, targetType);
   const explicitEventId = normalizeTargetId(raw.eventId);
   const eventId = explicitEventId || (targetType === COMMENT_TARGET.EVENT ? targetId : "");
 
@@ -745,9 +907,10 @@ function getSeedComments() {
   const coveredEventIds = new Set(seeded.map((item) => item.eventId));
   getAllEvents().forEach((event, index) => {
     if (coveredEventIds.has(event.id)) return;
-    const item = isUpcomingEvent(event)
-      ? createSeedComment(event, index)
-      : createSeedReview(event, index);
+    const eventMode = resolveEventCommentMode(event);
+    const item = eventMode === COMMENT_MODE.REVIEW
+      ? createSeedReview(event, index)
+      : createSeedComment(event, index, eventMode);
     seeded.push(item);
   });
 
@@ -934,16 +1097,77 @@ export function createTargetComment(targetType, targetId, {
   const resolvedEventId = safeType === COMMENT_TARGET.EVENT
     ? safeTargetId
     : normalizeTargetId(eventId);
-  const canReview = isReviewAllowedTarget(safeType);
-  const canReviewNow = canReviewTargetNow(safeType, safeTargetId, resolvedEventId);
-  const safeMode = mode === COMMENT_MODE.REVIEW && canReview && canReviewNow
-    ? COMMENT_MODE.REVIEW
-    : COMMENT_MODE.COMMENT;
+  const requestedMode = normalizeCommentMode(mode, safeType);
+  let safeMode = COMMENT_MODE.COMMENT;
+  if (safeType === COMMENT_TARGET.EVENT) {
+    const event = resolveEventForCommentTarget(safeType, safeTargetId, resolvedEventId);
+    const eventMode = resolveEventCommentMode(event);
+    safeMode = eventMode === COMMENT_MODE.LIVE
+      ? COMMENT_MODE.LIVE
+      : (eventMode === COMMENT_MODE.REVIEW ? COMMENT_MODE.REVIEW : COMMENT_MODE.COMMENT);
+  } else {
+    const canReview = isReviewAllowedTarget(safeType);
+    const canReviewNow = canReviewTargetNow(safeType, safeTargetId, resolvedEventId);
+    safeMode = requestedMode === COMMENT_MODE.REVIEW && canReview && canReviewNow
+      ? COMMENT_MODE.REVIEW
+      : COMMENT_MODE.COMMENT;
+  }
+  if (safeMode === COMMENT_MODE.REVIEW && !Number.isFinite(Number(rating))) return null;
   const identity = resolveCurrentCommentIdentity(userId, author);
-
+  const normalizedMentions = normalizeCommentMentions(mentions);
+  const current = readStorageArray(MANUAL_COMMENTS_KEY);
   const now = new Date().toISOString();
+
+  if (safeMode === COMMENT_MODE.REVIEW) {
+    const existingReviewIndex = findReviewIndexForIdentity(current, {
+      userId: identity.userId,
+      targetType: safeType,
+      targetId: safeTargetId,
+    });
+    if (existingReviewIndex >= 0) {
+      const existingRaw = current[existingReviewIndex];
+      const existingRecord = existingRaw && typeof existingRaw === "object" ? existingRaw : {};
+      const existingNormalized = normalizeComment(existingRecord, {
+        targetType: safeType,
+        targetId: safeTargetId,
+      });
+      const preservedCreatedAt = String(
+        existingRecord.createdAt
+        || existingRecord.dateTime
+        || existingNormalized?.createdAt
+        || now,
+      );
+      const preservedDateTime = String(existingRecord.dateTime || preservedCreatedAt);
+
+      const upsertedReview = {
+        ...existingRecord,
+        id: String(existingRecord.id || existingNormalized?.id || createCommentId()),
+        targetType: safeType,
+        targetId: safeTargetId,
+        eventId: resolvedEventId,
+        userId: identity.userId,
+        author: identity.author,
+        note: cleanNote,
+        commentType: COMMENT_MODE.REVIEW,
+        rating: clampRating(rating),
+        mentions: normalizedMentions,
+        createdAt: preservedCreatedAt,
+        dateTime: preservedDateTime,
+      };
+
+      current[existingReviewIndex] = upsertedReview;
+      writeManualComments(current);
+      mirrorCommentUpsert(upsertedReview);
+      notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
+      return normalizeComment(upsertedReview, { targetType: safeType, targetId: safeTargetId });
+    }
+  }
+
+  const deterministicReviewId = safeMode === COMMENT_MODE.REVIEW
+    ? buildDeterministicReviewCommentId(identity.userId, safeType, safeTargetId)
+    : "";
   const payload = {
-    id: createCommentId(),
+    id: deterministicReviewId || createCommentId(),
     targetType: safeType,
     targetId: safeTargetId,
     eventId: resolvedEventId,
@@ -953,13 +1177,34 @@ export function createTargetComment(targetType, targetId, {
     likes: 0,
     commentType: safeMode,
     rating: safeMode === COMMENT_MODE.REVIEW ? clampRating(rating) : undefined,
-    mentions: normalizeCommentMentions(mentions),
+    mentions: normalizedMentions,
     createdAt: now,
     dateTime: now,
     replies: [],
   };
 
-  const current = readStorageArray(MANUAL_COMMENTS_KEY);
+  if (deterministicReviewId) {
+    const existingByIdIndex = current.findIndex((item) => String(item?.id || "") === deterministicReviewId);
+    if (existingByIdIndex >= 0) {
+      const existingRaw = current[existingByIdIndex];
+      const existingRecord = existingRaw && typeof existingRaw === "object" ? existingRaw : {};
+      const preservedCreatedAt = String(existingRecord.createdAt || existingRecord.dateTime || now);
+      const preservedDateTime = String(existingRecord.dateTime || preservedCreatedAt);
+      const upsertedById = {
+        ...existingRecord,
+        ...payload,
+        id: deterministicReviewId,
+        createdAt: preservedCreatedAt,
+        dateTime: preservedDateTime,
+      };
+      current[existingByIdIndex] = upsertedById;
+      writeManualComments(current);
+      mirrorCommentUpsert(upsertedById);
+      notifyDomainDirty(SOCIAL_SYNC_DOMAIN.COMMENTS);
+      return normalizeComment(upsertedById, { targetType: safeType, targetId: safeTargetId });
+    }
+  }
+
   current.push(payload);
   writeManualComments(current);
   mirrorCommentUpsert(payload);
@@ -1134,10 +1379,6 @@ export function updateComment(commentId, { note, rating, mentions } = {}) {
   if (index < 0) return false;
 
   const current = { ...comments[index] };
-  if (current.commentType === COMMENT_MODE.REVIEW) {
-    const canReviewNow = canReviewTargetNow(current.targetType, current.targetId, current.eventId);
-    if (!canReviewNow) return false;
-  }
   current.note = cleanNote;
   if (current.commentType === COMMENT_MODE.REVIEW) {
     current.rating = clampRating(rating);
@@ -1294,7 +1535,10 @@ export function getCommentDateLabel(comment) {
 }
 
 export function getCommentModeLabel(comment) {
-  return comment?.commentType === COMMENT_MODE.REVIEW ? "Critique" : "Commentaire";
+  if (comment?.commentType === COMMENT_MODE.REVIEW) return "Critique";
+  if (comment?.commentType === COMMENT_MODE.LIVE) return "Live";
+  if (comment?.commentType === COMMENT_MODE.COMMENT) return "Teaser";
+  return "Commentaire";
 }
 
 export function getCommentTargetLabel(targetType) {

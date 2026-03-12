@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import UserCard from "../components/UserCard";
+import UnifiedSearchBar from "../components/UnifiedSearchBar";
 import { getUsers } from "../services/catalogService";
 
 function UsersPage() {
@@ -8,16 +9,12 @@ function UsersPage() {
 
   return (
     <section>
-      <label className="search-wrap" htmlFor="user-search">
-        <span>Recherche</span>
-        <input
-          id="user-search"
-          type="search"
-          placeholder="Nom, handle, ville..."
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <UnifiedSearchBar
+        id="user-search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        scope="user"
+      />
 
       <p className="results-count">{users.length} users</p>
 

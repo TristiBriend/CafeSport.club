@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import RankingEditorDialog from "../components/RankingEditorDialog";
 import RankingCard from "../components/RankingCard";
+import UnifiedSearchBar from "../components/UnifiedSearchBar";
 import { useAuth } from "../contexts/AuthContext";
 import {
   getCuratedLists,
@@ -43,16 +44,12 @@ function ListsPage() {
         </button>
       </div>
 
-      <label className="search-wrap" htmlFor="list-search">
-        <span>Recherche</span>
-        <input
-          id="list-search"
-          type="search"
-          placeholder="Titre, sport..."
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <UnifiedSearchBar
+        id="list-search"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        scope="list"
+      />
 
       <div className="filter-row">
         {["Tous", ...sports].map((sport) => (

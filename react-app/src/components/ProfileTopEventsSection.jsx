@@ -3,6 +3,7 @@ import CompactSelectionRow, {
   buildCompactSelectionMeta,
   buildCompactSelectionMetaFromSearchResult,
 } from "./CompactSelectionRow";
+import UnifiedSearchBar from "./UnifiedSearchBar";
 
 function ProfileTopEventsSection({
   title = "Mon Top 5 events",
@@ -107,13 +108,12 @@ function ProfileTopEventsSection({
 
       {isOwnProfile && isEditing ? (
         <div className="profile-top5-editor profile-top5-editor-inline">
-          <input
-            className="profile-top5-search-input"
-            type="search"
-            placeholder="Ajouter un event au Top 5..."
+          <UnifiedSearchBar
             value={topEventsQuery}
             onChange={(event) => onQueryChange(event.target.value)}
             onKeyDown={onQueryKeyDown}
+            className="profile-top5-search-field"
+            scope="event"
           />
           {!visibleEvents.length ? (
             <p className="event-meta">{emptyEditingHint}</p>

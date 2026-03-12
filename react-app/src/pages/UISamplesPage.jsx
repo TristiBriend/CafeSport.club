@@ -30,6 +30,7 @@ import {
 } from "../services/catalogService";
 import {
   COMMENT_MODE,
+  COMMENT_TARGET,
   createCommentReply,
   createEventComment,
   deleteComment,
@@ -105,6 +106,7 @@ const COMPONENT_LEGENDS = [
       "isInWatchlist: boolean",
       "onToggleWatchlist: (eventId) => void",
       "size?: large|medium|small|miniature|compact|default",
+      "variant?: default|_alter",
       "note?: string",
       "showTags?: boolean",
       "showComment?: boolean",
@@ -271,7 +273,7 @@ const COMPONENT_LEGENDS = [
     props: [
       "value: number (required)",
       "scale: percent",
-      "variant: badge|user-chip|community-chip|teaser-chip",
+      "variant: badge|user-chip|community-chip|teaser-chip|live-chip|review-chip",
       "Usage: <ScoreBadge value={82} scale='percent' variant='user-chip' />",
     ],
   },
@@ -354,8 +356,8 @@ const DISPLAYED_SAMPLE_LEGENDS = [
   {
     name: "UI de base · ScoreBadge",
     details: [
-      "Composant: <ScoreBadge value={number} scale='percent' variant='badge|user-chip|community-chip|teaser-chip' />",
-      "Bindings: user-chip(82%), user-chip(0%), community-chip(87%), teaser-chip",
+      "Composant: <ScoreBadge value={number} scale='percent' variant='badge|user-chip|community-chip|teaser-chip|live-chip|review-chip' />",
+      "Bindings: user-chip(82%), user-chip(0%), community-chip(87%), teaser-chip, live-chip, review-chip",
     ],
   },
   {
@@ -670,6 +672,93 @@ function UISamplesPage() {
   }, [commentFocusEventId]);
 
   const commentsTotal = getAllComments().length;
+  const commentTypePreview = useMemo(() => {
+    const previewEvent = allEvents.find((event) => event.id === commentFocusEventId) || allEvents[0] || null;
+    const previewEventId = String(previewEvent?.id || "preview-event").trim();
+    const now = Date.now();
+    const baseReplies = [
+      {
+        id: "ui-preview-reply-1",
+        author: "Noa",
+        note: "Bien vu, je suis d'accord.",
+        likes: 2,
+        totalLikes: 2,
+        mentions: [],
+        createdAt: new Date(now - (8 * 60 * 1000)).toISOString(),
+      },
+    ];
+    return [
+      {
+        id: "ui-preview-teaser",
+        targetType: COMMENT_TARGET.EVENT,
+        targetId: previewEventId,
+        eventId: previewEventId,
+        author: "Lina",
+        userId: "usr-preview-lina",
+        note: "Teaser: grosse attente sur cette affiche, j'espere un gros rythme.",
+        likes: 5,
+        totalLikes: 5,
+        commentType: COMMENT_MODE.COMMENT,
+        mentions: [],
+        totalImpressions: 18,
+        createdAt: new Date(now - (2 * 60 * 60 * 1000)).toISOString(),
+        replies: baseReplies,
+      },
+      {
+        id: "ui-preview-live",
+        targetType: COMMENT_TARGET.EVENT,
+        targetId: previewEventId,
+        eventId: previewEventId,
+        author: "Marco",
+        userId: "usr-preview-marco",
+        note: "Live: changement de momentum en direct, ca bascule completement.",
+        likes: 11,
+        totalLikes: 11,
+        commentType: COMMENT_MODE.LIVE,
+        mentions: [],
+        totalImpressions: 27,
+        createdAt: new Date(now - (30 * 60 * 1000)).toISOString(),
+        replies: [
+          {
+            id: "ui-preview-reply-2",
+            author: "Emma",
+            note: "Oui, on sent la pression monter.",
+            likes: 1,
+            totalLikes: 1,
+            mentions: [],
+            createdAt: new Date(now - (22 * 60 * 1000)).toISOString(),
+          },
+        ],
+      },
+      {
+        id: "ui-preview-critique",
+        targetType: COMMENT_TARGET.EVENT,
+        targetId: previewEventId,
+        eventId: previewEventId,
+        author: "Sara",
+        userId: "usr-preview-sara",
+        note: "Critique: match solide tactiquement, execution propre et final intense.",
+        likes: 15,
+        totalLikes: 15,
+        commentType: COMMENT_MODE.REVIEW,
+        rating: 84,
+        mentions: [],
+        totalImpressions: 39,
+        createdAt: new Date(now - (26 * 60 * 60 * 1000)).toISOString(),
+        replies: [
+          {
+            id: "ui-preview-reply-3",
+            author: "Hugo",
+            note: "Note coherente, je mets autour de 80 aussi.",
+            likes: 3,
+            totalLikes: 3,
+            mentions: [],
+            createdAt: new Date(now - (25 * 60 * 60 * 1000)).toISOString(),
+          },
+        ],
+      },
+    ];
+  }, [allEvents, commentFocusEventId]);
 
   const timelineGroups = useMemo(() => {
     return allEvents
@@ -929,8 +1018,10 @@ function UISamplesPage() {
               <ScoreBadge variant="user-chip" value={0} scale="percent" />
               <ScoreBadge variant="community-chip" value={87} scale="percent" />
               <ScoreBadge variant="teaser-chip" />
+              <ScoreBadge variant="live-chip" />
+              <ScoreBadge variant="review-chip" />
             </div>
-            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="percent" variant="badge|user-chip|community-chip|teaser-chip" />'}</code></pre>
+            <pre className="ui-component-code"><code>{'<ScoreBadge value={number} scale="percent" variant="badge|user-chip|community-chip|teaser-chip|live-chip|review-chip" />'}</code></pre>
           </article>
 
           <article className="ui-sample-card">
@@ -1211,7 +1302,7 @@ function UISamplesPage() {
           ))}
         </div>
         <pre className="ui-component-code">
-          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} size='medium' showComment={boolean} />"}</code>
+          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} size='medium' variant='default|_alter' showComment={boolean} />"}</code>
         </pre>
 
         {focusEvent ? (
@@ -1230,6 +1321,25 @@ function UISamplesPage() {
                   />
                 </div>
               ))}
+            </div>
+          </article>
+        ) : null}
+
+        {focusEvent ? (
+          <article className="ui-sample-card ui-event-size-preview ui-event-size-preview-alter">
+            <h3>EventCard variant _alter (bandeau transversal)</h3>
+            <div className="ui-event-size-grid is-alter-preview">
+              <div className="ui-event-size-cell is-alter-preview">
+                <p className="muted ui-event-size-label">large · _alter</p>
+                <EventCard
+                  event={focusEvent}
+                  size="large"
+                  variant="_alter"
+                  showComment={false}
+                  isInWatchlist={sampleWatchlistIds.includes(focusEvent.id)}
+                  onToggleWatchlist={handleToggleWatchlist}
+                />
+              </div>
             </div>
           </article>
         ) : null}
@@ -1349,6 +1459,7 @@ function UISamplesPage() {
             onChange={setComposerMode}
           >
               <option value={COMMENT_MODE.COMMENT}>Commentaire</option>
+              <option value={COMMENT_MODE.LIVE}>Live</option>
               <option value={COMMENT_MODE.REVIEW}>Critique</option>
           </SelectField>
         </div>
@@ -1379,6 +1490,19 @@ function UISamplesPage() {
 
           <button className="cta" type="submit">Publier</button>
         </form>
+
+        <article className="ui-sample-card">
+          <h3>Apercu des 3 types</h3>
+          <p className="muted">Teaser, Live et Critique (demo statique).</p>
+          <div className="review-list">
+            {commentTypePreview.map((comment) => (
+              <CommentCard
+                key={comment.id}
+                comment={comment}
+              />
+            ))}
+          </div>
+        </article>
 
         {commentSamples.length ? (
           <div className="review-list">

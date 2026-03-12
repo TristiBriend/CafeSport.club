@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import CommentCard from "./CommentCard";
 import CommentComposerModePill from "./CommentComposerModePill";
@@ -30,10 +30,10 @@ import {
   createTargetComment,
   deleteComment,
   deleteCommentReply,
+  filterCommentsByMode,
   getAllComments,
   getCommentFeedForTarget,
   getCommentDateLabel,
-  isReviewAllowedTarget,
   resolveComposerModeForTarget,
   toggleCommentLike,
   toggleReplyLike,
@@ -249,8 +249,6 @@ function ObjectFeedScopePanel({
   const safeTargetId = String(targetId || "").trim();
   const hasTarget = Boolean(safeTargetType && safeTargetId);
   const resolvedComposer = resolveComposerModeForTarget(safeTargetType, safeTargetId);
-  const canReviewTarget = isReviewAllowedTarget(safeTargetType)
-    && resolvedComposer.commentMode === COMMENT_MODE.REVIEW;
   const resolvedContentProfile = contentProfile === FEED_CONTENT_PROFILE.COMMENTS_ONLY
     ? FEED_CONTENT_PROFILE.COMMENTS_ONLY
     : FEED_CONTENT_PROFILE.MIXED;
@@ -261,6 +259,7 @@ function ObjectFeedScopePanel({
   const [composerRating, setComposerRating] = useState(80);
   const [composerText, setComposerText] = useState("");
   const [composerMentions, setComposerMentions] = useState([]);
+  const [activeCommentMode, setActiveCommentMode] = useState(COMMENT_MODE.ALL);
   const { revisionByDomain } = useSocialSync();
   const commentsRevision = Number(revisionByDomain?.comments || 0);
   const tabsRevision = Number(revisionByDomain?.tabs || 0);
@@ -269,6 +268,11 @@ function ObjectFeedScopePanel({
   const feedActionsRevision = Number(revisionByDomain?.feedActions || 0);
   const activeMode = isControlledMode ? mode : internalMode;
   const watchlistSet = useMemo(() => new Set(watchlistIds), [watchlistIds]);
+
+  useEffect(() => {
+    setActiveCommentMode(COMMENT_MODE.ALL);
+  }, [safeTargetType, safeTargetId]);
+
   const allComments = useMemo(
     () => (isCommentsOnlyProfile ? [] : getAllComments()),
     [commentsRevision, commentsVersion, isCommentsOnlyProfile],
@@ -299,12 +303,23 @@ function ObjectFeedScopePanel({
 
   const objectComments = useMemo(() => {
     if (!hasTarget) return [];
-    return getCommentFeedForTarget(safeTargetType, safeTargetId, {
+    const comments = getCommentFeedForTarget(safeTargetType, safeTargetId, {
       sort: activeMode === FEED_MODE.POPULAR
         ? COMMENT_FEED_SORT.POPULAR
         : COMMENT_FEED_SORT.RECENT,
     });
-  }, [activeMode, commentsRevision, hasTarget, safeTargetId, safeTargetType, commentsVersion]);
+    if (!isCommentsOnlyProfile) return comments;
+    return filterCommentsByMode(comments, activeCommentMode);
+  }, [
+    activeCommentMode,
+    activeMode,
+    commentsRevision,
+    hasTarget,
+    isCommentsOnlyProfile,
+    safeTargetId,
+    safeTargetType,
+    commentsVersion,
+  ]);
 
   const objectEvents = useMemo(() => {
     if (!hasTarget || isCommentsOnlyProfile) return [];
@@ -732,8 +747,8 @@ function ObjectFeedScopePanel({
 
       {showComposer ? (
         <form className="comment-composer" onSubmit={handleCreateComment}>
-          {resolvedComposer.teaserOnlyHint ? (
-            <p className="event-meta">Evenement a venir: seuls les teasers sont autorises.</p>
+          {resolvedComposer.timingHint ? (
+            <p className="event-meta">{resolvedComposer.timingHint}</p>
           ) : null}
           {resolvedComposer.displayMode !== "comment" || resolvedComposer.showRating ? (
             <div className="comment-composer-top">
@@ -767,6 +782,39 @@ function ObjectFeedScopePanel({
             Publier
           </button>
         </form>
+      ) : null}
+
+      {isCommentsOnlyProfile ? (
+        <div className="comment-filter-row" role="tablist" aria-label="Filtrer les commentaires du flux">
+          <button
+            className={`filter-btn ${activeCommentMode === COMMENT_MODE.ALL ? "is-active" : ""}`}
+            onClick={() => setActiveCommentMode(COMMENT_MODE.ALL)}
+            type="button"
+          >
+            Tous
+          </button>
+          <button
+            className={`filter-btn ${activeCommentMode === COMMENT_MODE.COMMENT ? "is-active" : ""}`}
+            onClick={() => setActiveCommentMode(COMMENT_MODE.COMMENT)}
+            type="button"
+          >
+            Teasers
+          </button>
+          <button
+            className={`filter-btn ${activeCommentMode === COMMENT_MODE.LIVE ? "is-active" : ""}`}
+            onClick={() => setActiveCommentMode(COMMENT_MODE.LIVE)}
+            type="button"
+          >
+            Live
+          </button>
+          <button
+            className={`filter-btn ${activeCommentMode === COMMENT_MODE.REVIEW ? "is-active" : ""}`}
+            onClick={() => setActiveCommentMode(COMMENT_MODE.REVIEW)}
+            type="button"
+          >
+            Critiques
+          </button>
+        </div>
       ) : null}
 
       <div className="group-title">

@@ -1,0 +1,98 @@
+.unified-search-bar {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.unified-search-bar-label {
+  color: #111111;
+  font-family: var(--typo-label-family);
+  font-size: var(--typo-label-size);
+  line-height: var(--typo-label-line-height);
+  font-weight: var(--typo-label-weight);
+  letter-spacing: var(--typo-label-letter-spacing);
+  text-transform: var(--typo-label-transform);
+}
+
+.unified-search-bar-field {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.unified-search-bar-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 42px 10px 12px;
+  border: 2px solid #111111;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111111;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.78);
+  font-family: var(--typo-body-family);
+  font-size: var(--typo-body-size);
+  line-height: var(--typo-body-line-height);
+  font-weight: var(--typo-body-weight);
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+
+.unified-search-bar-input:hover {
+  transform: translate(-1px, -1px);
+}
+
+.unified-search-bar-input:focus,
+.unified-search-bar-input:focus-visible {
+  outline: none;
+  border-color: #111111;
+  box-shadow: 2px 2px 0 rgba(17, 17, 17, 0.78);
+}
+
+.unified-search-bar-input::placeholder {
+  color: #111111;
+  opacity: 1;
+}
+
+.unified-search-bar-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
+.unified-search-bar-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #111111;
+  pointer-events: none;
+}
+
+.unified-search-bar-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.header-search-inline .unified-search-bar {
+  width: 100%;
+  gap: 0;
+}
+
+.header-search-inline .unified-search-bar-field {
+  width: 100%;
+}
+
+.header-search-inline .unified-search-bar-input {
+  border-radius: 10px;
+}
+
+.profile-top5-search-field {
+  width: 100%;
+}
+
+.profile-inline-picker-search {
+  flex: 0 1 240px;
+  min-width: 180px;
+}
