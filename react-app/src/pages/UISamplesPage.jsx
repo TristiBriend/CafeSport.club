@@ -106,7 +106,7 @@ const COMPONENT_LEGENDS = [
       "isInWatchlist: boolean",
       "onToggleWatchlist: (eventId) => void",
       "size?: large|medium|small|miniature|compact|default",
-      "variant?: default|_alter",
+      "variant?: default|_old|_alter",
       "note?: string",
       "showTags?: boolean",
       "showComment?: boolean",
@@ -1302,7 +1302,7 @@ function UISamplesPage() {
           ))}
         </div>
         <pre className="ui-component-code">
-          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} size='medium' variant='default|_alter' showComment={boolean} />"}</code>
+          <code>{"<EventCard event={event} isInWatchlist={boolean} onToggleWatchlist={(eventId) => void} size='medium' variant='default|_old|_alter' showComment={boolean} />"}</code>
         </pre>
 
         {focusEvent ? (
@@ -1327,14 +1327,14 @@ function UISamplesPage() {
 
         {focusEvent ? (
           <article className="ui-sample-card ui-event-size-preview ui-event-size-preview-alter">
-            <h3>EventCard variant _alter (bandeau transversal)</h3>
+            <h3>EventCard variant _old (legacy)</h3>
             <div className="ui-event-size-grid is-alter-preview">
               <div className="ui-event-size-cell is-alter-preview">
-                <p className="muted ui-event-size-label">large · _alter</p>
+                <p className="muted ui-event-size-label">large · _old</p>
                 <EventCard
                   event={focusEvent}
                   size="large"
-                  variant="_alter"
+                  variant="_old"
                   showComment={false}
                   isInWatchlist={sampleWatchlistIds.includes(focusEvent.id)}
                   onToggleWatchlist={handleToggleWatchlist}

@@ -136,6 +136,15 @@ function buildEventFeedPath(eventId) {
   return `/feed?${params.toString()}`;
 }
 
+function formatRibbonCityTag(locationValue) {
+  const rawLocation = String(locationValue || "").trim();
+  if (!rawLocation) return "";
+  const citySource = rawLocation.split(",")[0]?.trim() || rawLocation;
+  const compactCity = citySource.replace(/\s+/g, "");
+  if (!compactCity) return "";
+  return `@${compactCity}`;
+}
+
 function EventCard({
   event,
   isInWatchlist = false,
@@ -164,7 +173,9 @@ function EventCard({
   const mediaRef = useRef(null);
   const normalizedSize = normalizeEventCardSize(size);
   const normalizedVariant = String(variant || "default").trim().toLowerCase();
-  const isAlterVariant = normalizedVariant === "_alter";
+  const isOldVariant = normalizedVariant === "_old";
+  const isAlterVariant = !isOldVariant;
+  const resolvedVariant = isOldVariant ? "_old" : "_alter";
   const isCompact = normalizedSize === "small";
   const isLegendary = Boolean(event?.legendary);
   const statusClass = getStatusClass(event);
@@ -217,11 +228,10 @@ function EventCard({
   const seasonTokenRaw = String(event?.seasonKey || "").trim();
   const seasonToken = seasonTokenRaw && seasonTokenRaw.toLowerCase() !== "na" ? seasonTokenRaw : "";
   const ribbonLeagueLabel = String(league?.title || event?.league || "").trim();
-  const ribbonMetaLabel = [ribbonLeagueLabel, seasonToken].filter(Boolean).join(" · ");
+  const ribbonCityTag = formatRibbonCityTag(event?.location);
+  const ribbonMetaLabel = [ribbonLeagueLabel, seasonToken, ribbonCityTag].filter(Boolean).join(" · ");
   const resultLabel = String(event?.result || "").trim();
-  const ribbonDateLocationLabel = [String(event?.date || "").trim(), String(event?.location || "").trim()]
-    .filter(Boolean)
-    .join(" · ");
+  const ribbonDateLabel = String(event?.date || "").trim();
   const hasSportChip = Boolean(String(event?.sport || "").trim());
   const participantsContent = visibleAthletes.length ? (
     <div className="overlay-participants">
@@ -322,8 +332,8 @@ function EventCard({
             ) : null}
           </p>
         ) : null}
-        {ribbonDateLocationLabel ? (
-          <p className="event-alter-ribbon-submeta">{ribbonDateLocationLabel}</p>
+        {ribbonDateLabel ? (
+          <p className="event-alter-ribbon-submeta">{ribbonDateLabel}</p>
         ) : null}
       </div>
     </div>
@@ -556,14 +566,14 @@ function EventCard({
 
   return (
     <div
-      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${isAlterVariant ? "_alter" : ""}`.trim()}
+      className={`event-card-shell ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${resolvedVariant}`.trim()}
       data-size={normalizedSize}
-      data-variant={isAlterVariant ? "_alter" : "default"}
+      data-variant={resolvedVariant}
     >
       <article
-        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${isAlterVariant ? "_alter" : ""}`.trim()}
+        className={`event-card ${isCompact ? "compact" : ""} ${statusClass} ${isLegendary ? "is-legendary" : ""} ${isMoreMenuOpen ? "is-more-open" : ""} ${resolvedVariant}`.trim()}
         data-event-id={event.id}
-        data-variant={isAlterVariant ? "_alter" : "default"}
+        data-variant={resolvedVariant}
       >
         <div
           className="event-corner-meta"
@@ -584,7 +594,7 @@ function EventCard({
             </span>
           ) : (
             <span className="event-corner-leading">
-              <ScoreBadge variant="user-chip" value={userScore} scale="percent" />
+              <ScoreBadge variant="community-chip" value={communityPercent} scale="percent" />
               {isAlterVariant && hasSportChip ? (
                 <span className="event-corner-chip event-corner-chip-sport event-alter-top-sport-chip" title={event.sport}>
                   {event.sport}
@@ -593,7 +603,7 @@ function EventCard({
             </span>
           )}
           <span className="event-corner-trailing">
-            {!isFuture ? <ScoreBadge variant="community-chip" value={communityPercent} scale="percent" /> : null}
+            {!isFuture ? <ScoreBadge variant="user-chip" value={userScore} scale="percent" /> : null}
             {typeof onToggleWatchlist === "function" ? (
               buildAddWatchlistFabButton({
                 eventId: event.id,
